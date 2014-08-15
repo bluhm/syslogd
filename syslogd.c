@@ -283,8 +283,7 @@ main(int argc, char *argv[])
 {
 	int ch, i, linesize, fd;
 	struct sockaddr_un fromunix;
-	struct sockaddr_in frominet;
-	struct sockaddr_in6 frominet6;
+	struct sockaddr_storage from;
 	socklen_t len;
 	char *p, *line;
 	char resolve[MAXHOSTNAMELEN];
@@ -584,27 +583,30 @@ main(int argc, char *argv[])
 			}
 		}
 		if ((pfd[PFD_INET].revents & POLLIN) != 0) {
-			len = sizeof(frominet);
+			len = sizeof(from);
 			i = recvfrom(pfd[PFD_INET].fd, line, MAXLINE, 0,
-			    (struct sockaddr *)&frominet, &len);
+			    (struct sockaddr *)&from, &len);
 			if (i > 0) {
 				line[i] = '\0';
-				cvthname((struct sockaddr *)&frominet, resolve,
-				    sizeof resolve);
+				cvthname((struct sockaddr *)&from, resolve,
+				    sizeof(resolve));
 				dprintf("cvthname res: %s\n", resolve);
 				printline(resolve, line);
 			} else if (i < 0 && errno != EINTR)
 				logerror("recvfrom inet");
 		}
 		if ((pfd[PFD_INET6].revents & POLLIN) != 0) {
-			len = sizeof(frominet6);
+			len = sizeof(from);
 			i = recvfrom(pfd[PFD_INET6].fd, line, MAXLINE, 0,
-			    (struct sockaddr *)&frominet6, &len);
+			    (struct sockaddr *)&from, &len);
 			if (i > 0) {
 				line[i] = '\0';
-				printline("???", line);
+				cvthname((struct sockaddr *)&from, resolve,
+				    sizeof(resolve));
+				dprintf("cvthname res: %s\n", resolve);
+				printline(resolve, line);
 			} else if (i < 0 && errno != EINTR)
-				logerror("recvfrom inet");
+				logerror("recvfrom inet6");
 		}
 		if ((pfd[PFD_CTLSOCK].revents & POLLIN) != 0)
 			ctlsock_accept_handler();
