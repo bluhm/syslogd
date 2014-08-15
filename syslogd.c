@@ -284,6 +284,7 @@ main(int argc, char *argv[])
 	int ch, i, linesize, fd;
 	struct sockaddr_un fromunix;
 	struct sockaddr_in frominet;
+	struct sockaddr_in6 frominet6;
 	socklen_t len;
 	char *p, *line;
 	char resolve[MAXHOSTNAMELEN];
@@ -592,6 +593,16 @@ main(int argc, char *argv[])
 				    sizeof resolve);
 				dprintf("cvthname res: %s\n", resolve);
 				printline(resolve, line);
+			} else if (i < 0 && errno != EINTR)
+				logerror("recvfrom inet");
+		}
+		if ((pfd[PFD_INET6].revents & POLLIN) != 0) {
+			len = sizeof(frominet6);
+			i = recvfrom(pfd[PFD_INET6].fd, line, MAXLINE, 0,
+			    (struct sockaddr *)&frominet6, &len);
+			if (i > 0) {
+				line[i] = '\0';
+				printline("???", line);
 			} else if (i < 0 && errno != EINTR)
 				logerror("recvfrom inet");
 		}
