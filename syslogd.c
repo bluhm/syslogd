@@ -1107,7 +1107,7 @@ cvthname(struct sockaddr *f, char *result, size_t res_len)
 	if (NoDNS)
 		return;
 
-	if (priv_getnameinfo(f, f->sa_len, result, res_len) != 0);
+	if (priv_getnameinfo(f, f->sa_len, result, res_len) != 0)
 		dprintf("Host name for your address (%s) unknown\n", result);
 }
 
