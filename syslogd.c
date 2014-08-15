@@ -1562,7 +1562,7 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (priv_getaddrinfo(host, port,
+		if (priv_getaddrinfo("udp", host, port,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
