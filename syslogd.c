@@ -268,6 +268,7 @@ void	reapchild(int);
 char   *ttymsg(struct iovec *, int, char *, int);
 void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
+int	loghost(char *, char **, char **);
 int	getmsgbufsize(void);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
@@ -1411,7 +1412,7 @@ cfline(char *line, char *prog)
 {
 	int i, pri;
 	size_t rb_len;
-	char *bp, *p, *q, *cp;
+	char *bp, *p, *q, *host, *port;
 	char buf[MAXLINE], ebuf[100];
 	struct filed *xf, *f, *d;
 
@@ -1510,19 +1511,22 @@ cfline(char *line, char *prog)
 	case '@':
 		if (!InetInuse)
 			break;
-		if ((cp = strrchr(++p, ':')) != NULL)
-			*cp++ = '\0';
-		if ((strlcpy(f->f_un.f_forw.f_hname, p,
-		    sizeof(f->f_un.f_forw.f_hname)) >=
-		    sizeof(f->f_un.f_forw.f_hname))) {
-			snprintf(ebuf, sizeof(ebuf), "hostname too long \"%s\"",
-			    p);
+		if (loghost(++p, &host, &port) == -1) {
+			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"", p);
 			logerror(ebuf);
 			break;
 		}
-		if (priv_getaddrinfo(f->f_un.f_forw.f_hname,
-		    cp == NULL ? "syslog" : cp,
-		    (struct sockaddr *)&f->f_un.f_forw.f_addr,
+		if ((strlcpy(f->f_un.f_forw.f_hname, host,
+		    sizeof(f->f_un.f_forw.f_hname)) >=
+		    sizeof(f->f_un.f_forw.f_hname))) {
+			snprintf(ebuf, sizeof(ebuf), "hostname too long \"%s\"",
+			    host);
+			logerror(ebuf);
+			break;
+		}
+		if (priv_getaddrinfo(host,
+		    port == NULL ? "syslog" : port,
+		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"", p);
 			logerror(ebuf);
@@ -1633,6 +1637,26 @@ cfline(char *line, char *prog)
 	return (f);
 }
 
+/*
+ * Parse the host and port parts from a loghost string.
+ */
+int
+loghost(char *str, char **host, char **port)
+{
+	*host = str;
+	if (**host == '[') {
+		(*host)++;
+		str = strchr(*host, ']');
+		if (str == NULL)
+			return (-1);
+		*str = '\0';
+	}
+	*port = strrchr(str, ':');
+	if (*port != NULL)
+		*(*port)++ = '\0';
+
+	return (0);
+}
 
 /*
  * Retrieve the size of the kernel message buffer, via sysctl.
