@@ -68,7 +68,7 @@ enum cmd_types {
 	PRIV_OPEN_CONFIG,	/* open config file for reading only */
 	PRIV_CONFIG_MODIFIED,	/* check if config file has been modified */
 	PRIV_GETADDRINFO,	/* resolve host/service names */
-	PRIV_GETHOSTBYADDR,	/* resolve numeric address into hostname */
+	PRIV_GETNAMEINFO,	/* resolve numeric address into hostname */
 	PRIV_DONE_CONFIG_PARSE	/* signal that the initial config parse is done */
 };
 
@@ -100,12 +100,12 @@ static int  may_read(int, void *, size_t);
 int
 priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 {
-	int i, fd, socks[2], cmd, addr_len, addr_af, result, restart;
+	int i, fd, socks[2], cmd, addr_len, result, restart;
 	size_t path_len, hostname_len, servname_len;
 	char path[MAXPATHLEN], hostname[MAXHOSTNAMELEN];
 	char servname[MAXHOSTNAMELEN];
+	struct sockaddr_storage addr;
 	struct stat cf_stat;
-	struct hostent *hp;
 	struct passwd *pw;
 	struct addrinfo hints, *res0;
 	struct sigaction sa;
@@ -322,24 +322,24 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 			}
 			break;
 
-		case PRIV_GETHOSTBYADDR:
-			dprintf("[priv]: msg PRIV_GETHOSTBYADDR received\n");
+		case PRIV_GETNAMEINFO:
+			dprintf("[priv]: msg PRIV_GETNAMEINFO received\n");
 			if (!allow_gethostbyaddr)
 				errx(1, "rejected attempt to gethostbyaddr");
-			/* Expecting: length, address, address family */
+			/* Expecting: length, sockaddr */
 			must_read(socks[0], &addr_len, sizeof(int));
-			if (addr_len <= 0 || addr_len > sizeof(hostname))
+			if (addr_len <= 0 || addr_len > sizeof(addr))
 				_exit(1);
-			must_read(socks[0], hostname, addr_len);
-			must_read(socks[0], &addr_af, sizeof(int));
-			hp = gethostbyaddr(hostname, addr_len, addr_af);
-			if (hp == NULL) {
+			must_read(socks[0], &addr, addr_len);
+			if (getnameinfo((struct sockaddr *)&addr, addr_len,
+			    hostname, sizeof(hostname), NULL, 0,
+			    NI_NOFQDN|NI_NAMEREQD|NI_DGRAM) != 0) {
 				addr_len = 0;
 				must_write(socks[0], &addr_len, sizeof(int));
 			} else {
-				addr_len = strlen(hp->h_name) + 1;
+				addr_len = strlen(hostname) + 1;
 				must_write(socks[0], &addr_len, sizeof(int));
-				must_write(socks[0], hp->h_name, addr_len);
+				must_write(socks[0], hostname, addr_len);
 			}
 			break;
 		default:
@@ -704,33 +704,33 @@ priv_getaddrinfo(char *host, char *serv, struct sockaddr *addr,
 /* Reverse address resolution; response is placed into res, and length of
  * response is returned (zero on error) */
 int
-priv_gethostbyaddr(char *addr, int addr_len, int af, char *res, size_t res_len)
+priv_getnameinfo(struct sockaddr *sa, socklen_t salen, char *host,
+    size_t hostlen)
 {
 	int cmd, ret_len;
 
 	if (priv_fd < 0)
 		errx(1, "%s called from privileged portion", __func__);
 
-	cmd = PRIV_GETHOSTBYADDR;
+	cmd = PRIV_GETNAMEINFO;
 	must_write(priv_fd, &cmd, sizeof(int));
-	must_write(priv_fd, &addr_len, sizeof(int));
-	must_write(priv_fd, addr, addr_len);
-	must_write(priv_fd, &af, sizeof(int));
+	must_write(priv_fd, &salen, sizeof(int));
+	must_write(priv_fd, sa, salen);
 
 	/* Expect back an integer size, and then a string of that length */
 	must_read(priv_fd, &ret_len, sizeof(int));
 
 	/* Check there was no error (indicated by a return of 0) */
 	if (!ret_len)
-		return 0;
+		return (-1);
 
 	/* Check we don't overflow the passed in buffer */
-	if (res_len < ret_len)
+	if (hostlen < ret_len)
 		errx(1, "%s: overflow attempt in return", __func__);
 
 	/* Read the resolved hostname */
-	must_read(priv_fd, res, ret_len);
-	return ret_len;
+	must_read(priv_fd, host, ret_len);
+	return (0);
 }
 
 /* Pass the signal through to child */

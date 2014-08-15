@@ -29,7 +29,7 @@ FILE *priv_open_config(void);
 void  priv_config_parse_done(void);
 int   priv_config_modified(void);
 int   priv_getaddrinfo(char *, char *, struct sockaddr *, size_t);
-int   priv_gethostbyaddr(char *, int, int, char *, size_t);
+int   priv_getnameinfo(struct sockaddr *, socklen_t, char *, size_t);
 
 /* Terminal message */
 char *ttymsg(struct iovec *, int, char *, int);
