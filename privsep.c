@@ -177,6 +177,8 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 			close(pfd[PFD_UNIX_0 + i].fd);
 	if (pfd[PFD_INET].fd != -1)
 		close(pfd[PFD_INET].fd);
+	if (pfd[PFD_INET6].fd != -1)
+		close(pfd[PFD_INET6].fd);
 	if (pfd[PFD_CTLSOCK].fd != -1)
 		close(pfd[PFD_CTLSOCK].fd);
 	if (pfd[PFD_CTLCONN].fd != -1)
