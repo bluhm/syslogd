@@ -189,7 +189,6 @@ int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
 char	LocalHostName[MAXHOSTNAMELEN];	/* our hostname */
 char	*LocalDomain;		/* our local domain name */
-int	InetInuse = 0;		/* non-zero if INET sockets are being used */
 int	Initialized = 0;	/* set when we have initialized ourselves */
 
 int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
@@ -371,7 +370,7 @@ main(int argc, char *argv[])
 	}
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
+	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_PASSIVE;
@@ -386,13 +385,14 @@ main(int argc, char *argv[])
 	for (res = res0; res; res = res->ai_next) {
 		struct pollfd *pfdp;
 
-		if (res->ai_family == AF_INET)
+		switch (res->ai_family) {
+		case AF_INET:
 			pfdp = &pfd[PFD_INET];
-		else {
-			/*
-			 * XXX AF_INET6 is skipped on purpose, need to
-			 * fix '@' handling first.
-			 */
+			break;
+		case AF_INET6:
+			pfdp = &pfd[PFD_INET6];
+			break;
+		default:
 			continue;
 		}
 
@@ -412,7 +412,6 @@ main(int argc, char *argv[])
 			continue;
 		}
 
-		InetInuse = 1;
 		pfdp->fd = fd;
 		if (SecureMode)
 			shutdown(pfdp->fd, SHUT_RD);
@@ -851,7 +850,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 {
 	struct iovec iov[6];
 	struct iovec *v;
-	int l, retryonce;
+	int fd, l, retryonce;
 	char line[MAXLINE + 1], repbuf[80], greetings[500];
 
 	v = iov;
@@ -908,13 +907,24 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORW:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
+		switch (f->f_un.f_forw.f_addr.ss_family) {
+		case AF_INET:
+			fd = pfd[PFD_INET].fd;
+			break;
+		case AF_INET6:
+			fd = pfd[PFD_INET6].fd;
+			break;
+		default:
+			fd = -1;
+			break;
+		}
 		if ((l = snprintf(line, sizeof(line), "<%d>%.15s %s%s%s",
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base)) >= sizeof(line) || l == -1)
 			l = strlen(line);
-		if (sendto(pfd[PFD_INET].fd, line, l, 0,
+		if (sendto(fd, line, l, 0,
 		    (struct sockaddr *)&f->f_un.f_forw.f_addr,
 		    f->f_un.f_forw.f_addr.ss_len) != l) {
 			switch (errno) {
@@ -1510,8 +1520,6 @@ cfline(char *line, char *prog)
 
 	switch (*p) {
 	case '@':
-		if (!InetInuse)
-			break;
 		if ((strlcpy(f->f_un.f_forw.f_loghost, p,
 		    sizeof(f->f_un.f_forw.f_loghost)) >=
 		    sizeof(f->f_un.f_forw.f_loghost))) {
