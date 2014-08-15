@@ -1528,7 +1528,8 @@ cfline(char *line, char *prog)
 		    port == NULL ? "syslog" : port,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
-			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"", p);
+			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
+			    host);
 			logerror(ebuf);
 			break;
 		}
@@ -1649,7 +1650,7 @@ loghost(char *str, char **host, char **port)
 		str = strchr(*host, ']');
 		if (str == NULL)
 			return (-1);
-		*str = '\0';
+		*str++ = '\0';
 	}
 	*port = strrchr(str, ':');
 	if (*port != NULL)
