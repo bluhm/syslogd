@@ -268,7 +268,7 @@ void	reapchild(int);
 char   *ttymsg(struct iovec *, int, char *, int);
 void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
-int	loghost(char *, char **, char **);
+int	loghost(char *, char **, char **, char **);
 int	getmsgbufsize(void);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
@@ -1437,7 +1437,7 @@ cfline(char *line, char *prog)
 {
 	int i, pri;
 	size_t rb_len;
-	char *bp, *p, *q, *host, *port;
+	char *bp, *p, *q, *proto, *host, *port;
 	char buf[MAXLINE], ebuf[100];
 	struct filed *xf, *f, *d;
 
@@ -1542,7 +1542,7 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (loghost(++p, &host, &port) == -1) {
+		if (loghost(++p, &proto, &host, &port) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
@@ -1562,7 +1562,7 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (priv_getaddrinfo("udp", host, port,
+		if (priv_getaddrinfo(proto == NULL ? "udp" : proto, host, port,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
@@ -1679,8 +1679,15 @@ cfline(char *line, char *prog)
  * Parse the host and port parts from a loghost string.
  */
 int
-loghost(char *str, char **host, char **port)
+loghost(char *str, char **proto, char **host, char **port)
 {
+	*proto = NULL;
+	if ((*host = strchr(str, ':')) &&
+	    (*host)[1] == '/' && (*host)[2] == '/') {
+		*proto = str;
+		**host = '\0';
+		str = *host + 3;
+	}
 	*host = str;
 	if (**host == '[') {
 		(*host)++;
