@@ -76,7 +76,7 @@ static int priv_fd = -1;
 static volatile pid_t child_pid = -1;
 static char config_file[MAXPATHLEN];
 static struct stat cf_info;
-static int allow_gethostbyaddr = 0;
+static int allow_getnameinfo = 0;
 static volatile sig_atomic_t cur_state = STATE_INIT;
 
 /* Queue for the allowed logfiles */
@@ -191,11 +191,11 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	if (stat(config_file, &cf_info) < 0)
 		err(1, "stat config file failed");
 
-	/* Save whether or not the child can have access to gethostbyaddr(3) */
+	/* Save whether or not the child can have access to getnameinfo(3) */
 	if (numeric > 0)
-		allow_gethostbyaddr = 0;
+		allow_getnameinfo = 0;
 	else
-		allow_gethostbyaddr = 1;
+		allow_getnameinfo = 1;
 
 	TAILQ_INIT(&lognames);
 	increase_state(STATE_CONFIG);
@@ -324,8 +324,8 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 
 		case PRIV_GETNAMEINFO:
 			dprintf("[priv]: msg PRIV_GETNAMEINFO received\n");
-			if (!allow_gethostbyaddr)
-				errx(1, "rejected attempt to gethostbyaddr");
+			if (!allow_getnameinfo)
+				errx(1, "rejected attempt to getnameinfo");
 			/* Expecting: length, sockaddr */
 			must_read(socks[0], &addr_len, sizeof(int));
 			if (addr_len <= 0 || addr_len > sizeof(addr))
