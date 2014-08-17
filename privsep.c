@@ -67,7 +67,7 @@ enum cmd_types {
 	PRIV_OPEN_UTMP,		/* open utmp for reading only */
 	PRIV_OPEN_CONFIG,	/* open config file for reading only */
 	PRIV_CONFIG_MODIFIED,	/* check if config file has been modified */
-	PRIV_GETHOSTSERV,	/* resolve host/service names */
+	PRIV_GETADDRINFO,	/* resolve host/service names */
 	PRIV_GETHOSTBYADDR,	/* resolve numeric address into hostname */
 	PRIV_DONE_CONFIG_PARSE	/* signal that the initial config parse is done */
 };
@@ -289,17 +289,19 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 			increase_state(STATE_RUNNING);
 			break;
 
-		case PRIV_GETHOSTSERV:
-			dprintf("[priv]: msg PRIV_GETHOSTSERV received\n");
+		case PRIV_GETADDRINFO:
+			dprintf("[priv]: msg PRIV_GETADDRINFO received\n");
 			/* Expecting: len, hostname, len, servname */
 			must_read(socks[0], &hostname_len, sizeof(size_t));
-			if (hostname_len == 0 || hostname_len > sizeof(hostname))
+			if (hostname_len == 0 ||
+			    hostname_len > sizeof(hostname))
 				_exit(1);
 			must_read(socks[0], &hostname, hostname_len);
 			hostname[hostname_len - 1] = '\0';
 
 			must_read(socks[0], &servname_len, sizeof(size_t));
-			if (servname_len == 0 || servname_len > sizeof(servname))
+			if (servname_len == 0 ||
+			    servname_len > sizeof(servname))
 				_exit(1);
 			must_read(socks[0], &servname, servname_len);
 			servname[servname_len - 1] = '\0';
@@ -657,7 +659,7 @@ priv_config_parse_done(void)
 /* Name/service to address translation.  Response is placed into addr, and
  * the length is returned (zero on error) */
 int
-priv_gethostserv(char *host, char *serv, struct sockaddr *addr,
+priv_getaddrinfo(char *host, char *serv, struct sockaddr *addr,
     size_t addr_len)
 {
 	char hostcpy[MAXHOSTNAMELEN], servcpy[MAXHOSTNAMELEN];
@@ -674,7 +676,7 @@ priv_gethostserv(char *host, char *serv, struct sockaddr *addr,
 		errx(1, "%s: overflow attempt in servname", __func__);
 	servname_len = strlen(servcpy) + 1;
 
-	cmd = PRIV_GETHOSTSERV;
+	cmd = PRIV_GETADDRINFO;
 	must_write(priv_fd, &cmd, sizeof(int));
 	must_write(priv_fd, &hostname_len, sizeof(size_t));
 	must_write(priv_fd, hostcpy, hostname_len);

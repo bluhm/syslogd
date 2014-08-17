@@ -1538,7 +1538,7 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		addr_len = priv_gethostserv(f->f_un.f_forw.f_hname,
+		addr_len = priv_getaddrinfo(f->f_un.f_forw.f_hname,
 		    cp == NULL ? "syslog" : cp,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr));
