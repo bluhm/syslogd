@@ -127,7 +127,7 @@ struct filed {
 	union {
 		char	f_uname[MAXUNAMES][UT_NAMESIZE+1];
 		struct {
-			char	f_hname[2*MAXHOSTNAMELEN];
+			char	f_loghost[2*MAXHOSTNAMELEN];
 			struct sockaddr_storage	f_addr;
 		} f_forw;		/* forwarding address */
 		char	f_fname[MAXPATHLEN];
@@ -906,7 +906,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		break;
 
 	case F_FORW:
-		dprintf(" %s\n", f->f_un.f_forw.f_hname);
+		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
 		if ((l = snprintf(line, sizeof(line), "<%d>%.15s %s%s%s",
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
@@ -1350,7 +1350,7 @@ init(void)
 				break;
 
 			case F_FORW:
-				printf("%s", f->f_un.f_forw.f_hname);
+				printf("%s", f->f_un.f_forw.f_loghost);
 				break;
 
 			case F_USERS:
@@ -1511,17 +1511,17 @@ cfline(char *line, char *prog)
 	case '@':
 		if (!InetInuse)
 			break;
-		if ((strlcpy(f->f_un.f_forw.f_hname, p,
-		    sizeof(f->f_un.f_forw.f_hname)) >=
-		    sizeof(f->f_un.f_forw.f_hname))) {
+		if ((strlcpy(f->f_un.f_forw.f_loghost, p,
+		    sizeof(f->f_un.f_forw.f_loghost)) >=
+		    sizeof(f->f_un.f_forw.f_loghost))) {
 			snprintf(ebuf, sizeof(ebuf), "loghost too long \"%s\"",
 			    p);
 			logerror(ebuf);
 			break;
 		}
 		if (loghost(++p, &host, &port) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"", 
-			    f->f_un.f_forw.f_hname);
+			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
+			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
 			break;
 		}
@@ -1530,7 +1530,7 @@ cfline(char *line, char *prog)
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
-			    f->f_un.f_forw.f_hname);
+			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
 			break;
 		}
