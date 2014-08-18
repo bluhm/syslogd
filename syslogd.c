@@ -195,6 +195,8 @@ int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
 int	MarkSeq = 0;		/* mark sequence number */
 int	SecureMode = 1;		/* when true, speak only unix domain socks */
 int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
+int	IPv4Only = 0;		/* when true, disable IPv6 */
+int	IPv6Only = 0;		/* when true, disable IPv4 */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 
 char	*ctlsock_path = NULL;	/* Path to control socket */
@@ -291,8 +293,14 @@ main(int argc, char *argv[])
 	struct addrinfo hints, *res, *res0;
 	FILE *fp;
 
-	while ((ch = getopt(argc, argv, "dhnuf:m:p:a:s:")) != -1)
+	while ((ch = getopt(argc, argv, "46dhnuf:m:p:a:s:")) != -1)
 		switch (ch) {
+		case '4':		/* disable IPv6 */
+			IPv4Only = 1;
+			break;
+		case '6':		/* disable IPv4 */
+			IPv6Only = 1;
+			break;
 		case 'd':		/* debug */
 			Debug++;
 			break;
@@ -387,9 +395,13 @@ main(int argc, char *argv[])
 
 		switch (res->ai_family) {
 		case AF_INET:
+			if (IPv6Only)
+				continue;
 			pfdp = &pfd[PFD_INET];
 			break;
 		case AF_INET6:
+			if (IPv4Only)
+				continue;
 			pfdp = &pfd[PFD_INET6];
 			break;
 		default:
@@ -641,7 +653,7 @@ usage(void)
 {
 
 	(void)fprintf(stderr,
-	    "usage: syslogd [-dhnu] [-a path] [-f config_file] [-m mark_interval]\n"
+	    "usage: syslogd [-46dhnu] [-a path] [-f config_file] [-m mark_interval]\n"
 	    "               [-p log_socket] [-s reporting_socket]\n");
 	exit(1);
 }
