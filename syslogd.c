@@ -1564,20 +1564,20 @@ cfline(char *line, char *prog)
 			/* no further checks */
 		} else if (strcmp(proto, "udp4") == 0) {
 			if (pfd[PFD_INET].fd == -1) {
-				snprintf(ebuf, sizeof(ebuf), "no udp4 \"%s\"", 
+				snprintf(ebuf, sizeof(ebuf), "no udp4 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
 				break;
 			}
 		} else if (strcmp(proto, "udp6") == 0) {
 			if (pfd[PFD_INET6].fd == -1) {
-				snprintf(ebuf, sizeof(ebuf), "no udp6 \"%s\"", 
+				snprintf(ebuf, sizeof(ebuf), "no udp6 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
 				break;
 			}
 		} else {
-			snprintf(ebuf, sizeof(ebuf), "bad protocol \"%s\"", 
+			snprintf(ebuf, sizeof(ebuf), "bad protocol \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
 			break;
