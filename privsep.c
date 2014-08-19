@@ -688,7 +688,7 @@ priv_getaddrinfo(char *host, char *serv, struct sockaddr *addr,
 
 	/* Check there was no error (indicated by a return of 0) */
 	if (!ret_len)
-		return 0;
+		return (-1);
 
 	/* Make sure we aren't overflowing the passed in buffer */
 	if (addr_len < ret_len)
@@ -698,7 +698,7 @@ priv_getaddrinfo(char *host, char *serv, struct sockaddr *addr,
 	memset(addr, '\0', addr_len);
 	must_read(priv_fd, addr, ret_len);
 
-	return ret_len;
+	return (0);
 }
 
 /* Reverse address resolution; response is placed into res, and length of
