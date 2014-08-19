@@ -1104,6 +1104,7 @@ cvthname(struct sockaddr *f, char *result, size_t res_len)
 		strlcpy(result, "???", res_len);
 		return;
 	}
+	dprintf("cvthname(%s)\n", result);
 	if (NoDNS)
 		return;
 
