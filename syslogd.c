@@ -250,7 +250,7 @@ volatile sig_atomic_t WantDie;
 volatile sig_atomic_t DoInit;
 
 struct filed *cfline(char *, char *);
-void    cvthname(struct sockaddr *, char *, size_t);
+void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
 void	dodie(int);
 void	doinit(int);
