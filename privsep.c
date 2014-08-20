@@ -308,8 +308,8 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 			must_read(socks[0], &servname, servname_len);
 			servname[servname_len - 1] = '\0';
 
-			memset(&hints, '\0', sizeof(hints));
-			hints.ai_family = AF_INET;
+			memset(&hints, 0, sizeof(hints));
+			hints.ai_family = AF_UNSPEC;
 			hints.ai_socktype = SOCK_DGRAM;
 			i = getaddrinfo(hostname, servname, &hints, &res0);
 			if (i != 0 || res0 == NULL) {
