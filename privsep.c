@@ -103,7 +103,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	int i, fd, socks[2], cmd, addr_len, result, restart;
 	size_t path_len, hostname_len, servname_len;
 	char path[MAXPATHLEN], hostname[MAXHOSTNAMELEN];
-	char servname[MAXHOSTNAMELEN];
+	char servname[NI_MAXSERV];
 	struct sockaddr_storage addr;
 	struct stat cf_stat;
 	struct passwd *pw;
@@ -662,7 +662,7 @@ int
 priv_getaddrinfo(char *host, char *serv, struct sockaddr *addr,
     size_t addr_len)
 {
-	char hostcpy[MAXHOSTNAMELEN], servcpy[MAXHOSTNAMELEN];
+	char hostcpy[MAXHOSTNAMELEN], servcpy[NI_MAXSERV];
 	int cmd, ret_len;
 	size_t hostname_len, servname_len;
 
