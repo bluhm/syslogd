@@ -656,8 +656,8 @@ priv_config_parse_done(void)
 	must_write(priv_fd, &cmd, sizeof(int));
 }
 
-/* Name/service to address translation.  Response is placed into addr, and
- * the length is returned (zero on error) */
+/* Name/service to address translation.  Response is placed into addr.
+ * Return 0 for success or < 0 for error like getaddrinfo(3) */
 int
 priv_getaddrinfo(char *host, char *serv, struct sockaddr *addr,
     size_t addr_len)
@@ -701,8 +701,8 @@ priv_getaddrinfo(char *host, char *serv, struct sockaddr *addr,
 	return (0);
 }
 
-/* Reverse address resolution; response is placed into res, and length of
- * response is returned (zero on error) */
+/* Reverse address resolution; response is placed into host.
+ * Return 0 for success or < 0 for error like getnameinfo(3) */
 int
 priv_getnameinfo(struct sockaddr *sa, socklen_t salen, char *host,
     size_t hostlen)
