@@ -318,19 +318,15 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 			memset(&hints, 0, sizeof(hints));
 			if (strcmp(protoname, "udp") == 0) {
 				hints.ai_family = AF_UNSPEC;
-				hints.ai_socktype = SOCK_DGRAM;
-				hints.ai_protocol = IPPROTO_UDP;
 			} else if (strcmp(protoname, "udp4") == 0) {
 				hints.ai_family = AF_INET;
-				hints.ai_socktype = SOCK_DGRAM;
-				hints.ai_protocol = IPPROTO_UDP;
 			} else if (strcmp(protoname, "udp6") == 0) {
 				hints.ai_family = AF_INET6;
-				hints.ai_socktype = SOCK_DGRAM;
-				hints.ai_protocol = IPPROTO_UDP;
 			} else {
 				errx(1, "unknown protocol %s", protoname);
 			}
+			hints.ai_socktype = SOCK_DGRAM;
+			hints.ai_protocol = IPPROTO_UDP;
 			i = getaddrinfo(hostname, servname, &hints, &res0);
 			if (i != 0 || res0 == NULL) {
 				addr_len = 0;
