@@ -1547,8 +1547,9 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (priv_getaddrinfo(host,
-		    port == NULL ? "syslog" : port,
+		if (port == NULL)
+			port = "syslog";
+		if (priv_getaddrinfo(host, port,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
