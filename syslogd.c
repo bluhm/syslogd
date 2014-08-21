@@ -1547,6 +1547,12 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
+		if (strlen(host) >= MAXHOSTNAMELEN) {
+			snprintf(ebuf, sizeof(ebuf), "host too long \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			logerror(ebuf);
+			break;
+		}
 		if (port == NULL)
 			port = "syslog";
 		if (priv_getaddrinfo(host, port,
