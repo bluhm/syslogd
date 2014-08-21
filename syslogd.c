@@ -1186,11 +1186,12 @@ logerror(const char *type)
 	else
 		(void)snprintf(buf, sizeof(buf), "syslogd: %s", type);
 	errno = 0;
-	dprintf("%s\n", buf);
 	if (Startup)
 		fprintf(stderr, "%s\n", buf);
-	else
+	else {
+		dprintf("%s\n", buf);
 		logmsg(LOG_SYSLOG|LOG_ERR, buf, LocalHostName, ADDDATE);
+	}
 }
 
 void
