@@ -1555,6 +1555,12 @@ cfline(char *line, char *prog)
 		}
 		if (port == NULL)
 			port = "syslog";
+		if (strlen(port) >= NI_MAXSERV) {
+			snprintf(ebuf, sizeof(ebuf), "port too long \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			logerror(ebuf);
+			break;
+		}
 		if (priv_getaddrinfo(host, port,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
