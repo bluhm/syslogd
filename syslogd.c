@@ -1560,7 +1560,9 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (proto == NULL || strcmp(proto, "udp") == 0) {
+		if (proto == NULL)
+			proto = "udp";
+		if (strcmp(proto, "udp") == 0) {
 			/* no further checks */
 		} else if (strcmp(proto, "udp4") == 0) {
 			if (pfd[PFD_INET].fd == -1) {
@@ -1596,7 +1598,7 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (priv_getaddrinfo(proto == NULL ? "udp" : proto, host, port,
+		if (priv_getaddrinfo(proto, host, port,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
