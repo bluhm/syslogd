@@ -127,8 +127,8 @@ struct filed {
 	union {
 		char	f_uname[MAXUNAMES][UT_NAMESIZE+1];
 		struct {
-			char	f_loghost[1+1+MAXHOSTNAMELEN+1+NI_MAXSERV];
-				/* @[hostname]:servname\0 */
+			char	f_loghost[1+4+3+1+MAXHOSTNAMELEN+1+NI_MAXSERV];
+				/* @proto46://[hostname]:servname\0 */
 			struct sockaddr_storage	f_addr;
 		} f_forw;		/* forwarding address */
 		char	f_fname[MAXPATHLEN];
