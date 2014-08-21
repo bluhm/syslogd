@@ -1567,8 +1567,7 @@ cfline(char *line, char *prog)
 				proto = "udp6";
 			if (pfd[PFD_INET6].fd == -1)
 				proto = "udp4";
-		}
-		if (strcmp(proto, "udp4") == 0) {
+		} else if (strcmp(proto, "udp4") == 0) {
 			if (pfd[PFD_INET].fd == -1) {
 				snprintf(ebuf, sizeof(ebuf), "no udp4 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
