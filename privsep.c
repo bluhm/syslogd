@@ -459,7 +459,7 @@ check_tty_name(char *tty, size_t ttylen)
 	char *p;
 
 	/* Any path containing '..' is invalid.  */
-	for (p = tty; *p && (size_t)(p - tty) < ttylen; p++)
+	for (p = tty; *p && p < tty + ttylen; p++)
 		if (*p == '.' && *(p + 1) == '.')
 			goto bad_path;
 
@@ -484,7 +484,7 @@ check_log_name(char *lognam, size_t loglen)
 	char *p;
 
 	/* Any path containing '..' is invalid.  */
-	for (p = lognam; *p && (size_t)(p - lognam) < loglen; p++)
+	for (p = lognam; *p && p < lognam + loglen; p++)
 		if (*p == '.' && *(p + 1) == '.')
 			goto bad_path;
 
