@@ -297,9 +297,11 @@ main(int argc, char *argv[])
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			IPv4Only = 1;
+			IPv6Only = 0;
 			break;
 		case '6':		/* disable IPv4 */
 			IPv6Only = 1;
+			IPv4Only = 0;
 			break;
 		case 'd':		/* debug */
 			Debug++;
