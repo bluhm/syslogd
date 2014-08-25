@@ -284,9 +284,6 @@ int
 main(int argc, char *argv[])
 {
 	int ch, i, linesize, fd;
-	struct sockaddr_un fromunix;
-	struct sockaddr_storage from;
-	socklen_t len;
 	char *p, *line;
 	char resolve[MAXHOSTNAMELEN];
 	int lockpipe[2] = { -1, -1}, pair[2], nullfd;
@@ -584,44 +581,47 @@ main(int argc, char *argv[])
 				logerror("poll");
 			continue;
 		}
+	}
+	/* NOTREACHED */
+	free(pfd);
+	return (0);
+}
 
-		if ((pfd[PFD_KLOG].revents & POLLIN) != 0) {
-			i = read(pfd[PFD_KLOG].fd, line, linesize - 1);
-			if (i > 0) {
-				line[i] = '\0';
-				printsys(line);
-			} else if (i < 0 && errno != EINTR) {
-				logerror("klog");
-				pfd[PFD_KLOG].fd = -1;
-				pfd[PFD_KLOG].events = 0;
-			}
-		}
-		if ((pfd[PFD_INET].revents & POLLIN) != 0) {
-			len = sizeof(from);
-			i = recvfrom(pfd[PFD_INET].fd, line, MAXLINE, 0,
-			    (struct sockaddr *)&from, &len);
-			if (i > 0) {
-				line[i] = '\0';
-				cvthname((struct sockaddr *)&from, resolve,
-				    sizeof(resolve));
-				dprintf("cvthname res: %s\n", resolve);
-				printline(resolve, line);
-			} else if (i < 0 && errno != EINTR)
-				logerror("recvfrom inet");
-		}
-		if ((pfd[PFD_INET6].revents & POLLIN) != 0) {
-			len = sizeof(from);
-			i = recvfrom(pfd[PFD_INET6].fd, line, MAXLINE, 0,
-			    (struct sockaddr *)&from, &len);
-			if (i > 0) {
-				line[i] = '\0';
-				cvthname((struct sockaddr *)&from, resolve,
-				    sizeof(resolve));
-				dprintf("cvthname res: %s\n", resolve);
-				printline(resolve, line);
-			} else if (i < 0 && errno != EINTR)
-				logerror("recvfrom inet6");
-		}
+void
+kog_readcb(int fd, short event, void *arg)
+{
+	struct event		*ev = arg;
+	ssize_t			 n;
+
+	n = read(fd, line, linesize - 1);
+	if (n > 0) {
+		line[n] = '\0';
+		printsys(line);
+	} else if (n < 0 && errno != EINTR) {
+		logerror("klog");
+		event_del(ev);
+	}
+}
+
+void
+udp_readcb(int fd, short event, void *arg)
+{
+	struct event		*ev = arg;
+	struct sockaddr_storage	 sa;
+	socklen_t		 salen;
+	ssize_t			 n;
+
+	len = sizeof(sa);
+	n = recvfrom(fd, line, MAXLINE, 0, (struct sockaddr *)&sa, &salen);
+	if (n > 0) {
+		line[n] = '\0';
+		cvthname((struct sockaddr *)&sa, resolve, sizeof(resolve));
+		dprintf("cvthname res: %s\n", resolve);
+		printline(resolve, line);
+	} else if (n < 0 && errno != EINTR)
+		logerror("recvfrom udp");
+}
+
 		if ((pfd[PFD_CTLSOCK].revents & POLLIN) != 0)
 			ctlsock_accept_handler();
 		if ((pfd[PFD_CTLCONN].revents & POLLIN) != 0)
@@ -629,25 +629,21 @@ main(int argc, char *argv[])
 		if ((pfd[PFD_CTLCONN].revents & POLLOUT) != 0)
 			ctlconn_write_handler();
 
-		for (i = 0; i < nfunix; i++) {
-			if ((pfd[PFD_UNIX_0 + i].revents & POLLIN) != 0) {
-				ssize_t rlen;
+void
+unix_readcb(int fd, short event, void *arg)
+{
+	struct event		*ev = arg;
+	struct sockaddr_un	 sa;
+	socklen_t		 salen;
+	ssize_t			 n;
 
-				len = sizeof(fromunix);
-				rlen = recvfrom(pfd[PFD_UNIX_0 + i].fd, line,
-				    MAXLINE, 0, (struct sockaddr *)&fromunix,
-				    &len);
-				if (rlen > 0) {
-					line[rlen] = '\0';
-					printline(LocalHostName, line);
-				} else if (rlen == -1 && errno != EINTR)
-					logerror("recvfrom unix");
-			}
-		}
-	}
-	/* NOTREACHED */
-	free(pfd);
-	return (0);
+	salen = sizeof(sa);
+	n = recvfrom(fd, line, MAXLINE, 0, (struct sockaddr *)&sa, &salen);
+	if (n > 0) {
+		line[n] = '\0';
+		printline(LocalHostName, line);
+	} else if (n < 0 && errno != EINTR)
+		logerror("recvfrom unix");
 }
 
 void
@@ -1906,12 +1902,12 @@ ctlconn_cleanup(void)
 }
 
 void
-ctlsock_accept_handler(void)
+ctlsock_acceptcb(int cs, short event, void *arg)
 {
 	int fd, flags;
 
 	dprintf("Accepting control connection\n");
-	fd = accept(pfd[PFD_CTLSOCK].fd, NULL, NULL);
+	fd = accept(cs, NULL, NULL);
 	if (fd == -1) {
 		if (errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
@@ -1922,7 +1918,7 @@ ctlsock_accept_handler(void)
 	ctlconn_cleanup();
 
 	/* Only one connection at a time */
-	pfd[PFD_CTLSOCK].events = pfd[PFD_CTLSOCK].revents = 0;
+	event_del(ev);  /* XXX use non persist */
 
 	if ((flags = fcntl(fd, F_GETFL)) == -1 ||
 	    fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
@@ -1931,8 +1927,7 @@ ctlsock_accept_handler(void)
 		return;
 	}
 
-	pfd[PFD_CTLCONN].fd = fd;
-	pfd[PFD_CTLCONN].events = POLLIN;
+	event_set(&ev[EV_CTLCONN], fd, EV_READ|EV_PERSIST, &ev[EV_CTLCONN]);
 	ctl_state = CTL_READING_CMD;
 	ctl_cmd_bytes = 0;
 }
@@ -1951,7 +1946,7 @@ static struct filed
 }
 
 void
-ctlconn_read_handler(void)
+ctlconn_readcb(void)
 {
 	ssize_t n;
 	struct filed *f;
