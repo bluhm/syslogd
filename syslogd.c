@@ -1880,18 +1880,15 @@ double_rbuf(int fd)
 	}
 }
 
-static void
-ctlconn_cleanup(void)
+void
+ctlconn_cleanup(int fd)
 {
-	struct filed *f;
+	struct filed		*f;
 
-	if (pfd[PFD_CTLCONN].fd != -1)
-		close(pfd[PFD_CTLCONN].fd);
-
-	pfd[PFD_CTLCONN].fd = -1;
-	pfd[PFD_CTLCONN].events = pfd[PFD_CTLCONN].revents = 0;
-
-	pfd[PFD_CTLSOCK].events = POLLIN;
+	close(fd);
+	event_del(ctl_read);
+	event_del(ctl_write);
+	event_add(ctl_accept);
 
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
 		for (f = Files; f != NULL; f = f->f_next)
@@ -1901,25 +1898,25 @@ ctlconn_cleanup(void)
 	ctl_state = ctl_cmd_bytes = ctl_reply_offset = ctl_reply_size = 0;
 }
 
+struct event	 ctl_accept, ctl_read, ctl_write;
+int		 ctl_sock, ctl_conn;
+
 void
-ctlsock_acceptcb(int cs, short event, void *arg)
+ctlsock_acceptcb(int fd, short event, void *arg)
 {
-	int fd, flags;
+	int flags;
 
 	dprintf("Accepting control connection\n");
-	fd = accept(cs, NULL, NULL);
+	fd = accept(fd, NULL, NULL);
 	if (fd == -1) {
 		if (errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
 			logerror("accept ctlsock");
-		event_add(ev, NULL);
+		event_add(ctl_accept, NULL);
 		return;
 	}
 
-	ctlconn_cleanup();
-
-	/* Only one connection at a time */
-	event_del(ev);  /* XXX use non persist */
+	ctlconn_cleanup(ctl_conn);
 
 	if ((flags = fcntl(fd, F_GETFL)) == -1 ||
 	    fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
@@ -1928,7 +1925,10 @@ ctlsock_acceptcb(int cs, short event, void *arg)
 		return;
 	}
 
-	event_set(&ev[EV_CTLCONN], fd, EV_READ|EV_PERSIST, &ev[EV_CTLCONN]);
+	ctl_conn = fd;
+	event_set(&ctl_read, EV_READ|EV_PERSIST, ctlconn_readcb, &ctl_read);
+	event_set(&ctl_write, EV_WRITE, ctlconn_writecb, &ctl_write);
+	event_add(&ctl_read);
 	ctl_state = CTL_READING_CMD;
 	ctl_cmd_bytes = 0;
 }
@@ -1949,15 +1949,16 @@ static struct filed
 void
 ctlconn_readcb(fd, short event, void *arg)
 {
-	ssize_t n;
-	struct filed *f;
-	u_int32_t flags = 0;
-	struct ctl_reply_hdr *reply_hdr = (struct ctl_reply_hdr *)ctl_reply;
+	struct event		*ev = arg;
+	struct filed		*f;
+	struct ctl_reply_hdr 	*reply_hdr = (struct ctl_reply_hdr *)ctl_reply;
+	ssize_t			 n;
+	u_int32_t		 flags = 0;
 
 	if (ctl_state == CTL_WRITING_REPLY ||
 	    ctl_state == CTL_WRITING_CONT_REPLY) {
 		/* client has closed the connection */
-		ctlconn_cleanup();
+		ctlconn_cleanup(fd);
 		return;
 	}
 
@@ -1971,25 +1972,24 @@ ctlconn_readcb(fd, short event, void *arg)
 		logerror("ctlconn read");
 		/* FALLTHROUGH */
 	case 0:
-		ctlconn_cleanup();
+		ctlconn_cleanup(fd);
 		return;
 	default:
 		ctl_cmd_bytes += n;
 	}
-
 	if (ctl_cmd_bytes < sizeof(ctl_cmd))
 		return;
 
 	if (ntohl(ctl_cmd.version) != CTL_VERSION) {
 		logerror("Unknown client protocol version");
-		ctlconn_cleanup();
+		ctlconn_cleanup(fd);
 		return;
 	}
 
 	/* Ensure that logname is \0 terminated */
 	if (memchr(ctl_cmd.logname, '\0', sizeof(ctl_cmd.logname)) == NULL) {
 		logerror("Corrupt ctlsock command");
-		ctlconn_cleanup();
+		ctlconn_cleanup(fd);
 		return;
 	}
 
@@ -2057,7 +2057,7 @@ ctlconn_readcb(fd, short event, void *arg)
 		break;
 	default:
 		logerror("Unsupported ctlsock command");
-		ctlconn_cleanup();
+		ctlconn_cleanup(fd);
 		return;
 	}
 	reply_hdr->version = htonl(CTL_VERSION);
@@ -2070,31 +2070,30 @@ ctlconn_readcb(fd, short event, void *arg)
 	ctl_state = (ctl_cmd.cmd == CMD_READ_CONT) ?
 	    CTL_WRITING_CONT_REPLY : CTL_WRITING_REPLY;
 
-	pfd[PFD_CTLCONN].events = POLLOUT;
-
-	/* monitor terminating syslogc */
-	pfd[PFD_CTLCONN].events |= POLLIN;
+	event_del(ev)
+	event_add(&ctl_write, NULL);
 
 	/* another syslogc can kick us out */
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
-		event_add(&ev_ctlsock, NULL);
-
+		event_add(&ctl_accept, NULL);
 }
 
 void
-ctlconn_write_handler(void)
+ctlconn_writecb(fd, short event, void *arg)
 {
-	ssize_t n;
+	struct event		*ev = arg;
+	ssize_t			 n;
 
 	if (!(ctl_state == CTL_WRITING_REPLY ||
 	    ctl_state == CTL_WRITING_CONT_REPLY)) {
 		/* Shouldn't be here! */
 		logerror("ctlconn_write with bad ctl_state");
-		ctlconn_cleanup();
+		ctlconn_cleanup(fd);
 		return;
 	}
+
  retry:
-	n = write(pfd[PFD_CTLCONN].fd, ctl_reply + ctl_reply_offset,
+	n = write(fd, ctl_reply + ctl_reply_offset,
 	    ctl_reply_size - ctl_reply_offset);
 	switch (n) {
 	case -1:
@@ -2104,31 +2103,35 @@ ctlconn_write_handler(void)
 			logerror("ctlconn write");
 		/* FALLTHROUGH */
 	case 0:
-		ctlconn_cleanup();
+		ctlconn_cleanup(fd);
 		return;
 	default:
 		ctl_reply_offset += n;
 	}
-	if (ctl_reply_offset >= ctl_reply_size) {
-		/*
-		 * Make space in the buffer for continous writes.
-		 * Set offset behind reply header to skip it
-		 */
-		if (ctl_state == CTL_WRITING_CONT_REPLY) {
-			*reply_text = '\0';
-			ctl_reply_offset = ctl_reply_size = CTL_REPLY_SIZE;
 
-			/* Now is a good time to report dropped lines */
-			if (membuf_drop) {
-				strlcat(reply_text, "<ENOBUFS>\n", MAX_MEMBUF);
-				ctl_reply_size = CTL_REPLY_SIZE;
-				membuf_drop = 0;
-			} else {
-				/* Nothing left to write */
-				pfd[PFD_CTLCONN].events = POLLIN;
-			}
-		} else
-			ctlconn_cleanup();
+	if (ctl_reply_offset < ctl_reply_size) {
+		event_add(ev);
+		return;
+	}
+
+	if (ctl_state != CTL_WRITING_CONT_REPLY) {
+		ctlconn_cleanup(fd);
+		return;
+	}
+
+	/*
+	 * Make space in the buffer for continous writes.
+	 * Set offset behind reply header to skip it
+	 */
+	*reply_text = '\0';
+	ctl_reply_offset = ctl_reply_size = CTL_REPLY_SIZE;
+
+	/* Now is a good time to report dropped lines */
+	if (membuf_drop) {
+		strlcat(reply_text, "<ENOBUFS>\n", MAX_MEMBUF);
+		ctl_reply_size = CTL_REPLY_SIZE;
+		membuf_drop = 0;
+		event_add(ev);
 	}
 }
 
@@ -2171,5 +2174,5 @@ logto_ctlconn(char *line)
 	memcpy(ctl_reply + ctl_reply_size, line, l);
 	memcpy(ctl_reply + ctl_reply_size + l, "\n", 2);
 	ctl_reply_size += l + 1;
-	pfd[PFD_CTLCONN].events |= POLLOUT;
+	event_add(&ctl_write, NULL);
 }
