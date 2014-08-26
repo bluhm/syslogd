@@ -1912,6 +1912,7 @@ ctlsock_acceptcb(int cs, short event, void *arg)
 		if (errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
 			logerror("accept ctlsock");
+		event_add(ev, NULL);
 		return;
 	}
 
@@ -1946,7 +1947,7 @@ static struct filed
 }
 
 void
-ctlconn_readcb(void)
+ctlconn_readcb(fd, short event, void *arg)
 {
 	ssize_t n;
 	struct filed *f;
@@ -1961,7 +1962,7 @@ ctlconn_readcb(void)
 	}
 
  retry:
-	n = read(pfd[PFD_CTLCONN].fd, (char*)&ctl_cmd + ctl_cmd_bytes,
+	n = read(fd, (char*)&ctl_cmd + ctl_cmd_bytes,
 	    sizeof(ctl_cmd) - ctl_cmd_bytes);
 	switch (n) {
 	case -1:
@@ -2076,7 +2077,7 @@ ctlconn_readcb(void)
 
 	/* another syslogc can kick us out */
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
-		pfd[PFD_CTLSOCK].events = POLLIN;
+		event_add(&ev_ctlsock, NULL);
 
 }
 
