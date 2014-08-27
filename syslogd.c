@@ -1957,7 +1957,7 @@ ctlconn_readcb(fd, short event, void *arg)
 {
 	struct event		*ev = arg;
 	struct filed		*f;
-	struct ctl_reply_hdr 	*reply_hdr = (struct ctl_reply_hdr *)ctl_reply;
+	struct ctl_reply_hdr	*reply_hdr = (struct ctl_reply_hdr *)ctl_reply;
 	ssize_t			 n;
 	u_int32_t		 flags = 0;
 
