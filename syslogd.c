@@ -253,8 +253,6 @@ int		 fd_ctlsock = -1, fd_ctlconn = -1;
 
 struct event	 ev_hup, ev_term, ev_int, ev_quit, ev_mark;
 
-struct pollfd pfd[N_PFD];
-
 struct filed *cfline(char *, char *);
 void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
@@ -615,13 +613,6 @@ udp_readcb(int fd, short event, void *arg)
 		logerror("recvfrom udp");
 }
 
-		if ((pfd[PFD_CTLSOCK].revents & POLLIN) != 0)
-			ctlsock_accept_handler();
-		if ((pfd[PFD_CTLCONN].revents & POLLIN) != 0)
-			ctlconn_read_handler();
-		if ((pfd[PFD_CTLCONN].revents & POLLOUT) != 0)
-			ctlconn_write_handler();
-
 void
 unix_readcb(int fd, short event, void *arg)
 {
@@ -925,10 +916,10 @@ fprintlog(struct filed *f, int flags, char *msg)
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
 		switch (f->f_un.f_forw.f_addr.ss_family) {
 		case AF_INET:
-			fd = pfd[PFD_INET].fd;
+			fd = fd_udp;
 			break;
 		case AF_INET6:
-			fd = pfd[PFD_INET6].fd;
+			fd = fd_udp6;
 			break;
 		default:
 			fd = -1;
@@ -1543,19 +1534,19 @@ cfline(char *line, char *prog)
 		if (proto == NULL)
 			proto = "udp";
 		if (strcmp(proto, "udp") == 0) {
-			if (pfd[PFD_INET].fd == -1)
+			if (fd_udp == -1)
 				proto = "udp6";
-			if (pfd[PFD_INET6].fd == -1)
+			if (fd_udp == -1)
 				proto = "udp4";
 		} else if (strcmp(proto, "udp4") == 0) {
-			if (pfd[PFD_INET].fd == -1) {
+			if (fd_udp == -1) {
 				snprintf(ebuf, sizeof(ebuf), "no udp4 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
 				break;
 			}
 		} else if (strcmp(proto, "udp6") == 0) {
-			if (pfd[PFD_INET6].fd == -1) {
+			if (fd_udp == -1) {
 				snprintf(ebuf, sizeof(ebuf), "no udp6 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
