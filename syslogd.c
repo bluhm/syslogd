@@ -80,6 +80,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <err.h>
+#include <event.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <poll.h>
@@ -252,6 +253,16 @@ struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite;
 int		 fd_ctlsock = -1, fd_ctlconn = -1;
 
 struct event	 ev_hup, ev_term, ev_int, ev_quit, ev_mark;
+
+void	 kog_readcb(int, short, void *);
+void	 udp_readcb(int, short, void *);
+void	 unix_readcb(int, short, void *);
+void	 die_signalcb(int, short, void *);
+void	 mark_timercb(int, short, void *);
+void	 init_signalcb(int, short, void *);
+void	 ctlsock_acceptcb(int, short, void *);
+void	 ctlconn_readcb(int, short, void *);
+void	 ctlconn_writecb(int, short, void *);
 
 struct filed *cfline(char *, char *);
 void	cvthname(struct sockaddr *, char *, size_t);
@@ -1127,7 +1138,7 @@ die_signalcb(int signal, short event, void *arg)
 }
 
 void
-mark_timerdb(int signal, short event, void *arg)
+mark_timercb(int signal, short event, void *arg)
 {
 	markit();
 }
@@ -1923,7 +1934,7 @@ static struct filed
 }
 
 void
-ctlconn_readcb(fd, short event, void *arg)
+ctlconn_readcb(int fd, short event, void *arg)
 {
 	struct event		*ev = arg;
 	struct filed		*f;
@@ -2054,7 +2065,7 @@ ctlconn_readcb(fd, short event, void *arg)
 }
 
 void
-ctlconn_writecb(fd, short event, void *arg)
+ctlconn_writecb(int fd, short event, void *arg)
 {
 	struct event		*ev = arg;
 	ssize_t			 n;
