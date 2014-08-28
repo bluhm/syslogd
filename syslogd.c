@@ -265,6 +265,7 @@ void	 unix_readcb(int, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
+void	 ctlconn_cleanup(void);
 void	 ctlsock_acceptcb(int, short, void *);
 void	 ctlconn_readcb(int, short, void *);
 void	 ctlconn_writecb(int, short, void *);
@@ -288,9 +289,6 @@ int	loghost(char *, char **, char **, char **);
 int	getmsgbufsize(void);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
-void	ctlsock_accept_handler(void);
-void	ctlconn_read_handler(void);
-void	ctlconn_write_handler(void);
 void	tailify_replytext(char *, int);
 void	logto_ctlconn(char *);
 
@@ -584,7 +582,7 @@ main(int argc, char *argv[])
 	(void)signal(SIGPIPE, SIG_IGN);
 	to.tv_sec = TIMERINTVL;
 	to.tv_usec = 0;
-	timer_add(&ev_mark, &to);
+	evtimer_add(&ev_mark, &to);
 
 	logmsg(LOG_SYSLOG|LOG_INFO, "syslogd: start", LocalHostName, ADDDATE);
 	dprintf("syslogd: started\n");
@@ -613,7 +611,6 @@ klog_readcb(int fd, short event, void *arg)
 void
 udp_readcb(int fd, short event, void *arg)
 {
-	struct event		*ev = arg;
 	struct sockaddr_storage	 sa;
 	socklen_t		 salen;
 	ssize_t			 n;
@@ -634,7 +631,6 @@ udp_readcb(int fd, short event, void *arg)
 void
 unix_readcb(int fd, short event, void *arg)
 {
-	struct event		*ev = arg;
 	struct sockaddr_un	 sa;
 	socklen_t		 salen;
 	ssize_t			 n;
@@ -1139,19 +1135,19 @@ cvthname(struct sockaddr *f, char *result, size_t res_len)
 }
 
 void
-die_signalcb(int signal, short event, void *arg)
+die_signalcb(int signum, short event, void *arg)
 {
-	die(signal);
+	die(signum);
 }
 
 void
-mark_timercb(int signal, short event, void *arg)
+mark_timercb(int unused, short event, void *arg)
 {
 	markit();
 }
 
 void
-init_signalcb(int signal, short event, void *arg)
+init_signalcb(int signum, short event, void *arg)
 {
 	init();
 
@@ -1943,7 +1939,6 @@ static struct filed
 void
 ctlconn_readcb(int fd, short event, void *arg)
 {
-	struct event		*ev = arg;
 	struct filed		*f;
 	struct ctl_reply_hdr	*reply_hdr = (struct ctl_reply_hdr *)ctl_reply;
 	ssize_t			 n;
