@@ -199,7 +199,7 @@ int	IPv4Only = 0;		/* when true, disable IPv6 */
 int	IPv6Only = 0;		/* when true, disable IPv4 */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 
-char	*ctlsock_path = NULL;	/* Path to control socket */
+char	*path_ctlsock = NULL;	/* Path to control socket */
 
 #define CTL_READING_CMD		1
 #define CTL_WRITING_REPLY	2
@@ -249,12 +249,12 @@ char	*linebuf;
 int	 linesize;
 
 struct event	 ev_udp, ev_udp6;
-int		 fd_udp = -1, fd_udp6 = -1;
 struct event	 ev_funix[MAXFUNIX];
-int		 fd_funix[MAXFUNIX];
 struct event	 ev_klog, ev_pair;
-int		 fd_klog = -1, fd_pair = -1;
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite;
+int		 fd_udp = -1, fd_udp6 = -1;
+int		 fd_funix[MAXFUNIX];
+int		 fd_klog = -1, fd_pair = -1;
 int		 fd_ctlsock = -1, fd_ctlconn = -1;
 
 struct event	 ev_hup, ev_term, ev_int, ev_quit, ev_mark;
@@ -343,7 +343,7 @@ main(int argc, char *argv[])
 				path_funix[nfunix++] = optarg;
 			break;
 		case 's':
-			ctlsock_path = optarg;
+			path_ctlsock = optarg;
 			break;
 		default:
 			usage();
@@ -469,9 +469,9 @@ main(int argc, char *argv[])
 	event_set(ev, fd, EV_READ|EV_PERSIST, unix_readcb, ev);
 	event_add(ev, NULL);
 
-	if (ctlsock_path != NULL) {
+	if (path_ctlsock != NULL) {
 		ev = &ev_ctlaccept;
-		fd = fd_ctlsock = unix_socket(ctlsock_path, SOCK_STREAM, 0600);
+		fd = fd_ctlsock = unix_socket(path_ctlsock, SOCK_STREAM, 0600);
 		if (fd != -1) {
 			if (listen(fd, 16) == -1) {
 				logerror("ctlsock listen");

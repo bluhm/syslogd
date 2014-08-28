@@ -172,19 +172,14 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	close(socks[1]);
 
 	/* Close descriptors that only the unpriv child needs */
+	close(fd_udp);
+	close(fd_udp6);
 	for (i = 0; i < nfunix; i++)
-		if (pfd[PFD_UNIX_0 + i].fd != -1)
-			close(pfd[PFD_UNIX_0 + i].fd);
-	if (pfd[PFD_INET].fd != -1)
-		close(pfd[PFD_INET].fd);
-	if (pfd[PFD_INET6].fd != -1)
-		close(pfd[PFD_INET6].fd);
-	if (pfd[PFD_CTLSOCK].fd != -1)
-		close(pfd[PFD_CTLSOCK].fd);
-	if (pfd[PFD_CTLCONN].fd != -1)
-		close(pfd[PFD_CTLCONN].fd);
-	if (pfd[PFD_KLOG].fd)
-		close(pfd[PFD_KLOG].fd);
+		close(fd_funix[i]);
+	close(fd_klog);
+	close(fd_pair);
+	close(fd_ctlsock);
+	close(fd_ctlconn);
 
 	/* Save the config file specified by the child process */
 	if (strlcpy(config_file, conf, sizeof config_file) >= sizeof(config_file))
@@ -370,10 +365,10 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 
 	/* Unlink any domain sockets that have been opened */
 	for (i = 0; i < nfunix; i++)
-		if (funixn[i] != NULL && pfd[PFD_UNIX_0 + i].fd != -1)
-			(void)unlink(funixn[i]);
-	if (ctlsock_path != NULL && pfd[PFD_CTLSOCK].fd != -1)
-		(void)unlink(ctlsock_path);
+		if (path_funix[i] != NULL && fd_funix[i] != -1)
+			unlink(path_funix[i]);
+	if (path_ctlsock != NULL && fd_ctlsock != -1)
+		unlink(path_ctlsock);
 
 	if (restart) {
 		int r;

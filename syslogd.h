@@ -41,22 +41,15 @@ int  receive_fd(int);
 /* The list of domain sockets */
 #define MAXFUNIX	21
 extern int nfunix;
-extern char *funixn[MAXFUNIX];
-extern char *ctlsock_path;
+extern char *path_funix[MAXFUNIX];
+extern char *path_ctlsock;
+extern int fd_udp, fd_udp6, fd_funix[MAXFUNIX], fd_klog, fd_pair;
+extern int fd_ctlsock, fd_ctlconn;
+
 
 #define dprintf(_f...)	do { if (Debug) printf(_f); } while (0)
 extern int Debug;
 extern int Startup;
-
-/* fds to poll */
-#define PFD_KLOG	0		/* Offset of /dev/klog entry */
-#define PFD_INET	1		/* Offset of inet socket entry */
-#define PFD_CTLSOCK	2		/* Offset of control socket entry */
-#define PFD_CTLCONN	3		/* Offset of control connection entry */
-#define PFD_INET6	4		/* Offset of inet6 socket entry */
-#define PFD_UNIX_0	5		/* Start of Unix socket entries */
-#define N_PFD		(PFD_UNIX_0 + MAXFUNIX)	/* # of pollfd entries */
-extern struct pollfd pfd[N_PFD];
 
 struct ringbuf {
 	char *buf;
