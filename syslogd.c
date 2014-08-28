@@ -245,16 +245,21 @@ char	*reply_text;		/* Start of reply text in buffer */
 size_t	ctl_reply_size = 0;	/* Number of bytes used in reply */
 size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 
+char	*linebuf;
+int	 linesize;
+
 struct event	 ev_udp, ev_udp6;
 int		 fd_udp = -1, fd_udp6 = -1;
 struct event	 ev_funix[MAXFUNIX];
 int		 fd_funix[MAXFUNIX];
+struct event	 ev_klog, ev_pair;
+int		 fd_klog = -1, fd_pair = -1;
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite;
 int		 fd_ctlsock = -1, fd_ctlconn = -1;
 
 struct event	 ev_hup, ev_term, ev_int, ev_quit, ev_mark;
 
-void	 kog_readcb(int, short, void *);
+void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 void	 die_signalcb(int, short, void *);
@@ -294,9 +299,8 @@ main(int argc, char *argv[])
 {
 	struct event *ev;
 	struct timeval to;
-	int ch, i, linesize, fd;
-	char *p, *line;
-	char resolve[MAXHOSTNAMELEN];
+	int ch, i, fd;
+	char *p;
 	int lockpipe[2] = { -1, -1}, pair[2], nullfd;
 	struct addrinfo hints, *res, *res0;
 	FILE *fp;
@@ -378,7 +382,7 @@ main(int argc, char *argv[])
 	if (linesize < MAXLINE)
 		linesize = MAXLINE;
 	linesize++;
-	if ((line = malloc(linesize)) == NULL) {
+	if ((linebuf = malloc(linesize)) == NULL) {
 		logerror("Couldn't allocate line buffer");
 		die(0);
 	}
@@ -468,7 +472,7 @@ main(int argc, char *argv[])
 	event_add(ev, NULL);
 
 	if (ctlsock_path != NULL) {
-		ev = &ev_ctlsock;
+		ev = &ev_ctlaccept;
 		fd = fd_ctlsock = unix_socket(ctlsock_path, SOCK_STREAM, 0600);
 		if (fd != -1) {
 			if (listen(fd, 16) == -1) {
@@ -483,8 +487,9 @@ main(int argc, char *argv[])
 	} else
 		fd_ctlsock = -1;
 
+	ev = &ev_klog;
 	fd = fd_klog = open(_PATH_KLOG, O_RDONLY, 0);
-	if ((fd == -1) {
+	if (fd == -1) {
 		dprintf("can't open %s (%d)\n", _PATH_KLOG, errno);
 	} else {
 		event_set(ev, fd, EV_READ|EV_PERSIST, klog_readcb, ev);
@@ -571,7 +576,7 @@ main(int argc, char *argv[])
 	if (Debug) {
 		signal_add(&ev_int, NULL);
 		signal_add(&ev_quit, NULL);
-	} else
+	} else {
 		(void)signal(SIGINT, SIG_IGN);
 		(void)signal(SIGQUIT, SIG_IGN);
 	}
@@ -590,15 +595,15 @@ main(int argc, char *argv[])
 }
 
 void
-kog_readcb(int fd, short event, void *arg)
+klog_readcb(int fd, short event, void *arg)
 {
 	struct event		*ev = arg;
 	ssize_t			 n;
 
-	n = read(fd, line, linesize - 1);
+	n = read(fd, linebuf, linesize - 1);
 	if (n > 0) {
-		line[n] = '\0';
-		printsys(line);
+		linebuf[n] = '\0';
+		printsys(linebuf);
 	} else if (n < 0 && errno != EINTR) {
 		logerror("klog");
 		event_del(ev);
@@ -613,13 +618,15 @@ udp_readcb(int fd, short event, void *arg)
 	socklen_t		 salen;
 	ssize_t			 n;
 
-	len = sizeof(sa);
-	n = recvfrom(fd, line, MAXLINE, 0, (struct sockaddr *)&sa, &salen);
+	salen = sizeof(sa);
+	n = recvfrom(fd, linebuf, MAXLINE, 0, (struct sockaddr *)&sa, &salen);
 	if (n > 0) {
-		line[n] = '\0';
+		char	 resolve[MAXHOSTNAMELEN];
+
+		linebuf[n] = '\0';
 		cvthname((struct sockaddr *)&sa, resolve, sizeof(resolve));
 		dprintf("cvthname res: %s\n", resolve);
-		printline(resolve, line);
+		printline(resolve, linebuf);
 	} else if (n < 0 && errno != EINTR)
 		logerror("recvfrom udp");
 }
@@ -633,10 +640,10 @@ unix_readcb(int fd, short event, void *arg)
 	ssize_t			 n;
 
 	salen = sizeof(sa);
-	n = recvfrom(fd, line, MAXLINE, 0, (struct sockaddr *)&sa, &salen);
+	n = recvfrom(fd, linebuf, MAXLINE, 0, (struct sockaddr *)&sa, &salen);
 	if (n > 0) {
-		line[n] = '\0';
-		printline(LocalHostName, line);
+		linebuf[n] = '\0';
+		printline(LocalHostName, linebuf);
 	} else if (n < 0 && errno != EINTR)
 		logerror("recvfrom unix");
 }
@@ -1870,9 +1877,9 @@ ctlconn_cleanup(void)
 	if (close(fd_ctlconn) == -1)
 		logerror("close ctlconn");
 	fd_ctlconn = -1;
-	event_del(ev_ctlread);
-	event_del(ev_ctlwrite);
-	event_add(ev_ctlaccept);
+	event_del(&ev_ctlread);
+	event_del(&ev_ctlwrite);
+	event_add(&ev_ctlaccept, NULL);
 
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
 		for (f = Files; f != NULL; f = f->f_next)
@@ -1901,7 +1908,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 		ctlconn_cleanup();
 
 	/* Only one connection at a time */
-	event_del(ev, NULL);
+	event_del(ev);
 
 	if ((flags = fcntl(fd, F_GETFL)) == -1 ||
 	    fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
@@ -1911,11 +1918,11 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 	}
 
 	fd_ctlconn = fd;
-	event_set(&ev_ctlread, EV_READ|EV_PERSIST, ctlconn_readcb,
+	event_set(&ev_ctlread, fd, EV_READ|EV_PERSIST, ctlconn_readcb,
 	    &ev_ctlread);
-	event_set(&ev_ctlwrite, EV_WRITE|EV_PERSIST, ctlconn_writecb, 
+	event_set(&ev_ctlwrite, fd, EV_WRITE|EV_PERSIST, ctlconn_writecb, 
 	    &ev_ctlwrite);
-	event_add(&ev_ctlread);
+	event_add(&ev_ctlread, NULL);
 	ctl_state = CTL_READING_CMD;
 	ctl_cmd_bytes = 0;
 }
