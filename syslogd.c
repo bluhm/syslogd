@@ -65,7 +65,6 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/msgbuf.h>
 #include <sys/uio.h>
@@ -184,7 +183,7 @@ struct	filed *Files;
 struct	filed consfile;
 
 int	nfunix = 1;		/* Number of Unix domain sockets requested */
-char	*funixn[MAXFUNIX] = { _PATH_LOG }; /* Paths to Unix domain sockets */
+char	*path_funix[MAXFUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
 char	LocalHostName[MAXHOSTNAMELEN];	/* our hostname */
@@ -245,19 +244,21 @@ char	*reply_text;		/* Start of reply text in buffer */
 size_t	ctl_reply_size = 0;	/* Number of bytes used in reply */
 size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 
-struct pollfd pfd[N_PFD];
+struct event	 ev_udp, ev_udp6;
+int		 fd_udp = -1, fd_udp6 = -1;
+struct event	 ev_funix[MAXFUNIX];
+int		 fd_funix[MAXFUNIX];
+struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite;
+int		 fd_ctlsock = -1, fd_ctlconn = -1;
 
-volatile sig_atomic_t MarkSet;
-volatile sig_atomic_t WantDie;
-volatile sig_atomic_t DoInit;
+struct event	 ev_hup, ev_term, ev_int, ev_quit, ev_mark;
+
+struct pollfd pfd[N_PFD];
 
 struct filed *cfline(char *, char *);
 void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
-void	dodie(int);
-void	doinit(int);
 void	die(int);
-void	domark(int);
 void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
@@ -266,7 +267,6 @@ void	logmsg(int, char *, char *, int);
 struct filed *find_dup(struct filed *);
 void	printline(char *, char *);
 void	printsys(char *);
-void	reapchild(int);
 char   *ttymsg(struct iovec *, int, char *, int);
 void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
@@ -283,6 +283,8 @@ void	logto_ctlconn(char *);
 int
 main(int argc, char *argv[])
 {
+	struct event *ev;
+	struct timeval to;
 	int ch, i, linesize, fd;
 	char *p, *line;
 	char resolve[MAXHOSTNAMELEN];
@@ -316,7 +318,7 @@ main(int argc, char *argv[])
 			NoDNS = 1;
 			break;
 		case 'p':		/* path */
-			funixn[0] = optarg;
+			path_funix[0] = optarg;
 			break;
 		case 'u':		/* allow udp input port */
 			SecureMode = 0;
@@ -327,7 +329,7 @@ main(int argc, char *argv[])
 				    "out of descriptors, ignoring %s\n",
 				    optarg);
 			else
-				funixn[nfunix++] = optarg;
+				path_funix[nfunix++] = optarg;
 			break;
 		case 's':
 			ctlsock_path = optarg;
@@ -351,6 +353,8 @@ main(int argc, char *argv[])
 				logerror("dup2");
 	}
 
+	event_init();
+
 	consfile.f_type = F_CONSOLE;
 	(void)strlcpy(consfile.f_un.f_fname, ctty,
 	    sizeof(consfile.f_un.f_fname));
@@ -370,12 +374,6 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
-	/* Clear poll array, set all fds to ignore */
-	for (i = 0; i < N_PFD; i++) {
-		pfd[i].fd = -1;
-		pfd[i].events = 0;
-	}
-
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
@@ -389,25 +387,28 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
+	fd_udp = fd_udp6 = -1;
 	for (res = res0; res; res = res->ai_next) {
-		struct pollfd *pfdp;
+		int	*fdp;
 
 		switch (res->ai_family) {
 		case AF_INET:
 			if (IPv6Only)
 				continue;
-			pfdp = &pfd[PFD_INET];
+			ev = &ev_udp;
+			fdp = &fd_udp;
 			break;
 		case AF_INET6:
 			if (IPv4Only)
 				continue;
-			pfdp = &pfd[PFD_INET6];
+			ev = &ev_udp6;
+			fdp = &fd_udp6;
 			break;
 		default:
 			continue;
 		}
 
-		if (pfdp->fd >= 0)
+		if (*fdp >= 0)
 			continue;
 
 		fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -419,65 +420,69 @@ main(int argc, char *argv[])
 			close(fd);
 			if (!Debug)
 				die(0);
-			fd = -1;
 			continue;
 		}
 
-		pfdp->fd = fd;
+		*fdp = fd;
 		if (SecureMode)
-			shutdown(pfdp->fd, SHUT_RD);
+			shutdown(fd, SHUT_RD);
 		else {
-			double_rbuf(pfdp->fd);
-			pfdp->events = POLLIN;
+			double_rbuf(fd);
+			event_set(ev, fd, EV_READ|EV_PERSIST, udp_readcb, ev);
+			event_add(ev, NULL);
 		}
 	}
-
 	freeaddrinfo(res0);
 
 #ifndef SUN_LEN
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
 	for (i = 0; i < nfunix; i++) {
-		if ((fd = unix_socket(funixn[i], SOCK_DGRAM, 0666)) == -1) {
+		ev = &ev_funix[i];
+		fd = fd_funix[i] = unix_socket(path_funix[i], SOCK_DGRAM, 0666);
+		if (fd == -1) {
 			if (i == 0 && !Debug)
 				die(0);
 			continue;
 		}
 		double_rbuf(fd);
-		pfd[PFD_UNIX_0 + i].fd = fd;
-		pfd[PFD_UNIX_0 + i].events = POLLIN;
+		event_set(ev, fd, EV_READ|EV_PERSIST, unix_readcb, ev);
+		event_add(ev, NULL);
 	}
 
-	nfunix++;
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
 		die(0);
-	fd = pair[0];
+	ev = &ev_pair;
+	fd = fd_pair = pair[0];
 	double_rbuf(fd);
-	pfd[PFD_UNIX_0 + i].fd = fd;
-	pfd[PFD_UNIX_0 + i].events = POLLIN;
+	event_set(ev, fd, EV_READ|EV_PERSIST, unix_readcb, ev);
+	event_add(ev, NULL);
 
 	if (ctlsock_path != NULL) {
-		fd = unix_socket(ctlsock_path, SOCK_STREAM, 0600);
+		ev = &ev_ctlsock;
+		fd = fd_ctlsock = unix_socket(ctlsock_path, SOCK_STREAM, 0600);
 		if (fd != -1) {
 			if (listen(fd, 16) == -1) {
 				logerror("ctlsock listen");
 				die(0);
 			}
-			pfd[PFD_CTLSOCK].fd = fd;
-			pfd[PFD_CTLSOCK].events = POLLIN;
+			event_set(ev, fd, EV_READ|EV_PERSIST, ctlsock_acceptcb,
+			    ev);
+			event_add(ev, NULL);
 		} else if (!Debug)
 			die(0);
-	}
+	} else
+		fd_ctlsock = -1;
 
-	if ((fd = open(_PATH_KLOG, O_RDONLY, 0)) == -1) {
+	fd = fd_klog = open(_PATH_KLOG, O_RDONLY, 0);
+	if ((fd == -1) {
 		dprintf("can't open %s (%d)\n", _PATH_KLOG, errno);
 	} else {
-		pfd[PFD_KLOG].fd = fd;
-		pfd[PFD_KLOG].events = POLLIN;
+		event_set(ev, fd, EV_READ|EV_PERSIST, klog_readcb, ev);
+		event_add(ev, NULL);
+		if (ioctl(fd, LIOCSFD, &pair[1]) == -1)
+			dprintf("LIOCSFD errno %d\n", errno);
 	}
-
-	if (ioctl(fd, LIOCSFD, &pair[1]) == -1)
-		dprintf("LIOCSFD errno %d\n", errno);
 	close(pair[1]);
 
 	dprintf("off & running....\n");
@@ -524,7 +529,7 @@ main(int argc, char *argv[])
 	Startup = 0;
 
 	/* Allocate ctl socket reply buffer if we have a ctl socket */
-	if (pfd[PFD_CTLSOCK].fd != -1 &&
+	if (fd_ctlsock != -1 &&
 	    (ctl_reply = malloc(CTL_REPLY_MAXSIZE)) == NULL) {
 		logerror("Couldn't allocate ctlsock reply buffer");
 		die(0);
@@ -546,44 +551,32 @@ main(int argc, char *argv[])
 	 */
 	priv_config_parse_done();
 
-	(void)signal(SIGHUP, doinit);
-	(void)signal(SIGTERM, dodie);
-	(void)signal(SIGINT, Debug ? dodie : SIG_IGN);
-	(void)signal(SIGQUIT, Debug ? dodie : SIG_IGN);
-	(void)signal(SIGCHLD, reapchild);
-	(void)signal(SIGALRM, domark);
+	signal_set(&ev_hup, SIGHUP, init_signalcb, &ev_hup);
+	signal_set(&ev_term, SIGTERM, die_signalcb, &ev_term);
+	signal_set(&ev_int, SIGINT, die_signalcb, &ev_int);
+	signal_set(&ev_quit, SIGQUIT, die_signalcb, &ev_quit);
+	evtimer_set(&ev_mark, mark_timercb, &ev_mark);
+
+	signal_add(&ev_hup, NULL);
+	signal_add(&ev_term, NULL);
+	if (Debug) {
+		signal_add(&ev_int, NULL);
+		signal_add(&ev_quit, NULL);
+	} else
+		(void)signal(SIGINT, SIG_IGN);
+		(void)signal(SIGQUIT, SIG_IGN);
+	}
+	(void)signal(SIGCHLD, SIG_IGN);
 	(void)signal(SIGPIPE, SIG_IGN);
-	(void)alarm(TIMERINTVL);
+	to.tv_sec = TIMERINTVL;
+	to.tv_usec = 0;
+	timer_add(&ev_mark, &to);
 
 	logmsg(LOG_SYSLOG|LOG_INFO, "syslogd: start", LocalHostName, ADDDATE);
 	dprintf("syslogd: started\n");
 
-	for (;;) {
-		if (MarkSet)
-			markit();
-		if (WantDie)
-			die(WantDie);
-
-		if (DoInit) {
-			init();
-			DoInit = 0;
-
-			logmsg(LOG_SYSLOG|LOG_INFO, "syslogd: restart",
-			    LocalHostName, ADDDATE);
-			dprintf("syslogd: restarted\n");
-		}
-
-		switch (poll(pfd, PFD_UNIX_0 + nfunix, -1)) {
-		case 0:
-			continue;
-		case -1:
-			if (errno != EINTR)
-				logerror("poll");
-			continue;
-		}
-	}
+	event_dispatch();
 	/* NOTREACHED */
-	free(pfd);
 	return (0);
 }
 
@@ -1116,18 +1109,6 @@ wallmsg(struct filed *f, struct iovec *iov)
 	reenter = 0;
 }
 
-/* ARGSUSED */
-void
-reapchild(int signo)
-{
-	int save_errno = errno;
-	int status;
-
-	while (waitpid(-1, &status, WNOHANG) > 0)
-		;
-	errno = save_errno;
-}
-
 /*
  * Return a printable representation of a host address.
  */
@@ -1149,23 +1130,25 @@ cvthname(struct sockaddr *f, char *result, size_t res_len)
 }
 
 void
-dodie(int signo)
+die_signalcb(int signal, short event, void *arg)
 {
-	WantDie = signo;
+	die(signal);
 }
 
-/* ARGSUSED */
 void
-domark(int signo)
+mark_timerdb(int signal, short event, void *arg)
 {
-	MarkSet = 1;
+	markit();
 }
 
-/* ARGSUSED */
 void
-doinit(int signo)
+init_signalcb(int signal, short event, void *arg)
 {
-	DoInit = 1;
+	init();
+
+	logmsg(LOG_SYSLOG|LOG_INFO, "syslogd: restart",
+	    LocalHostName, ADDDATE);
+	dprintf("syslogd: restarted\n");
 }
 
 /*
@@ -1197,7 +1180,6 @@ die(int signo)
 	char buf[100];
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
-	alarm(0);
 	for (f = Files; f != NULL; f = f->f_next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
@@ -1807,8 +1789,6 @@ markit(void)
 			BACKOFF(f);
 		}
 	}
-	MarkSet = 0;
-	(void)alarm(TIMERINTVL);
 }
 
 int
@@ -1880,20 +1860,17 @@ double_rbuf(int fd)
 	}
 }
 
-struct event	 ctl_accept, ctl_read, ctl_write;
-int		 ctl_sock, ctl_conn = -1;
-
 void
 ctlconn_cleanup(void)
 {
 	struct filed		*f;
 
-	if (close(ctl_conn) == -1)
+	if (close(fd_ctlconn) == -1)
 		logerror("close ctlconn");
-	ctl_conn = -1;
-	event_del(ctl_read);
-	event_del(ctl_write);
-	event_add(ctl_accept);
+	fd_ctlconn = -1;
+	event_del(ev_ctlread);
+	event_del(ev_ctlwrite);
+	event_add(ev_ctlaccept);
 
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
 		for (f = Files; f != NULL; f = f->f_next)
@@ -1918,7 +1895,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 		return;
 	}
 
-	if (ctl_conn != -1)
+	if (fd_ctlconn != -1)
 		ctlconn_cleanup();
 
 	/* Only one connection at a time */
@@ -1931,10 +1908,12 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 		return;
 	}
 
-	ctl_conn = fd;
-	event_set(&ctl_read, EV_READ|EV_PERSIST, ctlconn_readcb, &ctl_read);
-	event_set(&ctl_write, EV_WRITE|EV_PERSIST, ctlconn_writecb, &ctl_write);
-	event_add(&ctl_read);
+	fd_ctlconn = fd;
+	event_set(&ev_ctlread, EV_READ|EV_PERSIST, ctlconn_readcb,
+	    &ev_ctlread);
+	event_set(&ev_ctlwrite, EV_WRITE|EV_PERSIST, ctlconn_writecb, 
+	    &ev_ctlwrite);
+	event_add(&ev_ctlread);
 	ctl_state = CTL_READING_CMD;
 	ctl_cmd_bytes = 0;
 }
@@ -2076,11 +2055,11 @@ ctlconn_readcb(fd, short event, void *arg)
 	ctl_state = (ctl_cmd.cmd == CMD_READ_CONT) ?
 	    CTL_WRITING_CONT_REPLY : CTL_WRITING_REPLY;
 
-	event_add(&ctl_write, NULL);
+	event_add(&ev_ctlwrite, NULL);
 
 	/* another syslogc can kick us out */
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
-		event_add(&ctl_accept, NULL);
+		event_add(&ev_ctlaccept, NULL);
 }
 
 void
@@ -2178,5 +2157,5 @@ logto_ctlconn(char *line)
 	memcpy(ctl_reply + ctl_reply_size, line, l);
 	memcpy(ctl_reply + ctl_reply_size + l, "\n", 2);
 	ctl_reply_size += l + 1;
-	event_add(&ctl_write, NULL);
+	event_add(&ev_ctlwrite, NULL);
 }
