@@ -1556,7 +1556,7 @@ cfline(char *line, char *prog)
 		if (strcmp(proto, "udp") == 0) {
 			if (fd_udp == -1)
 				proto = "udp6";
-			if (fd_udp == -1)
+			if (fd_udp6 == -1)
 				proto = "udp4";
 		} else if (strcmp(proto, "udp4") == 0) {
 			if (fd_udp == -1) {
@@ -1566,7 +1566,7 @@ cfline(char *line, char *prog)
 				break;
 			}
 		} else if (strcmp(proto, "udp6") == 0) {
-			if (fd_udp == -1) {
+			if (fd_udp6 == -1) {
 				snprintf(ebuf, sizeof(ebuf), "no udp6 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
