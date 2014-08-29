@@ -518,19 +518,19 @@ main(int argc, char *argv[])
 	/* Process is now unprivileged and inside a chroot */
 	event_init();
 
-	event_set(&ev_ctlaccept, fd, EV_READ|EV_PERSIST, ctlsock_acceptcb,
-	    &ev_ctlaccept);
-	event_set(&ev_ctlread, fd, EV_READ|EV_PERSIST, ctlconn_readcb,
-	    &ev_ctlread);
-	event_set(&ev_ctlwrite, fd, EV_WRITE|EV_PERSIST, ctlconn_writecb,
-	    &ev_ctlwrite);
+	event_set(&ev_ctlaccept, fd_ctlsock, EV_READ|EV_PERSIST,
+	    ctlsock_acceptcb, &ev_ctlaccept);
+	event_set(&ev_ctlread, fd_ctlconn, EV_READ|EV_PERSIST,
+	    ctlconn_readcb, &ev_ctlread);
+	event_set(&ev_ctlwrite, fd_ctlconn, EV_WRITE|EV_PERSIST,
+	    ctlconn_writecb, &ev_ctlwrite);
 	for (i = 0; i < MAXFUNIX; i++)
-		event_set(&ev_funix[i], fd, EV_READ|EV_PERSIST, unix_readcb,
-		    &ev_funix[i]);
-	event_set(&ev_klog, fd, EV_READ|EV_PERSIST, klog_readcb, &ev_klog);
-	event_set(&ev_pair, fd, EV_READ|EV_PERSIST, unix_readcb, &ev_pair);
-	event_set(&ev_udp, fd, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
-	event_set(&ev_udp6, fd, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
+		event_set(&ev_funix[i], fd_funix[i], EV_READ|EV_PERSIST,
+		    unix_readcb, &ev_funix[i]);
+	event_set(&ev_klog, fd_klog, EV_READ|EV_PERSIST, klog_readcb, &ev_klog);
+	event_set(&ev_pair, fd_pair, EV_READ|EV_PERSIST, unix_readcb, &ev_pair);
+	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
+	event_set(&ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
 
 	signal_set(&ev_hup, SIGHUP, init_signalcb, &ev_hup);
 	signal_set(&ev_int, SIGINT, die_signalcb, &ev_int);
