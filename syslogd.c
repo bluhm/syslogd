@@ -614,7 +614,7 @@ klog_readcb(int fd, short event, void *arg)
 	if (n > 0) {
 		linebuf[n] = '\0';
 		printsys(linebuf);
-	} else if (n < 0 && errno != EINTR) {
+	} else if (n < 0) {
 		logerror("klog");
 		event_del(ev);
 	}
@@ -636,7 +636,7 @@ udp_readcb(int fd, short event, void *arg)
 		cvthname((struct sockaddr *)&sa, resolve, sizeof(resolve));
 		dprintf("cvthname res: %s\n", resolve);
 		printline(resolve, linebuf);
-	} else if (n < 0 && errno != EINTR)
+	} else if (n < 0)
 		logerror("recvfrom udp");
 }
 
@@ -652,7 +652,7 @@ unix_readcb(int fd, short event, void *arg)
 	if (n > 0) {
 		linebuf[n] = '\0';
 		printline(LocalHostName, linebuf);
-	} else if (n < 0 && errno != EINTR)
+	} else if (n < 0)
 		logerror("recvfrom unix");
 }
 
@@ -1898,8 +1898,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 	dprintf("Accepting control connection\n");
 	fd = accept(fd, NULL, NULL);
 	if (fd == -1) {
-		if (errno != EINTR && errno != EWOULDBLOCK &&
-		    errno != ECONNABORTED)
+		if (errno != EWOULDBLOCK && errno != ECONNABORTED)
 			logerror("accept ctlsock");
 		return;
 	}
@@ -1956,13 +1955,10 @@ ctlconn_readcb(int fd, short event, void *arg)
 		return;
 	}
 
- retry:
 	n = read(fd, (char*)&ctl_cmd + ctl_cmd_bytes,
 	    sizeof(ctl_cmd) - ctl_cmd_bytes);
 	switch (n) {
 	case -1:
-		if (errno == EINTR)
-			goto retry;
 		logerror("ctlconn read");
 		/* FALLTHROUGH */
 	case 0:
@@ -2085,13 +2081,10 @@ ctlconn_writecb(int fd, short event, void *arg)
 		return;
 	}
 
- retry:
 	n = write(fd, ctl_reply + ctl_reply_offset,
 	    ctl_reply_size - ctl_reply_offset);
 	switch (n) {
 	case -1:
-		if (errno == EINTR)
-			goto retry;
 		if (errno != EPIPE)
 			logerror("ctlconn write");
 		/* FALLTHROUGH */
