@@ -183,7 +183,6 @@ char	*TypeNames[9] = {
 struct	filed *Files;
 struct	filed consfile;
 
-int	nfunix = 1;		/* Number of Unix domain sockets requested */
 char	*path_funix[MAXFUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
@@ -290,12 +289,11 @@ void	tailify_replytext(char *, int);
 int
 main(int argc, char *argv[])
 {
-	struct timeval to;
-	int ch, i, fd;
-	char *p;
-	int lockpipe[2] = { -1, -1}, pair[2], nullfd;
-	struct addrinfo hints, *res, *res0;
-	FILE *fp;
+	struct addrinfo	 hints, *res, *res0;
+	struct timeval	 to;
+	char 		*p;
+	int		 ch, i, nfunix = 1;
+	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
 	for (i = 0; i < MAXFUNIX; i++)
 		fd_funix[i] = -1;
@@ -504,6 +502,8 @@ main(int argc, char *argv[])
 
 	/* tuck my process id away */
 	if (!Debug) {
+		FILE *fp;
+
 		fp = fopen(_PATH_LOGPID, "w");
 		if (fp != NULL) {
 			fprintf(fp, "%ld\n", (long)getpid());
@@ -517,6 +517,7 @@ main(int argc, char *argv[])
 
 	/* Process is now unprivileged and inside a chroot */
 	event_init();
+
 	event_set(&ev_ctlaccept, fd, EV_READ|EV_PERSIST, ctlsock_acceptcb,
 	    &ev_ctlaccept);
 	event_set(&ev_ctlread, fd, EV_READ|EV_PERSIST, ctlconn_readcb,
