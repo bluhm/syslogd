@@ -575,10 +575,12 @@ main(int argc, char *argv[])
 		event_add(&ev_klog, NULL);
 	if (fd_pair != -1)
 		event_add(&ev_pair, NULL);
-	if (fd_udp != -1)
-		event_add(&ev_udp, NULL);
-	if (fd_udp6 != -1)
-		event_add(&ev_udp6, NULL);
+	if (!SecureMode) {
+		if (fd_udp != -1)
+			event_add(&ev_udp, NULL);
+		if (fd_udp6 != -1)
+			event_add(&ev_udp6, NULL);
+	}
 
 	signal_add(&ev_hup, NULL);
 	signal_add(&ev_term, NULL);
