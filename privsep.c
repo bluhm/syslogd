@@ -172,14 +172,14 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	close(socks[1]);
 
 	/* Close descriptors that only the unpriv child needs */
-	close(fd_udp);
-	close(fd_udp6);
-	for (i = 0; i < nfunix; i++)
+	close(fd_ctlconn);
+	close(fd_ctlsock);
+	for (i = 0; i < MAXFUNIX; i++)
 		close(fd_funix[i]);
 	close(fd_klog);
 	close(fd_pair);
-	close(fd_ctlsock);
-	close(fd_ctlconn);
+	close(fd_udp);
+	close(fd_udp6);
 
 	/* Save the config file specified by the child process */
 	if (strlcpy(config_file, conf, sizeof config_file) >= sizeof(config_file))
@@ -364,7 +364,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	close(socks[0]);
 
 	/* Unlink any domain sockets that have been opened */
-	for (i = 0; i < nfunix; i++)
+	for (i = 0; i < MAXFUNIX; i++)
 		if (path_funix[i] != NULL && fd_funix[i] != -1)
 			unlink(path_funix[i]);
 	if (path_ctlsock != NULL && fd_ctlsock != -1)

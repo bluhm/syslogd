@@ -516,7 +516,6 @@ main(int argc, char *argv[])
 		errx(1, "unable to privsep");
 
 	/* Process is now unprivileged and inside a chroot */
-
 	event_init();
 	event_set(&ev_ctlaccept, fd, EV_READ|EV_PERSIST, ctlsock_acceptcb,
 	    &ev_ctlaccept);

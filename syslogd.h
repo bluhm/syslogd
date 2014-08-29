@@ -40,12 +40,10 @@ int  receive_fd(int);
 
 /* The list of domain sockets */
 #define MAXFUNIX	21
-extern int nfunix;
 extern char *path_funix[MAXFUNIX];
 extern char *path_ctlsock;
 extern int fd_udp, fd_udp6, fd_funix[MAXFUNIX], fd_klog, fd_pair;
 extern int fd_ctlsock, fd_ctlconn;
-
 
 #define dprintf(_f...)	do { if (Debug) printf(_f); } while (0)
 extern int Debug;
