@@ -5,11 +5,12 @@ SRCS=	syslogd.c ttymsg.c privsep.c privsep_fdpass.c ringbuf.c
 MAN=	syslogd.8 syslog.conf.5
 LDADD=	-levent
 DPADD=	${LIBEVENT}
-CDIAGFLAGS+=	-Wall -Werror \
+CDIAGFLAGS+=	-Wall \
 		-Wbad-function-cast \
 		-Wcast-align \
 		-Wcast-qual \
 		-Wdeclaration-after-statement \
+		-Werror \
 		-Wextra \
 		-Wmissing-declarations \
 		-Wmissing-prototypes \
