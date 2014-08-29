@@ -248,12 +248,11 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 char	*linebuf;
 int	 linesize;
 
-struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_funix[MAXFUNIX],
-		 ev_klog, ev_pair, ev_udp, ev_udp6;
 int		 fd_ctlsock = -1, fd_ctlconn = -1, fd_funix[MAXFUNIX],
 		 fd_klog = -1, fd_pair = -1, fd_udp = -1, fd_udp6 = -1;
-
-struct event	 ev_hup, ev_term, ev_int, ev_quit, ev_mark;
+struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_funix[MAXFUNIX],
+		 ev_klog, ev_pair, ev_udp, ev_udp6,
+		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
 void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
@@ -261,10 +260,11 @@ void	 unix_readcb(int, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
-void	 ctlconn_cleanup(void);
 void	 ctlsock_acceptcb(int, short, void *);
 void	 ctlconn_readcb(int, short, void *);
 void	 ctlconn_writecb(int, short, void *);
+void	 ctlconn_logto(char *);
+void	 ctlconn_cleanup(void);
 
 struct filed *cfline(char *, char *);
 void	cvthname(struct sockaddr *, char *, size_t);
@@ -286,12 +286,10 @@ int	getmsgbufsize(void);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
 void	tailify_replytext(char *, int);
-void	logto_ctlconn(char *);
 
 int
 main(int argc, char *argv[])
 {
-	struct event *ev;
 	struct timeval to;
 	int ch, i, fd;
 	char *p;
@@ -434,7 +432,6 @@ main(int argc, char *argv[])
 			shutdown(*fdp, SHUT_RD);
 		else {
 			double_rbuf(*fdp);
-			event_add(ev, NULL);
 		}
 	}
 	freeaddrinfo(res0);
@@ -450,14 +447,12 @@ main(int argc, char *argv[])
 			continue;
 		}
 		double_rbuf(fd_funix[i]);
-		event_add(ev, NULL);
 	}
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
 		die(0);
 	fd_pair = pair[0];
 	double_rbuf(fd_pair);
-	event_add(ev, NULL);
 
 	if (path_ctlsock != NULL) {
 		fd_ctlsock = unix_socket(path_ctlsock, SOCK_STREAM, 0600);
@@ -470,7 +465,6 @@ main(int argc, char *argv[])
 				logerror("ctlsock listen");
 				die(0);
 			}
-			event_add(ev, NULL);
 		}
 	}
 
@@ -478,7 +472,6 @@ main(int argc, char *argv[])
 	if (fd_klog == -1) {
 		dprintf("can't open %s (%d)\n", _PATH_KLOG, errno);
 	} else {
-		event_add(ev, NULL);
 		if (ioctl(fd_klog, LIOCSFD, &pair[1]) == -1)
 			dprintf("LIOCSFD errno %d\n", errno);
 	}
@@ -573,17 +566,32 @@ main(int argc, char *argv[])
 	 */
 	priv_config_parse_done();
 
+	if (fd_ctlsock != -1)
+		event_add(&ev_ctlaccept, NULL);
+	for (i = 0; i < MAXFUNIX; i++)
+		if (fd_funix[i] != -1)
+			event_add(&ev_funix[i], NULL);
+	if (fd_klog != -1)
+		event_add(&ev_klog, NULL);
+	if (fd_pair != -1)
+		event_add(&ev_pair, NULL);
+	if (fd_udp != -1)
+		event_add(&ev_udp, NULL);
+	if (fd_udp6 != -1)
+		event_add(&ev_udp6, NULL);
+
 	signal_add(&ev_hup, NULL);
 	signal_add(&ev_term, NULL);
 	if (Debug) {
 		signal_add(&ev_int, NULL);
 		signal_add(&ev_quit, NULL);
 	} else {
-		(void)signal(SIGINT, SIG_IGN);
-		(void)signal(SIGQUIT, SIG_IGN);
+		signal(SIGINT, SIG_IGN);
+		signal(SIGQUIT, SIG_IGN);
 	}
-	(void)signal(SIGCHLD, SIG_IGN);
-	(void)signal(SIGPIPE, SIG_IGN);
+	signal(SIGCHLD, SIG_IGN);
+	signal(SIGPIPE, SIG_IGN);
+
 	to.tv_sec = TIMERINTVL;
 	to.tv_usec = 0;
 	evtimer_add(&ev_mark, &to);
@@ -1057,7 +1065,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (ringbuf_append_line(f->f_un.f_mb.f_rb, line) == 1)
 			f->f_un.f_mb.f_overflow = 1;
 		if (f->f_un.f_mb.f_attached)
-			logto_ctlconn(line);
+			ctlconn_logto(line);
 		break;
 	}
 	f->f_prevcount = 0;
@@ -1919,10 +1927,10 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 
 	fd_ctlconn = fd;
 	/* file descriptor has changed, reset event */
-	event_set(&ev_ctlread, fd, EV_READ|EV_PERSIST, ctlconn_readcb,
-	    &ev_ctlread);
-	event_set(&ev_ctlwrite, fd, EV_WRITE|EV_PERSIST, ctlconn_writecb, 
-	    &ev_ctlwrite);
+	event_set(&ev_ctlread, fd_ctlconn, EV_READ|EV_PERSIST,
+	    ctlconn_readcb, &ev_ctlread);
+	event_set(&ev_ctlwrite, fd_ctlconn, EV_WRITE|EV_PERSIST,
+	    ctlconn_writecb, &ev_ctlwrite);
 	event_add(&ev_ctlread, NULL);
 	ctl_state = CTL_READING_CMD;
 	ctl_cmd_bytes = 0;
@@ -2150,7 +2158,7 @@ tailify_replytext(char *replytext, int lines)
 }
 
 void
-logto_ctlconn(char *line)
+ctlconn_logto(char *line)
 {
 	size_t l;
 
