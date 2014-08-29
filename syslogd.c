@@ -248,14 +248,10 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 char	*linebuf;
 int	 linesize;
 
-struct event	 ev_udp, ev_udp6;
-struct event	 ev_funix[MAXFUNIX];
-struct event	 ev_klog, ev_pair;
-struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite;
-int		 fd_udp = -1, fd_udp6 = -1;
-int		 fd_funix[MAXFUNIX];
-int		 fd_klog = -1, fd_pair = -1;
-int		 fd_ctlsock = -1, fd_ctlconn = -1;
+struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_funix[MAXFUNIX],
+		 ev_klog, ev_pair, ev_udp, ev_udp6;
+int		 fd_ctlsock = -1, fd_ctlconn = -1, fd_funix[MAXFUNIX],
+		 fd_klog = -1, fd_pair = -1, fd_udp = -1, fd_udp6 = -1;
 
 struct event	 ev_hup, ev_term, ev_int, ev_quit, ev_mark;
 
@@ -302,6 +298,9 @@ main(int argc, char *argv[])
 	int lockpipe[2] = { -1, -1}, pair[2], nullfd;
 	struct addrinfo hints, *res, *res0;
 	FILE *fp;
+
+	for (i = 0; i < MAXFUNIX; i++)
+		fd_funix[i] = -1;
 
 	while ((ch = getopt(argc, argv, "46dhnuf:m:p:a:s:")) != -1)
 		switch (ch) {
@@ -364,8 +363,6 @@ main(int argc, char *argv[])
 				logerror("dup2");
 	}
 
-	event_init();
-
 	consfile.f_type = F_CONSOLE;
 	(void)strlcpy(consfile.f_un.f_fname, ctty,
 	    sizeof(consfile.f_un.f_fname));
@@ -398,7 +395,6 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
-	fd_udp = fd_udp6 = -1;
 	for (res = res0; res; res = res->ai_next) {
 		int	*fdp;
 
@@ -406,13 +402,11 @@ main(int argc, char *argv[])
 		case AF_INET:
 			if (IPv6Only)
 				continue;
-			ev = &ev_udp;
 			fdp = &fd_udp;
 			break;
 		case AF_INET6:
 			if (IPv4Only)
 				continue;
-			ev = &ev_udp6;
 			fdp = &fd_udp6;
 			break;
 		default:
@@ -422,24 +416,24 @@ main(int argc, char *argv[])
 		if (*fdp >= 0)
 			continue;
 
-		fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		if (fd < 0)
+		*fdp = socket(res->ai_family, res->ai_socktype,
+		    res->ai_protocol);
+		if (*fdp == -1)
 			continue;
 
-		if (bind(fd, res->ai_addr, res->ai_addrlen) < 0) {
+		if (bind(*fdp, res->ai_addr, res->ai_addrlen) < 0) {
 			logerror("bind");
-			close(fd);
+			close(*fdp);
+			*fdp = -1;
 			if (!Debug)
 				die(0);
 			continue;
 		}
 
-		*fdp = fd;
 		if (SecureMode)
-			shutdown(fd, SHUT_RD);
+			shutdown(*fdp, SHUT_RD);
 		else {
-			double_rbuf(fd);
-			event_set(ev, fd, EV_READ|EV_PERSIST, udp_readcb, ev);
+			double_rbuf(*fdp);
 			event_add(ev, NULL);
 		}
 	}
@@ -449,50 +443,43 @@ main(int argc, char *argv[])
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
 	for (i = 0; i < nfunix; i++) {
-		ev = &ev_funix[i];
-		fd = fd_funix[i] = unix_socket(path_funix[i], SOCK_DGRAM, 0666);
-		if (fd == -1) {
+		fd_funix[i] = unix_socket(path_funix[i], SOCK_DGRAM, 0666);
+		if (fd_funix[i] == -1) {
 			if (i == 0 && !Debug)
 				die(0);
 			continue;
 		}
-		double_rbuf(fd);
-		event_set(ev, fd, EV_READ|EV_PERSIST, unix_readcb, ev);
+		double_rbuf(fd_funix[i]);
 		event_add(ev, NULL);
 	}
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
 		die(0);
-	ev = &ev_pair;
-	fd = fd_pair = pair[0];
-	double_rbuf(fd);
-	event_set(ev, fd, EV_READ|EV_PERSIST, unix_readcb, ev);
+	fd_pair = pair[0];
+	double_rbuf(fd_pair);
 	event_add(ev, NULL);
 
 	if (path_ctlsock != NULL) {
-		ev = &ev_ctlaccept;
-		fd = fd_ctlsock = unix_socket(path_ctlsock, SOCK_STREAM, 0600);
-		if (fd != -1) {
-			if (listen(fd, 16) == -1) {
+		fd_ctlsock = unix_socket(path_ctlsock, SOCK_STREAM, 0600);
+		if (fd_ctlsock == -1) {
+			dprintf("can't open %s (%d)\n", path_ctlsock, errno);
+			if (!Debug)
+				die(0);
+		} else {
+			if (listen(fd_ctlsock, 16) == -1) {
 				logerror("ctlsock listen");
 				die(0);
 			}
-			event_set(ev, fd, EV_READ|EV_PERSIST, ctlsock_acceptcb,
-			    ev);
 			event_add(ev, NULL);
-		} else if (!Debug)
-			die(0);
-	} else
-		fd_ctlsock = -1;
+		}
+	}
 
-	ev = &ev_klog;
-	fd = fd_klog = open(_PATH_KLOG, O_RDONLY, 0);
-	if (fd == -1) {
+	fd_klog = open(_PATH_KLOG, O_RDONLY, 0);
+	if (fd_klog == -1) {
 		dprintf("can't open %s (%d)\n", _PATH_KLOG, errno);
 	} else {
-		event_set(ev, fd, EV_READ|EV_PERSIST, klog_readcb, ev);
 		event_add(ev, NULL);
-		if (ioctl(fd, LIOCSFD, &pair[1]) == -1)
+		if (ioctl(fd_klog, LIOCSFD, &pair[1]) == -1)
 			dprintf("LIOCSFD errno %d\n", errno);
 	}
 	close(pair[1]);
@@ -536,6 +523,29 @@ main(int argc, char *argv[])
 		errx(1, "unable to privsep");
 
 	/* Process is now unprivileged and inside a chroot */
+
+	event_init();
+	event_set(&ev_ctlaccept, fd, EV_READ|EV_PERSIST, ctlsock_acceptcb,
+	    &ev_ctlaccept);
+	event_set(&ev_ctlread, fd, EV_READ|EV_PERSIST, ctlconn_readcb,
+	    &ev_ctlread);
+	event_set(&ev_ctlwrite, fd, EV_WRITE|EV_PERSIST, ctlconn_writecb,
+	    &ev_ctlwrite);
+	for (i = 0; i < MAXFUNIX; i++)
+		event_set(&ev_funix[i], fd, EV_READ|EV_PERSIST, unix_readcb,
+		    &ev_funix[i]);
+	event_set(&ev_klog, fd, EV_READ|EV_PERSIST, klog_readcb, &ev_klog);
+	event_set(&ev_pair, fd, EV_READ|EV_PERSIST, unix_readcb, &ev_pair);
+	event_set(&ev_udp, fd, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
+	event_set(&ev_udp6, fd, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
+
+	signal_set(&ev_hup, SIGHUP, init_signalcb, &ev_hup);
+	signal_set(&ev_int, SIGINT, die_signalcb, &ev_int);
+	signal_set(&ev_quit, SIGQUIT, die_signalcb, &ev_quit);
+	signal_set(&ev_term, SIGTERM, die_signalcb, &ev_term);
+
+	evtimer_set(&ev_mark, mark_timercb, &ev_mark);
+
 	init();
 
 	Startup = 0;
@@ -562,12 +572,6 @@ main(int argc, char *argv[])
 	 * so that it will reject any future attempts to open more files
 	 */
 	priv_config_parse_done();
-
-	signal_set(&ev_hup, SIGHUP, init_signalcb, &ev_hup);
-	signal_set(&ev_term, SIGTERM, die_signalcb, &ev_term);
-	signal_set(&ev_int, SIGINT, die_signalcb, &ev_int);
-	signal_set(&ev_quit, SIGQUIT, die_signalcb, &ev_quit);
-	evtimer_set(&ev_mark, mark_timercb, &ev_mark);
 
 	signal_add(&ev_hup, NULL);
 	signal_add(&ev_term, NULL);
@@ -1914,6 +1918,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 	}
 
 	fd_ctlconn = fd;
+	/* file descriptor has changed, reset event */
 	event_set(&ev_ctlread, fd, EV_READ|EV_PERSIST, ctlconn_readcb,
 	    &ev_ctlread);
 	event_set(&ev_ctlwrite, fd, EV_WRITE|EV_PERSIST, ctlconn_writecb, 
