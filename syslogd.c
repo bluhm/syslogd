@@ -646,7 +646,6 @@ main(int argc, char *argv[])
 		}
 	}
 	/* NOTREACHED */
-	free(pfd);
 	return (0);
 }
 
