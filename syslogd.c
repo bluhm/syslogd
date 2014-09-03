@@ -183,7 +183,7 @@ char	*TypeNames[9] = {
 struct	filed *Files;
 struct	filed consfile;
 
-char	*path_unix[MAXUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
+char	*path_unix[MAXUNIX] = { _PATH_LOG }; /* Paths to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
 char	LocalHostName[MAXHOSTNAMELEN];	/* our hostname */
@@ -442,8 +442,7 @@ main(int argc, char *argv[])
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
 	for (i = 0; i < nunix; i++) {
-		fd = unix_socket(path_unix[i], SOCK_DGRAM, 0666);
-		if (fd == -1) {
+		if ((fd = unix_socket(path_unix[i], SOCK_DGRAM, 0666)) == -1) {
 			if (i == 0 && !Debug)
 				die(0);
 			continue;
