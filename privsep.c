@@ -172,7 +172,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	close(socks[1]);
 
 	/* Close descriptors that only the unpriv child needs */
-	for (i = 0; i < MAXFUNIX + 1; i++)
+	for (i = 0; i < MAXUNIX + 1; i++)
 		if (pfd[PFD_UNIX_0 + i].fd != -1)
 			close(pfd[PFD_UNIX_0 + i].fd);
 	if (pfd[PFD_INET].fd != -1)
@@ -369,7 +369,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	close(socks[0]);
 
 	/* Unlink any domain sockets that have been opened */
-	for (i = 0; i < MAXFUNIX; i++)
+	for (i = 0; i < MAXUNIX; i++)
 		if (path_unix[i] != NULL && pfd[PFD_UNIX_0 + i].fd != -1)
 			(void)unlink(path_unix[i]);
 	if (ctlsock_path != NULL && pfd[PFD_CTLSOCK].fd != -1)
