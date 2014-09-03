@@ -370,7 +370,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 
 	/* Unlink any domain sockets that have been opened */
 	for (i = 0; i < MAXUNIX; i++)
-		if (path_unix[i] != NULL && pfd[PFD_UNIX_0 + i].fd != -1)
+		if (pfd[PFD_UNIX_0 + i].fd != -1)
 			(void)unlink(path_unix[i]);
 	if (ctlsock_path != NULL && pfd[PFD_CTLSOCK].fd != -1)
 		(void)unlink(ctlsock_path);
