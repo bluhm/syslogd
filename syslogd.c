@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.119 2014/08/25 18:19:18 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.121 2014/08/31 22:11:43 bluhm Exp $	*/
 
 /*
  * Copyright (c) 1983, 1988, 1993, 1994
@@ -65,6 +65,7 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/msgbuf.h>
 #include <sys/uio.h>
@@ -588,11 +589,11 @@ main(int argc, char *argv[])
 		signal_add(&ev_int, NULL);
 		signal_add(&ev_quit, NULL);
 	} else {
-		signal(SIGINT, SIG_IGN);
-		signal(SIGQUIT, SIG_IGN);
+		(void)signal(SIGINT, SIG_IGN);
+		(void)signal(SIGQUIT, SIG_IGN);
 	}
-	signal(SIGCHLD, SIG_IGN);
-	signal(SIGPIPE, SIG_IGN);
+	(void)signal(SIGCHLD, SIG_IGN);
+	(void)signal(SIGPIPE, SIG_IGN);
 
 	to.tv_sec = TIMERINTVL;
 	to.tv_usec = 0;
