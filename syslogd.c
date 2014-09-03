@@ -183,7 +183,7 @@ char	*TypeNames[9] = {
 struct	filed *Files;
 struct	filed consfile;
 
-char	*path_unix[MAXFUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
+char	*path_unix[MAXUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
 char	LocalHostName[MAXHOSTNAMELEN];	/* our hostname */
@@ -329,7 +329,7 @@ main(int argc, char *argv[])
 			SecureMode = 0;
 			break;
 		case 'a':
-			if (nunix >= MAXFUNIX)
+			if (nunix >= MAXUNIX)
 				fprintf(stderr, "syslogd: "
 				    "out of descriptors, ignoring %s\n",
 				    optarg);
