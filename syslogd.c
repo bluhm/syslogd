@@ -184,7 +184,7 @@ struct	filed *Files;
 struct	filed consfile;
 
 int	nfunix = 1;		/* Number of Unix domain sockets requested */
-char	*funixn[MAXFUNIX] = { _PATH_LOG }; /* Paths to Unix domain sockets */
+char	*path_unix[MAXFUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
 char	LocalHostName[MAXHOSTNAMELEN];	/* our hostname */
@@ -321,7 +321,7 @@ main(int argc, char *argv[])
 			NoDNS = 1;
 			break;
 		case 'p':		/* path */
-			funixn[0] = optarg;
+			path_unix[0] = optarg;
 			break;
 		case 'u':		/* allow udp input port */
 			SecureMode = 0;
@@ -332,7 +332,7 @@ main(int argc, char *argv[])
 				    "out of descriptors, ignoring %s\n",
 				    optarg);
 			else
-				funixn[nfunix++] = optarg;
+				path_unix[nfunix++] = optarg;
 			break;
 		case 's':
 			ctlsock_path = optarg;
@@ -443,7 +443,7 @@ main(int argc, char *argv[])
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
 	for (i = 0; i < nfunix; i++) {
-		fd = unix_socket(funixn[i], SOCK_DGRAM, 0666);
+		fd = unix_socket(path_unix[i], SOCK_DGRAM, 0666);
 		if (fd == -1) {
 			if (i == 0 && !Debug)
 				die(0);
