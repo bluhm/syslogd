@@ -183,7 +183,6 @@ char	*TypeNames[9] = {
 struct	filed *Files;
 struct	filed consfile;
 
-int	nfunix = 1;		/* Number of Unix domain sockets requested */
 char	*path_unix[MAXFUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
@@ -282,7 +281,7 @@ void	logto_ctlconn(char *);
 int
 main(int argc, char *argv[])
 {
-	int ch, i, linesize, fd;
+	int ch, i, linesize, fd, nunix = 1;
 	struct sockaddr_un fromunix;
 	struct sockaddr_storage from;
 	socklen_t len;
@@ -327,12 +326,12 @@ main(int argc, char *argv[])
 			SecureMode = 0;
 			break;
 		case 'a':
-			if (nfunix >= MAXFUNIX)
+			if (nunix >= MAXFUNIX)
 				fprintf(stderr, "syslogd: "
 				    "out of descriptors, ignoring %s\n",
 				    optarg);
 			else
-				path_unix[nfunix++] = optarg;
+				path_unix[nunix++] = optarg;
 			break;
 		case 's':
 			ctlsock_path = optarg;
@@ -442,7 +441,7 @@ main(int argc, char *argv[])
 #ifndef SUN_LEN
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
-	for (i = 0; i < nfunix; i++) {
+	for (i = 0; i < nunix; i++) {
 		fd = unix_socket(path_unix[i], SOCK_DGRAM, 0666);
 		if (fd == -1) {
 			if (i == 0 && !Debug)
@@ -454,7 +453,7 @@ main(int argc, char *argv[])
 		pfd[PFD_UNIX_0 + i].events = POLLIN;
 	}
 
-	nfunix++;
+	nunix++;
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
 		die(0);
 	fd = pair[0];
@@ -579,7 +578,7 @@ main(int argc, char *argv[])
 			dprintf("syslogd: restarted\n");
 		}
 
-		switch (poll(pfd, PFD_UNIX_0 + nfunix, -1)) {
+		switch (poll(pfd, PFD_UNIX_0 + nunix, -1)) {
 		case 0:
 			continue;
 		case -1:
@@ -632,7 +631,7 @@ main(int argc, char *argv[])
 		if ((pfd[PFD_CTLCONN].revents & POLLOUT) != 0)
 			ctlconn_write_handler();
 
-		for (i = 0; i < nfunix; i++) {
+		for (i = 0; i < nunix; i++) {
 			if ((pfd[PFD_UNIX_0 + i].revents & POLLIN) != 0) {
 				ssize_t rlen;
 
