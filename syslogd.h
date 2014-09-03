@@ -40,7 +40,7 @@ int  receive_fd(int);
 
 /* The list of domain sockets */
 #define MAXFUNIX	21
-extern char *funixn[MAXFUNIX];
+extern char *path_unix[MAXFUNIX];
 extern char *ctlsock_path;
 
 #define dprintf(_f...)	do { if (Debug) printf(_f); } while (0)
