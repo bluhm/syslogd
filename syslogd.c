@@ -292,6 +292,9 @@ main(int argc, char *argv[])
 	struct addrinfo hints, *res, *res0;
 	FILE *fp;
 
+	for (i = 0; i < N_PFD; i++)
+		pfd[i].fd = -1;
+
 	while ((ch = getopt(argc, argv, "46dhnuf:m:p:a:s:")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
@@ -440,7 +443,8 @@ main(int argc, char *argv[])
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
 	for (i = 0; i < nfunix; i++) {
-		if ((fd = unix_socket(funixn[i], SOCK_DGRAM, 0666)) == -1) {
+		fd = unix_socket(funixn[i], SOCK_DGRAM, 0666);
+		if (fd == -1) {
 			if (i == 0 && !Debug)
 				die(0);
 			continue;

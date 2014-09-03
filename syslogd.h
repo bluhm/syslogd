@@ -40,7 +40,6 @@ int  receive_fd(int);
 
 /* The list of domain sockets */
 #define MAXFUNIX	21
-extern int nfunix;
 extern char *funixn[MAXFUNIX];
 extern char *ctlsock_path;
 
@@ -55,7 +54,7 @@ extern int Startup;
 #define PFD_CTLCONN	3		/* Offset of control connection entry */
 #define PFD_INET6	4		/* Offset of inet6 socket entry */
 #define PFD_UNIX_0	5		/* Start of Unix socket entries */
-#define N_PFD		(PFD_UNIX_0 + MAXFUNIX)	/* # of pollfd entries */
+#define N_PFD		(PFD_UNIX_0 + MAXFUNIX + 1) /* # of pollfd entries */
 extern struct pollfd pfd[N_PFD];
 
 struct ringbuf {
