@@ -605,7 +605,7 @@ main(int argc, char *argv[])
 
 		for (i = 0; i < nfunix; i++) {
 			if ((pfd[PFD_UNIX_0 + i].revents & POLLIN) != 0) {
-				udp_read_handler(pfd[PFD_UNIX_0 + i].fd);
+				unix_read_handler(pfd[PFD_UNIX_0 + i].fd);
 			}
 		}
 	}
