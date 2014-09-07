@@ -183,8 +183,10 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 		close(pfd[PFD_CTLSOCK].fd);
 	if (pfd[PFD_CTLCONN].fd != -1)
 		close(pfd[PFD_CTLCONN].fd);
-	if (pfd[PFD_KLOG].fd)
+	if (pfd[PFD_KLOG].fd != -1)
 		close(pfd[PFD_KLOG].fd);
+	if (pfd[PFD_SENDSYS].fd != -1)
+		close(pfd[PFD_SENDSYS].fd);
 
 	/* Save the config file specified by the child process */
 	if (strlcpy(config_file, conf, sizeof config_file) >= sizeof(config_file))
