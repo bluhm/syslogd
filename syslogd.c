@@ -2128,6 +2128,7 @@ ctlconn_write_handler(void)
 
 			/* Now is a good time to report dropped lines */
 			if (membuf_drop) {
+				dprintf("membuf_drop print\n");
 				strlcat(reply_text, "<ENOBUFS>\n", MAX_MEMBUF);
 				ctl_reply_size = CTL_REPLY_SIZE;
 				membuf_drop = 0;
@@ -2170,9 +2171,12 @@ logto_ctlconn(char *line)
 	if (membuf_drop)
 		return;
 
+	dprintf("CTL_REPLY_MAXSIZE - ctl_reply_size %zu\n",
+	    CTL_REPLY_MAXSIZE - ctl_reply_size);
 	l = strlen(line);
 	if (l + 2 > (CTL_REPLY_MAXSIZE - ctl_reply_size)) {
 		/* remember line drops for later report */
+		dprintf("membuf_drop set\n");
 		membuf_drop = 1;
 		return;
 	}
