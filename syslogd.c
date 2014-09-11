@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.123 2014/09/08 00:43:42 doug Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.124 2014/09/10 13:16:20 doug Exp $	*/
 
 /*
  * Copyright (c) 1983, 1988, 1993, 1994
@@ -184,7 +184,8 @@ char	*TypeNames[9] = {
 struct	filed *Files;
 struct	filed consfile;
 
-char	*path_funix[MAXFUNIX] = { _PATH_LOG }; /* Path to Unix domain sockets */
+int	nunix = 1;		/* Number of Unix domain sockets requested */
+char	*path_unix[MAXUNIX] = { _PATH_LOG }; /* Paths to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
 char	LocalHostName[MAXHOSTNAMELEN];	/* our hostname */
@@ -248,9 +249,9 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 char	*linebuf;
 int	 linesize;
 
-int		 fd_ctlsock = -1, fd_ctlconn = -1, fd_funix[MAXFUNIX],
+int		 fd_ctlsock = -1, fd_ctlconn = -1, fd_unix[MAXUNIX],
 		 fd_klog = -1, fd_pair = -1, fd_udp = -1, fd_udp6 = -1;
-struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_funix[MAXFUNIX],
+struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_unix[MAXUNIX],
 		 ev_klog, ev_pair, ev_udp, ev_udp6,
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
@@ -293,11 +294,11 @@ main(int argc, char *argv[])
 	struct addrinfo	 hints, *res, *res0;
 	struct timeval	 to;
 	char 		*p;
-	int		 ch, i, nfunix = 1;
+	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	for (i = 0; i < MAXFUNIX; i++)
-		fd_funix[i] = -1;
+	for (i = 0; i < MAXUNIX; i++)
+		fd_unix[i] = -1;
 
 	while ((ch = getopt(argc, argv, "46dhnuf:m:p:a:s:")) != -1)
 		switch (ch) {
@@ -325,18 +326,18 @@ main(int argc, char *argv[])
 			NoDNS = 1;
 			break;
 		case 'p':		/* path */
-			path_funix[0] = optarg;
+			path_unix[0] = optarg;
 			break;
 		case 'u':		/* allow udp input port */
 			SecureMode = 0;
 			break;
 		case 'a':
-			if (nfunix >= MAXFUNIX)
+			if (nunix >= MAXUNIX)
 				fprintf(stderr, "syslogd: "
 				    "out of descriptors, ignoring %s\n",
 				    optarg);
 			else
-				path_funix[nfunix++] = optarg;
+				path_unix[nunix++] = optarg;
 			break;
 		case 's':
 			path_ctlsock = optarg;
@@ -438,14 +439,14 @@ main(int argc, char *argv[])
 #ifndef SUN_LEN
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
 #endif
-	for (i = 0; i < nfunix; i++) {
-		fd_funix[i] = unix_socket(path_funix[i], SOCK_DGRAM, 0666);
-		if (fd_funix[i] == -1) {
+	for (i = 0; i < nunix; i++) {
+		fd_unix[i] = unix_socket(path_unix[i], SOCK_DGRAM, 0666);
+		if (fd_unix[i] == -1) {
 			if (i == 0 && !Debug)
 				die(0);
 			continue;
 		}
-		double_rbuf(fd_funix[i]);
+		double_rbuf(fd_unix[i]);
 	}
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
@@ -525,9 +526,9 @@ main(int argc, char *argv[])
 	    ctlconn_readcb, &ev_ctlread);
 	event_set(&ev_ctlwrite, fd_ctlconn, EV_WRITE|EV_PERSIST,
 	    ctlconn_writecb, &ev_ctlwrite);
-	for (i = 0; i < MAXFUNIX; i++)
-		event_set(&ev_funix[i], fd_funix[i], EV_READ|EV_PERSIST,
-		    unix_readcb, &ev_funix[i]);
+	for (i = 0; i < MAXUNIX; i++)
+		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
+		    unix_readcb, &ev_unix[i]);
 	event_set(&ev_klog, fd_klog, EV_READ|EV_PERSIST, klog_readcb, &ev_klog);
 	event_set(&ev_pair, fd_pair, EV_READ|EV_PERSIST, unix_readcb, &ev_pair);
 	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
@@ -569,9 +570,9 @@ main(int argc, char *argv[])
 
 	if (fd_ctlsock != -1)
 		event_add(&ev_ctlaccept, NULL);
-	for (i = 0; i < MAXFUNIX; i++)
-		if (fd_funix[i] != -1)
-			event_add(&ev_funix[i], NULL);
+	for (i = 0; i < MAXUNIX; i++)
+		if (fd_unix[i] != -1)
+			event_add(&ev_unix[i], NULL);
 	if (fd_klog != -1)
 		event_add(&ev_klog, NULL);
 	if (fd_pair != -1)

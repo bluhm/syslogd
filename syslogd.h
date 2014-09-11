@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.h,v 1.13 2014/09/08 00:43:42 doug Exp $ */
+/*	$OpenBSD: syslogd.h,v 1.14 2014/09/10 13:16:20 doug Exp $ */
 
 /*
  * Copyright (c) 2003 Anil Madhavapeddy <anil@recoil.org>
@@ -39,10 +39,11 @@ void send_fd(int, int);
 int  receive_fd(int);
 
 /* The list of domain sockets */
-#define MAXFUNIX	21
-extern char *path_funix[MAXFUNIX];
+#define MAXUNIX	21
+extern int nunix;
+extern char *path_unix[MAXUNIX];
 extern char *path_ctlsock;
-extern int fd_udp, fd_udp6, fd_funix[MAXFUNIX], fd_klog, fd_pair;
+extern int fd_udp, fd_udp6, fd_unix[MAXUNIX], fd_klog, fd_pair;
 extern int fd_ctlsock, fd_ctlconn;
 
 #define dprintf(_f...)	do { if (Debug) printf(_f); } while (0)
