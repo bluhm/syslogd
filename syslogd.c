@@ -199,7 +199,7 @@ int	IPv4Only = 0;		/* when true, disable IPv6 */
 int	IPv6Only = 0;		/* when true, disable IPv4 */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 
-char	*ctlsock_path = NULL;	/* Path to control socket */
+char	*path_ctlsock = NULL;	/* Path to control socket */
 
 #define CTL_READING_CMD		1
 #define CTL_WRITING_REPLY	2
@@ -335,7 +335,7 @@ main(int argc, char *argv[])
 				path_unix[nunix++] = optarg;
 			break;
 		case 's':
-			ctlsock_path = optarg;
+			path_ctlsock = optarg;
 			break;
 		default:
 			usage();
@@ -460,8 +460,8 @@ main(int argc, char *argv[])
 	pfd[PFD_SENDSYS].fd = fd;
 	pfd[PFD_SENDSYS].events = POLLIN;
 
-	if (ctlsock_path != NULL) {
-		fd = unix_socket(ctlsock_path, SOCK_STREAM, 0600);
+	if (path_ctlsock != NULL) {
+		fd = unix_socket(path_ctlsock, SOCK_STREAM, 0600);
 		if (fd != -1) {
 			if (listen(fd, 16) == -1) {
 				logerror("ctlsock listen");

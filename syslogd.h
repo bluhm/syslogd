@@ -42,7 +42,7 @@ int  receive_fd(int);
 #define MAXUNIX	21
 extern int nunix;
 extern char *path_unix[MAXUNIX];
-extern char *ctlsock_path;
+extern char *path_ctlsock;
 
 #define dprintf(_f...)	do { if (Debug) printf(_f); } while (0)
 extern int Debug;
