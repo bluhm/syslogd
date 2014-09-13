@@ -374,8 +374,8 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	for (i = 0; i < nunix; i++)
 		if (pfd[PFD_UNIX_0 + i].fd != -1)
 			(void)unlink(path_unix[i]);
-	if (ctlsock_path != NULL && pfd[PFD_CTLSOCK].fd != -1)
-		(void)unlink(ctlsock_path);
+	if (path_ctlsock != NULL && pfd[PFD_CTLSOCK].fd != -1)
+		(void)unlink(path_ctlsock);
 
 	if (restart) {
 		int r;
