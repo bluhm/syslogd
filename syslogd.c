@@ -284,7 +284,7 @@ void	ctlsock_accept_handler(void);
 void	ctlconn_read_handler(void);
 void	ctlconn_write_handler(void);
 void	tailify_replytext(char *, int);
-void	logto_ctlconn(char *);
+void	ctlconn_logto(char *);
 
 int
 main(int argc, char *argv[])
@@ -1075,7 +1075,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (ringbuf_append_line(f->f_un.f_mb.f_rb, line) == 1)
 			f->f_un.f_mb.f_overflow = 1;
 		if (f->f_un.f_mb.f_attached)
-			logto_ctlconn(line);
+			ctlconn_logto(line);
 		break;
 	}
 	f->f_prevcount = 0;
@@ -2163,7 +2163,7 @@ tailify_replytext(char *replytext, int lines)
 }
 
 void
-logto_ctlconn(char *line)
+ctlconn_logto(char *line)
 {
 	size_t l;
 
