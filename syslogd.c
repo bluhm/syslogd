@@ -1984,7 +1984,6 @@ ctlconn_read_handler(void)
 	default:
 		ctl_cmd_bytes += n;
 	}
-
 	if (ctl_cmd_bytes < sizeof(ctl_cmd))
 		return;
 
