@@ -2101,6 +2101,7 @@ ctlconn_write_handler(void)
 		ctlconn_cleanup();
 		return;
 	}
+
  retry:
 	n = write(pfd[PFD_CTLCONN].fd, ctl_reply + ctl_reply_offset,
 	    ctl_reply_size - ctl_reply_offset);
@@ -2117,26 +2118,29 @@ ctlconn_write_handler(void)
 	default:
 		ctl_reply_offset += n;
 	}
-	if (ctl_reply_offset >= ctl_reply_size) {
-		/*
-		 * Make space in the buffer for continous writes.
-		 * Set offset behind reply header to skip it
-		 */
-		if (ctl_state == CTL_WRITING_CONT_REPLY) {
-			*reply_text = '\0';
-			ctl_reply_offset = ctl_reply_size = CTL_REPLY_SIZE;
+	if (ctl_reply_offset < ctl_reply_size)
+		return;
 
-			/* Now is a good time to report dropped lines */
-			if (membuf_drop) {
-				strlcat(reply_text, "<ENOBUFS>\n", MAX_MEMBUF);
-				ctl_reply_size = CTL_REPLY_SIZE;
-				membuf_drop = 0;
-			} else {
-				/* Nothing left to write */
-				pfd[PFD_CTLCONN].events = POLLIN;
-			}
-		} else
-			ctlconn_cleanup();
+	if (ctl_state != CTL_WRITING_CONT_REPLY) {
+		ctlconn_cleanup();
+		return;
+	}
+
+	/*
+	 * Make space in the buffer for continous writes.
+	 * Set offset behind reply header to skip it
+	 */
+	*reply_text = '\0';
+	ctl_reply_offset = ctl_reply_size = CTL_REPLY_SIZE;
+
+	/* Now is a good time to report dropped lines */
+	if (membuf_drop) {
+		strlcat(reply_text, "<ENOBUFS>\n", MAX_MEMBUF);
+		ctl_reply_size = CTL_REPLY_SIZE;
+		membuf_drop = 0;
+	} else {
+		/* Nothing left to write */
+		pfd[PFD_CTLCONN].events = POLLIN;
 	}
 }
 
