@@ -1887,7 +1887,7 @@ double_rbuf(int fd)
 void
 ctlconn_cleanup(void)
 {
-	struct filed *f;
+	struct filed		*f;
 
 	if (close(fd_ctlconn) == -1)
 		logerror("close ctlconn");
