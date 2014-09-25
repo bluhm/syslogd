@@ -249,8 +249,8 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 char	*linebuf;
 int	 linesize;
 
-int		 fd_ctlsock = -1, fd_ctlconn = -1, fd_unix[MAXUNIX],
-		 fd_klog = -1, fd_sendsys = -1, fd_udp = -1, fd_udp6 = -1;
+int		 fd_ctlsock, fd_ctlconn, fd_unix[MAXUNIX],
+		 fd_klog, fd_sendsys, fd_udp, fd_udp6;
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_unix[MAXUNIX],
 		 ev_klog, ev_sendsys, ev_udp, ev_udp6,
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
@@ -296,9 +296,6 @@ main(int argc, char *argv[])
 	char 		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
-
-	for (i = 0; i < MAXUNIX; i++)
-		fd_unix[i] = -1;
 
 	while ((ch = getopt(argc, argv, "46dhnuf:m:p:a:s:")) != -1)
 		switch (ch) {
@@ -393,6 +390,7 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
+	fd_udp = fd_udp6 = -1;
 	for (res = res0; res; res = res->ai_next) {
 		int	*fdp;
 
@@ -454,6 +452,7 @@ main(int argc, char *argv[])
 	fd_sendsys = pair[0];
 	double_rbuf(fd_sendsys);
 
+	fd_ctlsock = fd_ctlconn = -1;
 	if (path_ctlsock != NULL) {
 		fd_ctlsock = unix_socket(path_ctlsock, SOCK_STREAM, 0600);
 		if (fd_ctlsock == -1) {
