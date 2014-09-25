@@ -252,7 +252,7 @@ int	 linesize;
 int		 fd_ctlsock = -1, fd_ctlconn = -1, fd_unix[MAXUNIX],
 		 fd_klog = -1, fd_sendsys = -1, fd_udp = -1, fd_udp6 = -1;
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_unix[MAXUNIX],
-		 ev_klog, ev_pair, ev_udp, ev_udp6,
+		 ev_klog, ev_sendsys, ev_udp, ev_udp6,
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
 void	 klog_readcb(int, short, void *);
@@ -530,7 +530,8 @@ main(int argc, char *argv[])
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
 		    unix_readcb, &ev_unix[i]);
 	event_set(&ev_klog, fd_klog, EV_READ|EV_PERSIST, klog_readcb, &ev_klog);
-	event_set(&ev_pair, fd_sendsys, EV_READ|EV_PERSIST, unix_readcb, &ev_pair);
+	event_set(&ev_sendsys, fd_sendsys, EV_READ|EV_PERSIST, unix_readcb,
+	    &ev_sendsys);
 	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
 	event_set(&ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
 
@@ -576,7 +577,7 @@ main(int argc, char *argv[])
 	if (fd_klog != -1)
 		event_add(&ev_klog, NULL);
 	if (fd_sendsys != -1)
-		event_add(&ev_pair, NULL);
+		event_add(&ev_sendsys, NULL);
 	if (!SecureMode) {
 		if (fd_udp != -1)
 			event_add(&ev_udp, NULL);
