@@ -1896,8 +1896,8 @@ ctlconn_cleanup(void)
 {
 	struct filed *f;
 
-	if (pfd[PFD_CTLCONN].fd != -1)
-		close(pfd[PFD_CTLCONN].fd);
+	if (close(pfd[PFD_CTLCONN].fd) == -1)
+		logerror("close ctlconn");
 
 	pfd[PFD_CTLCONN].fd = -1;
 	pfd[PFD_CTLCONN].events = pfd[PFD_CTLCONN].revents = 0;
@@ -1926,7 +1926,8 @@ ctlsock_accept_handler(void)
 		return;
 	}
 
-	ctlconn_cleanup();
+	if (pfd[PFD_CTLCONN].fd != -1)
+		ctlconn_cleanup();
 
 	/* Only one connection at a time */
 	pfd[PFD_CTLSOCK].events = pfd[PFD_CTLSOCK].revents = 0;
