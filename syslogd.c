@@ -526,7 +526,7 @@ main(int argc, char *argv[])
 	    ctlconn_readcb, &ev_ctlread);
 	event_set(&ev_ctlwrite, fd_ctlconn, EV_WRITE|EV_PERSIST,
 	    ctlconn_writecb, &ev_ctlwrite);
-	for (i = 0; i < MAXUNIX; i++)
+	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
 		    unix_readcb, &ev_unix[i]);
 	event_set(&ev_klog, fd_klog, EV_READ|EV_PERSIST, klog_readcb, &ev_klog);
@@ -571,7 +571,7 @@ main(int argc, char *argv[])
 
 	if (fd_ctlsock != -1)
 		event_add(&ev_ctlaccept, NULL);
-	for (i = 0; i < MAXUNIX; i++)
+	for (i = 0; i < nunix; i++)
 		if (fd_unix[i] != -1)
 			event_add(&ev_unix[i], NULL);
 	if (fd_klog != -1)
