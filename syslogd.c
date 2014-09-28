@@ -171,16 +171,17 @@ int	repeatinterval[] = { 30, 120, 600 };	/* # of secs before flush */
 #define F_FILE		1		/* regular file */
 #define F_TTY		2		/* terminal */
 #define F_CONSOLE	3		/* console terminal */
-#define F_FORW		4		/* remote machine */
+#define F_FORWUDP	4		/* remote machine via UDP */
 #define F_USERS		5		/* list of users */
 #define F_WALL		6		/* everyone logged on */
 #define F_MEMBUF	7		/* memory buffer */
 #define F_PIPE		8		/* pipe to external program */
+#define F_FORWTCP	9		/* remote machine via TCP */
 
-char	*TypeNames[9] = {
+char	*TypeNames[] = {
 	"UNUSED",	"FILE",		"TTY",		"CONSOLE",
-	"FORW",		"USERS",	"WALL",		"MEMBUF",
-	"PIPE"
+	"FORWUDP",	"USERS",	"WALL",		"MEMBUF",
+	"PIPE",		"FORWTCP",
 };
 
 struct	filed *Files;
@@ -939,7 +940,8 @@ fprintlog(struct filed *f, int flags, char *msg)
 		dprintf("\n");
 		break;
 
-	case F_FORW:
+	case F_FORWUDP:
+	case F_FORWTCP:  /* XXX */
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
 		l = snprintf(line, sizeof(line), "<%d>%.15s %s%s%s",
 		    f->f_prevpri, (char *)iov[0].iov_base,
@@ -1239,7 +1241,8 @@ init(void)
 		case F_PIPE:
 			(void)close(f->f_file);
 			break;
-		case F_FORW:
+		case F_FORWUDP:
+		case F_FORWTCP:  /* XXX */
 			break;
 		}
 		next = f->f_next;
@@ -1373,7 +1376,8 @@ init(void)
 				printf("%s", f->f_un.f_fname);
 				break;
 
-			case F_FORW:
+			case F_FORWUDP:
+			case F_FORWTCP:
 				printf("%s", f->f_un.f_forw.f_loghost);
 				break;
 
@@ -1609,6 +1613,7 @@ cfline(char *line, char *prog)
 				f->f_un.f_forw.f_fd = fd_udp6;
 				break;
 			}
+			f->f_type = F_FORWUDP;
 		} else if (strncmp(proto, "tcp", 3) == 0) {
 			int s;
 
@@ -1628,8 +1633,8 @@ cfline(char *line, char *prog)
 				break;
 			}
 			f->f_un.f_forw.f_fd = s;
+			f->f_type = F_FORWTCP;
 		}
-		f->f_type = F_FORW;
 		break;
 
 	case '/':
