@@ -1568,6 +1568,9 @@ cfline(char *line, char *prog)
 				logerror(ebuf);
 				break;
 			}
+		} else if (strcmp(proto, "tcp") == 0 ||
+		    strcmp(proto, "tcp4") == 0 || strcmp(proto, "tcp6") == 0) {
+			;
 		} else {
 			snprintf(ebuf, sizeof(ebuf), "bad protocol \"%s\"",
 			    f->f_un.f_forw.f_loghost);
