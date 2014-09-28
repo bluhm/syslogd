@@ -1596,16 +1596,35 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		switch (f->f_un.f_forw.f_addr.ss_family) {
-		case AF_INET:
-			f->f_un.f_forw.f_fd = fd_udp;
-			break;
-		case AF_INET6:
-			f->f_un.f_forw.f_fd = fd_udp6;
-			break;
-		default:
-			f->f_un.f_forw.f_fd = -1;
-			break;
+		f->f_un.f_forw.f_fd = -1;
+		if (strncmp(proto, "udp", 3) == 0) {
+			switch (f->f_un.f_forw.f_addr.ss_family) {
+			case AF_INET:
+				f->f_un.f_forw.f_fd = fd_udp;
+				break;
+			case AF_INET6:
+				f->f_un.f_forw.f_fd = fd_udp6;
+				break;
+			}
+		} else if (strncmp(proto, "tcp", 3) == 0) {
+			int s;
+
+			if ((s = socket(f->f_un.f_forw.f_addr.ss_family,
+			    SOCK_STREAM, IPPROTO_TCP)) == -1) {
+				snprintf(ebuf, sizeof(ebuf), "socket \"%s\"",
+				    f->f_un.f_forw.f_loghost);
+				logerror(ebuf);
+				break;
+			}
+			if (connect(s, (struct sockaddr *)&f->f_un.f_forw.
+			    f_addr, f->f_un.f_forw.f_addr.ss_len) == -1) {
+				snprintf(ebuf, sizeof(ebuf), "connect \"%s\"",
+				    f->f_un.f_forw.f_loghost);
+				logerror(ebuf);
+				close(s);
+				break;
+			}
+			f->f_un.f_forw.f_fd = s;
 		}
 		f->f_type = F_FORW;
 		break;
