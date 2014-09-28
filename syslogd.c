@@ -892,7 +892,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 {
 	struct iovec iov[6];
 	struct iovec *v;
-	int fd, l, retryonce;
+	int l, retryonce;
 	char line[MAXLINE + 1], repbuf[80], greetings[500];
 
 	v = iov;
@@ -949,17 +949,6 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORW:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
-		switch (f->f_un.f_forw.f_addr.ss_family) {
-		case AF_INET:
-			fd = fd_udp;
-			break;
-		case AF_INET6:
-			fd = fd_udp6;
-			break;
-		default:
-			fd = -1;
-			break;
-		}
 		l = snprintf(line, sizeof(line), "<%d>%.15s %s%s%s",
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
@@ -967,7 +956,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    (char *)iov[4].iov_base);
 		if (l < 0 || (size_t)l >= sizeof(line))
 			l = strlen(line);
-		if (sendto(fd, line, l, 0,
+		if (sendto(f->f_un.f_forw.f_fd, line, l, 0,
 		    (struct sockaddr *)&f->f_un.f_forw.f_addr,
 		    f->f_un.f_forw.f_addr.ss_len) != l) {
 			switch (errno) {
@@ -1613,6 +1602,17 @@ cfline(char *line, char *prog)
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
+			break;
+		}
+		switch (f->f_un.f_forw.f_addr.ss_family) {
+		case AF_INET:
+			f->f_un.f_forw.f_fd = fd_udp;
+			break;
+		case AF_INET6:
+			f->f_un.f_forw.f_fd = fd_udp6;
+			break;
+		default:
+			f->f_un.f_forw.f_fd = -1;
 			break;
 		}
 		f->f_type = F_FORW;
