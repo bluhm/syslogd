@@ -294,7 +294,7 @@ main(int argc, char *argv[])
 {
 	struct addrinfo	 hints, *res, *res0;
 	struct timeval	 to;
-	char 		*p;
+	char		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
