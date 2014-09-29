@@ -667,6 +667,12 @@ unix_readcb(int fd, short event, void *arg)
 		logerror("recvfrom unix");
 }
 
+int
+tcp_socket(struct filed *f)
+{
+	return (-1);
+}
+
 void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
@@ -694,6 +700,11 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	logmsg(LOG_SYSLOG|LOG_WARNING, buf, LocalHostName, ADDDATE);
 
 	close(f->f_un.f_forw.f_fd);
+	if ((f->f_un.f_forw.f_fd = tcp_socket(f)) == -1) {
+		bufferevent_free(bufev);
+		f->f_type = F_UNUSED;
+	} else
+		bufferevent_setfd(bufev, f->f_un.f_forw.f_fd);
 }
 
 void
