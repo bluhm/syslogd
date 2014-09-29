@@ -670,7 +670,7 @@ unix_readcb(int fd, short event, void *arg)
 int
 tcp_socket(struct filed *f)
 {
-	int	 s;
+	int	 s, flags;
 	char	 ebuf[100];
 
 	if ((s = socket(f->f_un.f_forw.f_addr.ss_family, SOCK_STREAM,
@@ -678,6 +678,15 @@ tcp_socket(struct filed *f)
 		snprintf(ebuf, sizeof(ebuf), "socket \"%s\"",
 		    f->f_un.f_forw.f_loghost);
 		logerror(ebuf);
+		return (-1);
+	}
+	/* Connect must not block the process. */
+	if ((flags = fcntl(s, F_GETFL)) == -1 ||
+	    fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1) {
+		snprintf(ebuf, sizeof(ebuf), "fcntl \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		logerror(ebuf);
+		close(s);
 		return (-1);
 	}
 	if (connect(s, (struct sockaddr *)&f->f_un.f_forw.f_addr,
