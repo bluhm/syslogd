@@ -132,7 +132,7 @@ struct filed {
 			char	f_loghost[1+4+3+1+MAXHOSTNAMELEN+1+NI_MAXSERV];
 				/* @proto46://[hostname]:servname\0 */
 			struct sockaddr_storage	f_addr;
-			struct evbuffer		*f_evbuf;
+			struct bufferevent	*f_bufev;
 			int	f_fd;
 		} f_forw;		/* forwarding address */
 		char	f_fname[MAXPATHLEN];
@@ -262,6 +262,9 @@ struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
 void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
+int	 tcp_socket(struct filed *);
+void	 tcp_readcb(struct bufferevent *, void *);
+void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -665,6 +668,35 @@ unix_readcb(int fd, short event, void *arg)
 }
 
 void
+tcp_readcb(struct bufferevent *bufev, void *arg)
+{
+	/*
+	 * Silently drop data received from the forward log server.
+	 */
+	evbuffer_drain(bufev->output, -1);
+}
+
+void
+tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
+{
+	struct filed	*f = arg;
+	char		 buf[500];
+
+	if (event & EVBUFFER_EOF)
+		snprintf(buf, sizeof(buf),
+		    "syslogd: loghost \"%s\" connection close",
+		    f->f_un.f_forw.f_loghost);
+	else
+		snprintf(buf, sizeof(buf),
+		    "syslogd: loghost \"%s\" connection error: %s",
+		    f->f_un.f_forw.f_loghost, strerror(errno));
+	dprintf("%s\n", buf);
+	logmsg(LOG_SYSLOG|LOG_WARNING, buf, LocalHostName, ADDDATE);
+
+	close(f->f_un.f_forw.f_fd);
+}
+
+void
 usage(void)
 {
 
@@ -971,7 +1003,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORWTCP:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
-		l = evbuffer_add_printf(f->f_un.f_forw.f_evbuf,
+		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
 		    "<%d>%.15s %s%s%s", f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
@@ -1628,19 +1660,11 @@ cfline(char *line, char *prog)
 		} else if (strncmp(proto, "tcp", 3) == 0) {
 			int s;
 
-			if ((f->f_un.f_forw.f_evbuf = evbuffer_new())
-			    == NULL) {
-				snprintf(ebuf, sizeof(ebuf), "evbuffer \"%s\"",
-				    f->f_un.f_forw.f_loghost);
-				logerror(ebuf);
-				break;
-			}
 			if ((s = socket(f->f_un.f_forw.f_addr.ss_family,
 			    SOCK_STREAM, IPPROTO_TCP)) == -1) {
 				snprintf(ebuf, sizeof(ebuf), "socket \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
-				evbuffer_free(f->f_un.f_forw.f_evbuf);
 				break;
 			}
 			if (connect(s, (struct sockaddr *)&f->f_un.f_forw.
@@ -1649,7 +1673,15 @@ cfline(char *line, char *prog)
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
 				close(s);
-				evbuffer_free(f->f_un.f_forw.f_evbuf);
+				break;
+			}
+			if ((f->f_un.f_forw.f_bufev = bufferevent_new(s,
+			    tcp_readcb, NULL, tcp_errorcb, f)) == NULL) {
+				snprintf(ebuf, sizeof(ebuf),
+				    "bufferevent \"%s\"",
+				    f->f_un.f_forw.f_loghost);
+				logerror(ebuf);
+				close(s);
 				break;
 			}
 			f->f_un.f_forw.f_fd = s;
