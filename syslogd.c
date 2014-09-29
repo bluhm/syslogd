@@ -670,7 +670,25 @@ unix_readcb(int fd, short event, void *arg)
 int
 tcp_socket(struct filed *f)
 {
-	return (-1);
+	int	 s;
+	char	 ebuf[100];
+
+	if ((s = socket(f->f_un.f_forw.f_addr.ss_family, SOCK_STREAM,
+	    IPPROTO_TCP)) == -1) {
+		snprintf(ebuf, sizeof(ebuf), "socket \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		logerror(ebuf);
+		return (-1);
+	}
+	if (connect(s, (struct sockaddr *)&f->f_un.f_forw.f_addr,
+	    f->f_un.f_forw.f_addr.ss_len) == -1) {
+		snprintf(ebuf, sizeof(ebuf), "connect \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		logerror(ebuf);
+		close(s);
+		return (-1);
+	}
+	return (s);
 }
 
 void
@@ -686,18 +704,18 @@ void
 tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
-	char		 buf[500];
+	char		 ebuf[100];
 
 	if (event & EVBUFFER_EOF)
-		snprintf(buf, sizeof(buf),
+		snprintf(ebuf, sizeof(ebuf),
 		    "syslogd: loghost \"%s\" connection close",
 		    f->f_un.f_forw.f_loghost);
 	else
-		snprintf(buf, sizeof(buf),
+		snprintf(ebuf, sizeof(ebuf),
 		    "syslogd: loghost \"%s\" connection error: %s",
 		    f->f_un.f_forw.f_loghost, strerror(errno));
-	dprintf("%s\n", buf);
-	logmsg(LOG_SYSLOG|LOG_WARNING, buf, LocalHostName, ADDDATE);
+	dprintf("%s\n", ebuf);
+	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 
 	close(f->f_un.f_forw.f_fd);
 	if ((f->f_un.f_forw.f_fd = tcp_socket(f)) == -1) {
@@ -1668,21 +1686,8 @@ cfline(char *line, char *prog)
 		} else if (strncmp(proto, "tcp", 3) == 0) {
 			int s;
 
-			if ((s = socket(f->f_un.f_forw.f_addr.ss_family,
-			    SOCK_STREAM, IPPROTO_TCP)) == -1) {
-				snprintf(ebuf, sizeof(ebuf), "socket \"%s\"",
-				    f->f_un.f_forw.f_loghost);
-				logerror(ebuf);
+			if ((s = tcp_socket(f)) == -1)
 				break;
-			}
-			if (connect(s, (struct sockaddr *)&f->f_un.f_forw.
-			    f_addr, f->f_un.f_forw.f_addr.ss_len) == -1) {
-				snprintf(ebuf, sizeof(ebuf), "connect \"%s\"",
-				    f->f_un.f_forw.f_loghost);
-				logerror(ebuf);
-				close(s);
-				break;
-			}
 			if ((f->f_un.f_forw.f_bufev = bufferevent_new(s,
 			    tcp_readcb, NULL, tcp_errorcb, f)) == NULL) {
 				snprintf(ebuf, sizeof(ebuf),
