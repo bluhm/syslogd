@@ -293,7 +293,7 @@ main(int argc, char *argv[])
 {
 	struct addrinfo	 hints, *res, *res0;
 	struct timeval	 to;
-	char 		*p;
+	char		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
@@ -1887,7 +1887,7 @@ double_rbuf(int fd)
 void
 ctlconn_cleanup(void)
 {
-	struct filed		*f;
+	struct filed *f;
 
 	if (close(fd_ctlconn) == -1)
 		logerror("close ctlconn");
