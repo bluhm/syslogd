@@ -175,9 +175,6 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 		close(fd_ctlconn);
 	if (fd_ctlsock != -1)
 		close(fd_ctlsock);
-	for (i = 0; i < nunix; i++)
-		if (fd_unix[i] != -1)
-			close(fd_unix[i]);
 	if (fd_klog != -1)
 		close(fd_klog);
 	if (fd_sendsys != -1)
@@ -186,6 +183,9 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 		close(fd_udp);
 	if (fd_udp6 != -1)
 		close(fd_udp6);
+	for (i = 0; i < nunix; i++)
+		if (fd_unix[i] != -1)
+			close(fd_unix[i]);
 
 	/* Save the config file specified by the child process */
 	if (strlcpy(config_file, conf, sizeof config_file) >= sizeof(config_file))
