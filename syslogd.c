@@ -1913,7 +1913,8 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 	dprintf("Accepting control connection\n");
 	fd = accept(fd, NULL, NULL);
 	if (fd == -1) {
-		if (errno != EWOULDBLOCK && errno != ECONNABORTED)
+		if (errno != EINTR && errno != EWOULDBLOCK &&
+		    errno != ECONNABORTED)
 			logerror("accept ctlsock");
 		return;
 	}
