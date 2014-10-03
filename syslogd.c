@@ -432,6 +432,7 @@ main(int argc, char *argv[])
 			double_rbuf(*fdp);
 		}
 	}
+
 	freeaddrinfo(res0);
 
 #ifndef SUN_LEN
