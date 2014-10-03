@@ -428,10 +428,10 @@ main(int argc, char *argv[])
 
 		if (SecureMode)
 			shutdown(*fdp, SHUT_RD);
-		else {
+		else
 			double_rbuf(*fdp);
-		}
 	}
+
 	freeaddrinfo(res0);
 
 #ifndef SUN_LEN
