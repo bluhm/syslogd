@@ -2088,7 +2088,6 @@ ctlconn_read_handler(void)
 	/* another syslogc can kick us out */
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
 		pfd[PFD_CTLSOCK].events = POLLIN;
-
 }
 
 void
