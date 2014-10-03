@@ -432,7 +432,6 @@ main(int argc, char *argv[])
 			double_rbuf(*fdp);
 		}
 	}
-
 	freeaddrinfo(res0);
 
 #ifndef SUN_LEN
@@ -1888,7 +1887,7 @@ double_rbuf(int fd)
 void
 ctlconn_cleanup(void)
 {
-	struct filed *f;
+	struct filed		*f;
 
 	if (close(fd_ctlconn) == -1)
 		logerror("close ctlconn");
@@ -1914,8 +1913,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 	dprintf("Accepting control connection\n");
 	fd = accept(fd, NULL, NULL);
 	if (fd == -1) {
-		if (errno != EINTR && errno != EWOULDBLOCK &&
-		    errno != ECONNABORTED)
+		if (errno != EWOULDBLOCK && errno != ECONNABORTED)
 			logerror("accept ctlsock");
 		return;
 	}
