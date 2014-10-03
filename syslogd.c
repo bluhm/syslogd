@@ -392,7 +392,7 @@ main(int argc, char *argv[])
 
 	fd_udp = fd_udp6 = -1;
 	for (res = res0; res; res = res->ai_next) {
-		int	*fdp;
+		int *fdp;
 
 		switch (res->ai_family) {
 		case AF_INET:
@@ -1887,7 +1887,7 @@ double_rbuf(int fd)
 void
 ctlconn_cleanup(void)
 {
-	struct filed		*f;
+	struct filed *f;
 
 	if (close(fd_ctlconn) == -1)
 		logerror("close ctlconn");
