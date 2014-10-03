@@ -250,10 +250,10 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 char	*linebuf;
 int	 linesize;
 
-int		 fd_ctlsock, fd_ctlconn, fd_unix[MAXUNIX],
-		 fd_klog, fd_sendsys, fd_udp, fd_udp6;
-struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_unix[MAXUNIX],
-		 ev_klog, ev_sendsys, ev_udp, ev_udp6,
+int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
+		 fd_udp, fd_udp6, fd_unix[MAXUNIX];
+struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
+		 ev_udp, ev_udp6, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
 void	 klog_readcb(int, short, void *);
@@ -526,14 +526,14 @@ main(int argc, char *argv[])
 	    ctlconn_readcb, &ev_ctlread);
 	event_set(&ev_ctlwrite, fd_ctlconn, EV_WRITE|EV_PERSIST,
 	    ctlconn_writecb, &ev_ctlwrite);
-	for (i = 0; i < MAXUNIX; i++)
-		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
-		    unix_readcb, &ev_unix[i]);
 	event_set(&ev_klog, fd_klog, EV_READ|EV_PERSIST, klog_readcb, &ev_klog);
 	event_set(&ev_sendsys, fd_sendsys, EV_READ|EV_PERSIST, unix_readcb,
 	    &ev_sendsys);
 	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
 	event_set(&ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
+	for (i = 0; i < nunix; i++)
+		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
+		    unix_readcb, &ev_unix[i]);
 
 	signal_set(&ev_hup, SIGHUP, init_signalcb, &ev_hup);
 	signal_set(&ev_int, SIGINT, die_signalcb, &ev_int);
@@ -571,9 +571,6 @@ main(int argc, char *argv[])
 
 	if (fd_ctlsock != -1)
 		event_add(&ev_ctlaccept, NULL);
-	for (i = 0; i < MAXUNIX; i++)
-		if (fd_unix[i] != -1)
-			event_add(&ev_unix[i], NULL);
 	if (fd_klog != -1)
 		event_add(&ev_klog, NULL);
 	if (fd_sendsys != -1)
@@ -584,6 +581,9 @@ main(int argc, char *argv[])
 		if (fd_udp6 != -1)
 			event_add(&ev_udp6, NULL);
 	}
+	for (i = 0; i < nunix; i++)
+		if (fd_unix[i] != -1)
+			event_add(&ev_unix[i], NULL);
 
 	signal_add(&ev_hup, NULL);
 	signal_add(&ev_term, NULL);
