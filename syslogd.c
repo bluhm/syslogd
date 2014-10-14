@@ -57,6 +57,7 @@
 #define MIN_MEMBUF	(MAXLINE * 4)	/* Minimum memory buffer size */
 #define MAX_MEMBUF	(256 * 1024)	/* Maximum memory buffer size */
 #define MAX_MEMBUF_NAME	64		/* Max length of membuf log name */
+#define MAX_TCPBUF	(256 * 1024)	/* Maximum tcp event buffer size */
 #define	MAXSVLINE	120		/* maximum saved line length */
 #define DEFUPRI		(LOG_USER|LOG_NOTICE)
 #define DEFSPRI		(LOG_KERN|LOG_CRIT)
@@ -1043,9 +1044,12 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORWTCP:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
+		if (EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) >=
+		    MAX_TCPBUF)
+			break;
 		/*
 		 * RFC 6587  3.4.2.  Non-Transparent-Framing
-		 * Use \n to split messages for now, will change to later.
+		 * Use \n to split messages for now, will change later.
 		 */
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
 		    "<%d>%.15s %s%s%s\n", f->f_prevpri, (char *)iov[0].iov_base,
