@@ -1043,13 +1043,17 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORWTCP:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
+		/*
+		 * RFC 6587  3.4.2.  Non-Transparent-Framing
+		 * Use \n to split messages for now, will change to later.
+		 */
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
-		    "<%d>%.15s %s%s%s", f->f_prevpri, (char *)iov[0].iov_base,
+		    "<%d>%.15s %s%s%s\n", f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
-		if (l < 0 || (size_t)l >= sizeof(line))
-			l = strlen(line);  /* XXX */
+		if (l < 0)
+			break;  /* XXX */
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_WRITE);
 		break;
 
