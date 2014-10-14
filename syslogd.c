@@ -725,7 +725,6 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		    "syslogd: loghost \"%s\" connection error: %s",
 		    f->f_un.f_forw.f_loghost, strerror(errno));
 	dprintf("%s\n", ebuf);
-	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 
 	close(f->f_un.f_forw.f_fd);
 	if ((f->f_un.f_forw.f_fd = tcp_socket(f)) == -1) {
@@ -737,6 +736,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		bufferevent_setfd(bufev, f->f_un.f_forw.f_fd);
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
 	}
+	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
 
 void
