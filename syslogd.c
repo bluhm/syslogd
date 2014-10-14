@@ -707,7 +707,7 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	/*
 	 * Silently drop data received from the forward log server.
 	 */
-	evbuffer_drain(bufev->output, -1);
+	evbuffer_drain(bufev->input, -1);
 }
 
 void
