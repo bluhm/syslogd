@@ -730,8 +730,10 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	if ((f->f_un.f_forw.f_fd = tcp_socket(f)) == -1) {
 		bufferevent_free(bufev);
 		f->f_type = F_UNUSED;
-	} else
+	} else {
 		bufferevent_setfd(bufev, f->f_un.f_forw.f_fd);
+		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
+	}
 }
 
 void
@@ -1048,6 +1050,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    (char *)iov[4].iov_base);
 		if (l < 0 || (size_t)l >= sizeof(line))
 			l = strlen(line);  /* XXX */
+		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_WRITE);
 		break;
 
 	case F_CONSOLE:
@@ -1706,6 +1709,7 @@ cfline(char *line, char *prog)
 				close(s);
 				break;
 			}
+			bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
 			f->f_un.f_forw.f_fd = s;
 			f->f_type = F_FORWTCP;
 		}
