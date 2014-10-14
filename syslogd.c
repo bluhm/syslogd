@@ -733,6 +733,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		bufferevent_free(bufev);
 		f->f_type = F_UNUSED;
 	} else {
+		/* XXX The messages in the output buffer may be out of sync. */
 		bufferevent_setfd(bufev, f->f_un.f_forw.f_fd);
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
 	}
