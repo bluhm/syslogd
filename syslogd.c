@@ -729,6 +729,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 
 	close(f->f_un.f_forw.f_fd);
 	if ((f->f_un.f_forw.f_fd = tcp_socket(f)) == -1) {
+		/* XXX reconnect later */
 		bufferevent_free(bufev);
 		f->f_type = F_UNUSED;
 	} else {
@@ -1046,7 +1047,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
 		if (EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) >=
 		    MAX_TCPBUF)
-			break;
+			break;  /* XXX log error message */
 		/*
 		 * RFC 6587  3.4.2.  Non-Transparent-Framing
 		 * Use \n to split messages for now, will change later.
@@ -1057,7 +1058,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
 		if (l < 0)
-			break;  /* XXX */
+			break;  /* XXX log error message */
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_WRITE);
 		break;
 
