@@ -709,7 +709,7 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	/*
 	 * Drop data received from the forward log server.
 	 */
-	dprintf("loghost \"%s\" did send %zu bytes",
+	dprintf("loghost \"%s\" did send %zu bytes back",
 	    f->f_un.f_forw.f_loghost,
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->input));
 	evbuffer_drain(bufev->input, -1);
