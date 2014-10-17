@@ -704,9 +704,14 @@ tcp_socket(struct filed *f)
 void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
+	struct filed	*f = arg;
+
 	/*
-	 * Silently drop data received from the forward log server.
+	 * Drop data received from the forward log server.
 	 */
+	dprintf("loghost \"%s\" did send %zu bytes",
+	    f->f_un.f_forw.f_loghost,
+	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->input));
 	evbuffer_drain(bufev->input, -1);
 }
 
