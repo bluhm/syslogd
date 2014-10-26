@@ -1469,11 +1469,8 @@ cfline(char *line, char *prog)
 		f->f_quick = 0;
 	if (!strcmp(prog, "*"))
 		prog = NULL;
-	else {
-		f->f_program = calloc(1, strlen(prog)+1);
-		if (f->f_program)
-			strlcpy(f->f_program, prog, strlen(prog)+1);
-	}
+	else
+		f->f_program = strdup(prog);
 
 	/* scan through the list of selectors */
 	for (p = line; *p && *p != '\t';) {
