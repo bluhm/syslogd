@@ -1341,7 +1341,7 @@ init(void)
 			(void)close(f->f_file);
 			break;
 		case F_FORWUDP:
-		case F_FORWTCP:  /* XXX */
+		case F_FORWTCP:  /* XXX close and reconnect? */
 			break;
 		}
 		next = f->f_next;
