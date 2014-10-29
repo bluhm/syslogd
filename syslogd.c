@@ -684,7 +684,7 @@ tcp_socket(struct filed *f)
 	/* Connect must not block the process. */
 	if ((flags = fcntl(s, F_GETFL)) == -1 ||
 	    fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1) {
-		snprintf(ebuf, sizeof(ebuf), "fcntl \"%s\"",
+		snprintf(ebuf, sizeof(ebuf), "fcntl \"%s\" O_NONBLOCK",
 		    f->f_un.f_forw.f_loghost);
 		logerror(ebuf);
 		close(s);
@@ -2038,7 +2038,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 
 	if ((flags = fcntl(fd, F_GETFL)) == -1 ||
 	    fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
-		logerror("fcntl ctlconn");
+		logerror("fcntl ctlconn O_NONBLOCK");
 		close(fd);
 		return;
 	}
