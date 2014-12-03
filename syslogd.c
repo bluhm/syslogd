@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.130 2014/11/01 12:07:41 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.132 2014/12/03 17:00:15 millert Exp $	*/
 
 /*
  * Copyright (c) 1983, 1988, 1993, 1994
@@ -347,7 +347,7 @@ main(int argc, char *argv[])
 		usage();
 
 	if (Debug)
-		setlinebuf(stdout);
+		setvbuf(stdout, NULL, _IOLBF, 0);
 
 	if ((fd = nullfd = open(_PATH_DEVNULL, O_RDWR)) == -1) {
 		logerror("Couldn't open /dev/null");
@@ -1815,7 +1815,7 @@ unix_socket(char *path, int type, mode_t mode)
 
 	memset(&s_un, 0, sizeof(s_un));
 	s_un.sun_family = AF_UNIX;
-	if (strlcpy(s_un.sun_path, path, sizeof(s_un.sun_path)) >
+	if (strlcpy(s_un.sun_path, path, sizeof(s_un.sun_path)) >=
 	    sizeof(s_un.sun_path)) {
 		snprintf(errbuf, sizeof(errbuf), "socket path too long: %s",
 		    path);
