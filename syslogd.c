@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.132 2014/12/03 17:00:15 millert Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.136 2014/12/10 19:42:14 tobias Exp $	*/
 
 /*
  * Copyright (c) 1983, 1988, 1993, 1994
@@ -121,8 +121,8 @@ const char ctty[] = _PATH_CONSOLE;
 
 struct filed {
 	struct	filed *f_next;		/* next in linked list */
-	short	f_type;			/* entry type, see below */
-	short	f_file;			/* file descriptor */
+	int	f_type;			/* entry type, see below */
+	int	f_file;			/* file descriptor */
 	time_t	f_time;			/* time this was last written */
 	u_char	f_pmask[LOG_NFACILITIES+1];	/* priority mask */
 	char	*f_program;		/* program this applies to */
@@ -349,11 +349,11 @@ main(int argc, char *argv[])
 	if (Debug)
 		setvbuf(stdout, NULL, _IOLBF, 0);
 
-	if ((fd = nullfd = open(_PATH_DEVNULL, O_RDWR)) == -1) {
+	if ((nullfd = open(_PATH_DEVNULL, O_RDWR)) == -1) {
 		logerror("Couldn't open /dev/null");
 		die(0);
 	}
-	while (fd++ <= 2) {
+	for (fd = nullfd + 1; fd <= 2; fd++) {
 		if (fcntl(fd, F_GETFL, 0) == -1)
 			if (dup2(nullfd, fd) == -1)
 				logerror("dup2");
@@ -1763,9 +1763,6 @@ decode(const char *name, const CODE *codetab)
 {
 	const CODE *c;
 	char *p, buf[40];
-
-	if (isdigit((unsigned char)*name))
-		return (atoi(name));
 
 	for (p = buf; *name && p < &buf[sizeof(buf) - 1]; p++, name++) {
 		if (isupper((unsigned char)*name))
