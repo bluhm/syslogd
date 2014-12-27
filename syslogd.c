@@ -1056,7 +1056,8 @@ fprintlog(struct filed *f, int flags, char *msg)
 			break;  /* XXX log error message */
 		/*
 		 * RFC 6587  3.4.2.  Non-Transparent-Framing
-		 * Use \n to split messages for now, will change later.
+		 * Use \n to split messages for now.
+		 * 3.4.1.  Octet Counting might be implemented later.
 		 */
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
 		    "<%d>%.15s %s%s%s\n", f->f_prevpri, (char *)iov[0].iov_base,
