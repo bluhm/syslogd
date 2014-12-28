@@ -691,7 +691,7 @@ tcp_socket(struct filed *f)
 		return (-1);
 	}
 	if (connect(s, (struct sockaddr *)&f->f_un.f_forw.f_addr,
-	    f->f_un.f_forw.f_addr.ss_len) == -1) {
+	    f->f_un.f_forw.f_addr.ss_len) == -1 && errno != EINPROGRESS) {
 		snprintf(ebuf, sizeof(ebuf), "connect \"%s\"",
 		    f->f_un.f_forw.f_loghost);
 		logerror(ebuf);
