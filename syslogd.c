@@ -270,8 +270,8 @@ void	 unix_readcb(int, short, void *);
 int	 tcp_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
-void	 tls_readcb(struct buffertls *, void *);
-void	 tls_errorcb(struct buffertls *, short, void *);
+void	 tls_readcb(struct bufferevent *, void *);
+void	 tls_errorcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -716,8 +716,7 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	 * Drop data received from the forward log server.
 	 */
 	dprintf("loghost \"%s\" did send %zu bytes back\n",
-	    f->f_un.f_forw.f_loghost,
-	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->input));
+	    f->f_un.f_forw.f_loghost, EVBUFFER_LENGTH(bufev->input));
 	evbuffer_drain(bufev->input, -1);
 }
 
@@ -745,13 +744,13 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	} else {
 		/* XXX The messages in the output buffer may be out of sync. */
 		bufferevent_setfd(bufev, f->f_un.f_forw.f_fd);
-		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
+		bufferevent_enable(bufev, EV_READ);
 	}
 	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
 
 void
-tls_readcb(struct buffertls *buftls, void *arg)
+tls_readcb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
 
@@ -759,15 +758,15 @@ tls_readcb(struct buffertls *buftls, void *arg)
 	 * Drop data received from the forward log server.
 	 */
 	dprintf("loghost \"%s\" did send %zu bytes back\n",
-	    f->f_un.f_forw.f_loghost,
-	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->input));
+	    f->f_un.f_forw.f_loghost, EVBUFFER_LENGTH(bufev->input));
 	evbuffer_drain(bufev->input, -1);
 }
 
 void
-tls_errorcb(struct buffertls *buftls, short event, void *arg)
+tls_errorcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
+	struct tls	*ctx = f->f_un.f_forw.f_buftls->bt_ctx;
 	char		 ebuf[100];
 
 	if (event & EVBUFFER_EOF)
@@ -777,10 +776,12 @@ tls_errorcb(struct buffertls *buftls, short event, void *arg)
 	else
 		snprintf(ebuf, sizeof(ebuf),
 		    "syslogd: loghost \"%s\" connection error: %s",
-		    f->f_un.f_forw.f_loghost, strerror(errno));
+		    f->f_un.f_forw.f_loghost, tls_error(ctx));
 	dprintf("%s\n", ebuf);
 
+	tls_close(ctx);
 	close(f->f_un.f_forw.f_fd);
+	tls_free(ctx);
 	if ((f->f_un.f_forw.f_fd = tcp_socket(f)) == -1) {
 		/* XXX reconnect later */
 		bufferevent_free(bufev);
