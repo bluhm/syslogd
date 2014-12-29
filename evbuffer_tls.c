@@ -85,7 +85,7 @@ bufferevent_read_pressure_cb(struct evbuffer *buf, size_t old, size_t now,
 #endif
 
 static void
-bufferevent_tls_readcb(int fd, short event, void *arg)
+buffertls_readcb(int fd, short event, void *arg)
 {
 	struct bufferevent *bufev = arg;
 	int res = 0;
@@ -156,7 +156,7 @@ bufferevent_tls_readcb(int fd, short event, void *arg)
 }
 
 static void
-bufferevent_tls_writecb(int fd, short event, void *arg)
+buffertls_writecb(int fd, short event, void *arg)
 {
 	struct bufferevent *bufev = arg;
 	int res = 0;
@@ -206,22 +206,22 @@ bufferevent_tls_writecb(int fd, short event, void *arg)
 	(*bufev->errorcb)(bufev, what, bufev->cbarg);
 }
 
-struct bufferevent_tls *
-bufferevent_tls_new(int fd, evbuffercb readcb, evbuffercb writecb,
+struct buffertls *
+buffertls_new(int fd, evbuffercb readcb, evbuffercb writecb,
     everrorcb errorcb, void *cbarg, struct tls *ctx)
 {
-	struct bufferevent_tls *buftls;
+	struct buffertls *buftls;
 
 	if ((buftls = malloc( sizeof(*buftls))) == NULL)
 		return (NULL);
 
-	buftls->bet_bufev = bufferevent_new(fd, readcb, writecb, errorcb,
+	buftls->bt_bufev = bufferevent_new(fd, readcb, writecb, errorcb,
 	    cbarg);
-	if (buftls->bet_bufev == NULL) {
+	if (buftls->bt_bufev == NULL) {
 		free(buftls);
 		return (NULL);
 	}
-	buftls->bet_ctx = ctx;
+	buftls->bt_ctx = ctx;
 
 	return (buftls);
 }
@@ -271,9 +271,9 @@ bufferevent_priority_set(struct bufferevent *bufev, int priority)
 #endif
 
 void
-bufferevent_tls_free(struct bufferevent_tls *buftls)
+buffertls_free(struct buffertls *buftls)
 {
-	bufferevent_free(buftls->bet_bufev);
+	bufferevent_free(buftls->bt_bufev);
 	free(buftls);
 }
 
