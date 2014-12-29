@@ -773,6 +773,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		return;
 	}
 	if (f->f_type == F_FORWTLS) {
+		/* XXX no host given */
 		if ((ctx = tls_socket(f, s, NULL)) == NULL) {
 			/* XXX log error and reconnect later */
 			close(s);
