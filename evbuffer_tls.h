@@ -23,8 +23,11 @@
 #include <tls.h>
 
 struct bufferevent_tls {
-	struct bufferevent	bet_bufev;
-	struct tls		bet_ctx;
+	struct bufferevent	*bet_bufev;
+	struct tls		*bet_ctx;
 };
+
+struct bufferevent_tls *bufferevent_tls_new(int fd, evbuffercb readcb,
+    evbuffercb writecb, everrorcb errorcb, void *cbarg, struct tls *ctx);
 
 #endif /* _EVBUFFER_TLS_H_ */
