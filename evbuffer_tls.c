@@ -210,19 +210,22 @@ struct buffertls *
 buffertls_new(int fd, evbuffercb readcb, evbuffercb writecb,
     everrorcb errorcb, void *cbarg, struct tls *ctx)
 {
-	struct buffertls *buftls;
+	struct buffertls	*buftls;
+	struct bufferevent	*bufev;
 
 	if ((buftls = malloc( sizeof(*buftls))) == NULL)
 		return (NULL);
 
-	buftls->bt_bufev = bufferevent_new(fd, readcb, writecb, errorcb,
-	    cbarg);
-	if (buftls->bt_bufev == NULL) {
+	bufev = bufferevent_new(fd, readcb, writecb, errorcb, cbarg);
+	if (bufev == NULL) {
 		free(buftls);
 		return (NULL);
 	}
-	buftls->bt_ctx = ctx;
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 
+	buftls->bt_bufev = bufev;
+	buftls->bt_ctx = ctx;
 	return (buftls);
 }
 
