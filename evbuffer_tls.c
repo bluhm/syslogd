@@ -33,14 +33,14 @@
 #include <sys/ioctl.h>
 
 #include <errno.h>
+#include <event.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <tls.h>
 
 #include "evbuffer_tls.h"
-
-struct evbuffer;
 
 /* prototypes */
 
