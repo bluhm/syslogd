@@ -87,7 +87,8 @@ bufferevent_read_pressure_cb(struct evbuffer *buf, size_t old, size_t now,
 static void
 buffertls_readcb(int fd, short event, void *arg)
 {
-	struct bufferevent *bufev = arg;
+	struct buffertls *buftls = arg;
+	struct bufferevent *bufev = buftls->bt_bufev;
 	int res = 0;
 	short what = EVBUFFER_READ;
 	size_t len;
@@ -158,7 +159,8 @@ buffertls_readcb(int fd, short event, void *arg)
 static void
 buffertls_writecb(int fd, short event, void *arg)
 {
-	struct bufferevent *bufev = arg;
+	struct buffertls *buftls = arg;
+	struct bufferevent *bufev = buftls->bt_bufev;
 	int res = 0;
 	short what = EVBUFFER_WRITE;
 
@@ -210,8 +212,8 @@ struct buffertls *
 buffertls_new(int fd, evbuffercb readcb, evbuffercb writecb,
     everrorcb errorcb, void *cbarg, struct tls *ctx)
 {
-	struct buffertls	*buftls;
-	struct bufferevent	*bufev;
+	struct buffertls *buftls;
+	struct bufferevent *bufev;
 
 	if ((buftls = malloc( sizeof(*buftls))) == NULL)
 		return (NULL);
