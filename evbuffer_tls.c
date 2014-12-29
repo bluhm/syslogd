@@ -44,6 +44,8 @@ struct evbuffer;
 /* prototypes */
 
 void bufferevent_read_pressure_cb(struct evbuffer *, size_t, size_t, void *);
+int evtls_read(struct evbuffer *, int, int, struct tls *);
+int evtls_write(struct evbuffer *, int, struct tls *);
 
 static int
 bufferevent_add(struct event *ev, int timeout)
@@ -116,7 +118,7 @@ buffertls_readcb(int fd, short event, void *arg)
 		}
 	}
 
-	res = evtls_read(bufev->input, fd, howmuch);
+	res = evtls_read(bufev->input, fd, howmuch, ctx);
 	if (res == -1) {
 		if (errno == EAGAIN || errno == EINTR)
 			goto reschedule;
@@ -431,7 +433,7 @@ bufferevent_base_set(struct event_base *base, struct bufferevent *bufev)
 #define EVBUFFER_MAX_READ	4096
 
 int
-evbuffer_read(struct evbuffer *buf, int fd, int howmuch)
+evtls_read(struct evbuffer *buf, int fd, int howmuch, struct tls *ctx)
 {
 	u_char *p;
 	size_t oldoff = buf->off;
@@ -478,7 +480,7 @@ evbuffer_read(struct evbuffer *buf, int fd, int howmuch)
 }
 
 int
-evbuffer_write(struct evbuffer *buffer, int fd)
+evtls_write(struct evbuffer *buffer, int fd, struct tls *ctx)
 {
 	int n;
 
