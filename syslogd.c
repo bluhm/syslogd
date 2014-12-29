@@ -137,7 +137,8 @@ struct filed {
 				/* @proto46://[hostname]:servname\0 */
 			struct sockaddr_storage	f_addr;
 			struct bufferevent	*f_bufev;
-			int	f_reconnectwait;
+			int			f_reconnectwait;
+			struct buffertls	*f_buftls;
 		} f_forw;		/* forwarding address */
 		char	f_fname[PATH_MAX];
 		struct {
@@ -1799,6 +1800,23 @@ cfline(char *line, char *prog)
 			}
 			f->f_type = F_FORWTCP;
 			tcp_connectcb(-1, 0, f);
+		} else if (strncmp(proto, "tls", 3) == 0) {
+			int s;
+
+			if ((s = tcp_socket(f)) == -1)
+				break;
+			if ((f->f_un.f_forw.f_bufev = bufferevent_new(s,
+			    tcp_readcb, NULL, tcp_errorcb, f)) == NULL) {
+				snprintf(ebuf, sizeof(ebuf),
+				    "bufferevent \"%s\"",
+				    f->f_un.f_forw.f_loghost);
+				logerror(ebuf);
+				close(s);
+				break;
+			}
+			bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
+			f->f_un.f_forw.f_fd = s;
+			f->f_type = F_FORWTCP;
 		}
 		break;
 
