@@ -235,6 +235,8 @@ buffertls_writecb(int fd, short event, void *arg)
 	(*bufev->errorcb)(bufev, what, bufev->cbarg);
 }
 
+#if 0
+
 struct buffertls *
 buffertls_new(int fd, evbuffercb readcb, evbuffercb writecb,
     everrorcb errorcb, void *cbarg, struct tls *ctx)
@@ -258,8 +260,6 @@ buffertls_new(int fd, evbuffercb readcb, evbuffercb writecb,
 	return (buftls);
 }
 
-#if 0
-
 void
 bufferevent_setcb(struct bufferevent *bufev,
     evbuffercb readcb, evbuffercb writecb, everrorcb errorcb, void *cbarg)
@@ -274,13 +274,13 @@ bufferevent_setcb(struct bufferevent *bufev,
 #endif
 
 void
-buffertls_setfd(struct buffertls *buftls, int fd, struct tls *ctx)
+buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
+    struct tls *ctx, int fd)
 {
-	bufferevent_setfd(buftls->bt_bufev, fd);
-	event_set(&buftls->bt_bufev->ev_read, fd, EV_READ, buffertls_readcb,
-	    buftls);
-	event_set(&buftls->bt_bufev->ev_write, fd, EV_WRITE, buffertls_writecb,
-	    buftls);
+	bufferevent_setfd(bufev, fd);
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
+	buftls->bt_bufev = bufev;
 	buftls->bt_ctx = ctx;
 }
 
@@ -299,16 +299,12 @@ bufferevent_priority_set(struct bufferevent *bufev, int priority)
 
 /* Closing the file descriptor is the responsibility of the caller */
 
-#endif
-
 void
 buffertls_free(struct buffertls *buftls)
 {
 	bufferevent_free(buftls->bt_bufev);
 	free(buftls);
 }
-
-#if 0
 
 /*
  * Returns 0 on success;
