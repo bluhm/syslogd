@@ -242,21 +242,20 @@ bufferevent_setcb(struct bufferevent *bufev,
 	bufev->cbarg = cbarg;
 }
 
+#endif
+
 void
-bufferevent_setfd(struct bufferevent *bufev, int fd)
+buffertls_setfd(struct buffertls *buftls, int fd)
 {
-	event_del(&bufev->ev_read);
-	event_del(&bufev->ev_write);
+	bufferevent_setfd(buftls->bt_bufev, fd);
 
-	event_set(&bufev->ev_read, fd, EV_READ, bufferevent_readcb, bufev);
-	event_set(&bufev->ev_write, fd, EV_WRITE, bufferevent_writecb, bufev);
-	if (bufev->ev_base != NULL) {
-		event_base_set(bufev->ev_base, &bufev->ev_read);
-		event_base_set(bufev->ev_base, &bufev->ev_write);
-	}
-
-	/* might have to manually trigger event registration */
+	event_set(&buftls->bt_bufev->ev_read, fd, EV_READ, buffertls_readcb,
+	    buftls);
+	event_set(&buftls->bt_bufev->ev_write, fd, EV_WRITE, buffertls_writecb,
+	    buftls);
 }
+
+#if 0
 
 int
 bufferevent_priority_set(struct bufferevent *bufev, int priority)
