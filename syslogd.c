@@ -91,6 +91,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <tls.h>
 #include <unistd.h>
 #include <utmp.h>
 #include <vis.h>
@@ -99,6 +100,7 @@
 #include <sys/syslog.h>
 
 #include "syslogd.h"
+#include "evbuffer_tls.h"
 
 char *ConfFile = _PATH_LOGCONF;
 const char ctty[] = _PATH_CONSOLE;
@@ -1750,22 +1752,35 @@ cfline(char *line, char *prog)
 			f->f_un.f_forw.f_fd = s;
 			f->f_type = F_FORWTCP;
 		} else if (strncmp(proto, "tls", 3) == 0) {
+			struct tls *ctx;
 			int s;
 
 			if ((s = tcp_socket(f)) == -1)
 				break;
-			if ((f->f_un.f_forw.f_bufev = bufferevent_new(s,
-			    tcp_readcb, NULL, tcp_errorcb, f)) == NULL) {
+			
+			if ((ctx = tls_client()) == NULL) {
 				snprintf(ebuf, sizeof(ebuf),
-				    "bufferevent \"%s\"",
+				    "tls_client \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
 				close(s);
 				break;
 			}
+			if ((f->f_un.f_forw.f_buftls = buffertls_new(s,
+			    tcp_readcb, NULL, tcp_errorcb, f, ctx)) == NULL) {
+				snprintf(ebuf, sizeof(ebuf),
+				    "buffertls \"%s\"",
+				    f->f_un.f_forw.f_loghost);
+				logerror(ebuf);
+				tls_free(ctx);
+				close(s);
+				break;
+			}
+			f->f_un.f_forw.f_bufev =
+			    f->f_un.f_forw.f_buftls->bt_bufev;
 			bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
 			f->f_un.f_forw.f_fd = s;
-			f->f_type = F_FORWTCP;
+			f->f_type = F_FORWTLS;
 		}
 		break;
 
