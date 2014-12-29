@@ -1681,7 +1681,9 @@ cfline(char *line, char *prog)
 				break;
 			}
 		} else if (strcmp(proto, "tcp") == 0 ||
-		    strcmp(proto, "tcp4") == 0 || strcmp(proto, "tcp6") == 0) {
+		    strcmp(proto, "tcp4") == 0 || strcmp(proto, "tcp6") == 0 ||
+		    strcmp(proto, "tls") == 0 ||
+		    strcmp(proto, "tls4") == 0 || strcmp(proto, "tls6") == 0) {
 			;
 		} else {
 			snprintf(ebuf, sizeof(ebuf), "bad protocol \"%s\"",
@@ -1703,8 +1705,8 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (priv_getaddrinfo(proto, host, port,
-		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
+		if (priv_getaddrinfo(strcmp(proto, "tls") == 0 ? "tcp" : proto,
+		    host, port, (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
