@@ -838,6 +838,7 @@ tls_errorcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
 	struct tls	*ctx = f->f_un.f_forw.f_buftls->bt_ctx;
+	int		 s;
 	char		 ebuf[100];
 
 	if (event & EVBUFFER_EOF)
@@ -851,17 +852,25 @@ tls_errorcb(struct bufferevent *bufev, short event, void *arg)
 	dprintf("%s\n", ebuf);
 
 	tls_close(ctx);
-	close(f->f_un.f_forw.f_fd);
 	tls_free(ctx);
-	if ((f->f_un.f_forw.f_fd = tcp_socket(f)) == -1) {
+	close(f->f_un.f_forw.f_fd);
+	if ((s = tcp_socket(f)) == -1) {
 		/* XXX reconnect later */
 		bufferevent_free(bufev);
 		f->f_type = F_UNUSED;
-	} else {
-		/* XXX The messages in the output buffer may be out of sync. */
-		bufferevent_setfd(bufev, f->f_un.f_forw.f_fd);
-		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
+		return;
 	}
+	if ((ctx = tls_socket(f, s, NULL)) == NULL) {
+		close(s);
+		bufferevent_free(bufev);
+		f->f_type = F_UNUSED;
+		return;
+	}
+	f->f_un.f_forw.f_fd = s;
+	f->f_un.f_forw.f_buftls->bt_ctx = ctx;
+	/* XXX The messages in the output buffer may be out of sync. */
+	bufferevent_setfd(bufev, f->f_un.f_forw.f_fd);
+	bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
 	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
 
