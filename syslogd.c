@@ -1806,12 +1806,20 @@ cfline(char *line, char *prog)
 
 			if ((s = tcp_socket(f)) == -1)
 				break;
-			
 			if ((ctx = tls_client()) == NULL) {
 				snprintf(ebuf, sizeof(ebuf),
 				    "tls_client \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
+				close(s);
+				break;
+			}
+			if (tls_connect_socket(ctx, s, host) < 0) {
+				snprintf(ebuf, sizeof(ebuf),
+				    "tls_client \"%s\": %s",
+				    f->f_un.f_forw.f_loghost, tls_error(ctx));
+				logerror(ebuf);
+				tls_free(ctx);
 				close(s);
 				break;
 			}
