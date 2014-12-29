@@ -39,11 +39,11 @@
 
 #include "evbuffer_tls.h"
 
+struct evbuffer;
+
 /* prototypes */
 
 void bufferevent_read_pressure_cb(struct evbuffer *, size_t, size_t, void *);
-
-#if 0
 
 static int
 bufferevent_add(struct event *ev, int timeout)
@@ -58,6 +58,8 @@ bufferevent_add(struct event *ev, int timeout)
 
 	return (event_add(ev, ptv));
 }
+
+#if 0
 
 /*
  * This callback is executed when the size of the input buffer changes.
@@ -204,50 +206,24 @@ bufferevent_tls_writecb(int fd, short event, void *arg)
 	(*bufev->errorcb)(bufev, what, bufev->cbarg);
 }
 
-/*
- * Create a new buffered event object.
- *
- * The read callback is invoked whenever we read new data.
- * The write callback is invoked whenever the output buffer is drained.
- * The error callback is invoked on a write/read error or on EOF.
- *
- * Both read and write callbacks maybe NULL.  The error callback is not
- * allowed to be NULL and have to be provided always.
- */
-
 struct bufferevent_tls *
 bufferevent_tls_new(int fd, evbuffercb readcb, evbuffercb writecb,
-    everrorcb errorcb, void *cbarg)
+    everrorcb errorcb, void *cbarg, struct tls *ctx)
 {
-	struct bufferevent *bufev;
+	struct bufferevent_tls *buftls;
 
-	if ((bufev = calloc(1, sizeof(struct bufferevent))) == NULL)
+	if ((buftls = malloc( sizeof(*buftls))) == NULL)
 		return (NULL);
 
-	if ((bufev->input = evbuffer_new()) == NULL) {
-		free(bufev);
-		return (NULL);
-	}
-
-	if ((bufev->output = evbuffer_new()) == NULL) {
-		evbuffer_free(bufev->input);
-		free(bufev);
+	buftls->bet_bufev = bufferevent_new(fd, readcb, writecb, errorcb,
+	    cbarg);
+	if (buftls->bet_bufev == NULL) {
+		free(buftls);
 		return (NULL);
 	}
+	buftls->bet_ctx = ctx;
 
-	event_set(&bufev->ev_read, fd, EV_READ, bufferevent_readcb, bufev);
-	event_set(&bufev->ev_write, fd, EV_WRITE, bufferevent_writecb, bufev);
-
-	bufferevent_setcb(bufev, readcb, writecb, errorcb, cbarg);
-
-	/*
-	 * Set to EV_WRITE so that using bufferevent_write is going to
-	 * trigger a callback.  Reading needs to be explicitly enabled
-	 * because otherwise no data will be available.
-	 */
-	bufev->enabled = EV_WRITE;
-
-	return (bufev);
+	return (buftls);
 }
 
 #if 0
