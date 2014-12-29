@@ -22,14 +22,14 @@
 #include <event.h>
 #include <tls.h>
 
-struct bufferevent_tls {
-	struct bufferevent	*bet_bufev;
-	struct tls		*bet_ctx;
+struct buffertls {
+	struct bufferevent	*bt_bufev;
+	struct tls		*bt_ctx;
 };
 
-struct bufferevent_tls	*bufferevent_tls_new(int fd, evbuffercb readcb,
+struct buffertls	*buffertls_new(int fd, evbuffercb readcb,
     evbuffercb writecb, everrorcb errorcb, void *cbarg, struct tls *ctx);
-void			 bufferevent_tls_free(struct bufferevent_tls *buftls);
+void			 buffertls_free(struct buffertls *buftls);
 
 
 #endif /* _EVBUFFER_TLS_H_ */
