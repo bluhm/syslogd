@@ -818,6 +818,7 @@ tcp_connectcb(int fd, short event, void *arg)
 	dprintf("tcp connect callback: success, event %#x\n", event);
 
 	if (f->f_type == F_FORWTLS) {
+		/* XXX no host given */
 		if ((ctx = tls_socket(f, s, NULL)) == NULL) {
 			close(f->f_file);
 			f->f_file = -1;
