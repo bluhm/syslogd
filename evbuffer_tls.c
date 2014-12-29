@@ -120,19 +120,31 @@ buffertls_readcb(int fd, short event, void *arg)
 	}
 
 	res = evtls_read(bufev->input, fd, howmuch, ctx);
-	if (res == -1) {
+	switch (res) {
+	case TLS_READ_AGAIN:
+		event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb,
+		    buftls);
+		goto reschedule;
+	case TLS_WRITE_AGAIN:
+		event_set(&bufev->ev_read, fd, EV_WRITE, buffertls_readcb,
+		    buftls);
+		goto reschedule;
+	case -1:
 		if (errno == EAGAIN || errno == EINTR)
 			goto reschedule;
 		/* error case */
 		what |= EVBUFFER_ERROR;
-	} else if (res == 0) {
+		break;
+	case 0:
 		/* eof case */
 		what |= EVBUFFER_EOF;
+		break;
 	}
 
 	if (res <= 0)
 		goto error;
 
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
 	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
 
 	/* See if this callbacks meets the water marks */
