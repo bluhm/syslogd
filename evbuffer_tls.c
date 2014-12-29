@@ -436,7 +436,7 @@ int
 evtls_read(struct evbuffer *buf, int fd, int howmuch, struct tls *ctx)
 {
 	u_char *p;
-	size_t oldoff = buf->off;
+	size_t len, oldoff = buf->off;
 	int n = EVBUFFER_MAX_READ;
 
 	if (ioctl(fd, FIONREAD, &n) == -1 || n <= 0) {
@@ -464,13 +464,11 @@ evtls_read(struct evbuffer *buf, int fd, int howmuch, struct tls *ctx)
 	/* We can append new data at this point */
 	p = buf->buffer + buf->off;
 
-	n = read(fd, p, howmuch);
-	if (n == -1)
-		return (-1);
-	if (n == 0)
-		return (0);
+	n = tls_read(ctx, p, howmuch, &len);
+	if (n < 0)
+		return (n);
 
-	buf->off += n;
+	buf->off += len;
 
 	/* Tell someone about changes in this buffer */
 	if (buf->off != oldoff && buf->cb != NULL)
