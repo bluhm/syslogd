@@ -242,7 +242,7 @@ buffertls_new(int fd, evbuffercb readcb, evbuffercb writecb,
 	struct buffertls *buftls;
 	struct bufferevent *bufev;
 
-	if ((buftls = malloc( sizeof(*buftls))) == NULL)
+	if ((buftls = malloc(sizeof(*buftls))) == NULL)
 		return (NULL);
 
 	bufev = bufferevent_new(fd, readcb, writecb, errorcb, cbarg);
