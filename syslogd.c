@@ -138,7 +138,6 @@ struct filed {
 			struct sockaddr_storage	 f_addr;
 			struct buffertls	 f_buftls;
 			struct bufferevent	*f_bufev;
-			struct buffertls	*f_buftls;
 			struct tls		*f_ctx;
 			int			 f_reconnectwait;
 		} f_forw;		/* forwarding address */
@@ -276,7 +275,6 @@ void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
-void	 tls_errorcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -772,10 +770,16 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	else
 		snprintf(ebuf, sizeof(ebuf),
 		    "syslogd: loghost \"%s\" connection error: %s",
-		    f->f_un.f_forw.f_loghost, strerror(errno));
+		    f->f_un.f_forw.f_loghost, f->f_type == F_FORWTLS ?
+		    tls_error(f->f_un.f_forw.f_ctx) : strerror(errno));
 	dprintf("%s\n", ebuf);
 
 	/* The SIGHUP handler may also close the socket, so invalidate it. */
+	if (f->f_type == F_FORWTLS) {
+		tls_close(f->f_un.f_forw.f_ctx);
+		tls_free(f->f_un.f_forw.f_ctx);
+		f->f_un.f_forw.f_ctx = NULL;
+	}
 	close(f->f_file);
 	f->f_file = -1;
 
@@ -795,6 +799,7 @@ tcp_connectcb(int fd, short event, void *arg)
 {
 	struct filed		*f = arg;
 	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
+	struct tls		*ctx;
 	struct timeval		 to;
 	int			 s;
 
@@ -809,6 +814,16 @@ tcp_connectcb(int fd, short event, void *arg)
 		goto retry;
 
 	dprintf("tcp connect callback: success, event %#x\n", event);
+
+	if (f->f_type == F_FORWTLS) {
+		if ((ctx = tls_socket(f, s, NULL)) == NULL) {
+			close(f->f_file);
+			f->f_file = -1;
+			goto retry;
+		}
+		buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
+		f->f_un.f_forw.f_ctx = ctx;
+	}
 	bufferevent_setfd(bufev, s);
 	bufferevent_setcb(bufev, tcp_readcb, tcp_writecb, tcp_errorcb, f);
 	/*
@@ -833,48 +848,6 @@ tcp_connectcb(int fd, short event, void *arg)
 	/* We can reuse the write event as bufferevent is disabled. */
 	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
 	evtimer_add(&bufev->ev_write, &to);
-}
-
-void
-tls_errorcb(struct bufferevent *bufev, short event, void *arg)
-{
-	struct filed	*f = arg;
-	struct tls	*ctx = f->f_un.f_forw.f_ctx;
-	int		 s;
-	char		 ebuf[100];
-
-	if (event & EVBUFFER_EOF)
-		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: loghost \"%s\" connection close",
-		    f->f_un.f_forw.f_loghost);
-	else
-		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: loghost \"%s\" connection error: %s",
-		    f->f_un.f_forw.f_loghost, tls_error(ctx));
-	dprintf("%s\n", ebuf);
-
-	tls_close(ctx);
-	tls_free(ctx);
-	close(f->f_un.f_forw.f_fd);
-	if ((s = tcp_socket(f)) == -1) {
-		/* XXX reconnect later */
-		bufferevent_free(bufev);
-		f->f_type = F_UNUSED;
-		return;
-	}
-	if ((ctx = tls_socket(f, s, NULL)) == NULL) {
-		close(s);
-		bufferevent_free(bufev);
-		f->f_type = F_UNUSED;
-		return;
-	}
-	f->f_un.f_forw.f_fd = s;
-	f->f_un.f_forw.f_ctx = ctx;
-	/* XXX The messages in the output buffer may be out of sync. */
-	buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
-	bufferevent_enable(bufev, EV_READ);
-
-	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
 
 void
@@ -1866,15 +1839,6 @@ cfline(char *line, char *prog)
 				break;
 			}
 			if (strncmp(proto, "tls", 3) == 0) {
-				if ((ctx = tls_socket(f, s, host)) == NULL) {
-					bufferevent_free(bufev);
-					close(s);
-					break;
-				}
-                                bufferevent_setcb(bufev, tcp_readcb, NULL,
-                                    tls_errorcb, f);
-				buffertls_set(&f->f_un.f_forw.f_buftls,
-				    bufev, ctx, s);
 				f->f_type = F_FORWTLS;
 			} else {
 				f->f_type = F_FORWTCP;
