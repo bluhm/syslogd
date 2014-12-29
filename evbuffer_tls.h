@@ -27,7 +27,9 @@ struct bufferevent_tls {
 	struct tls		*bet_ctx;
 };
 
-struct bufferevent_tls *bufferevent_tls_new(int fd, evbuffercb readcb,
+struct bufferevent_tls	*bufferevent_tls_new(int fd, evbuffercb readcb,
     evbuffercb writecb, everrorcb errorcb, void *cbarg, struct tls *ctx);
+void			 bufferevent_tls_free(struct bufferevent_tls *buftls);
+
 
 #endif /* _EVBUFFER_TLS_H_ */
