@@ -1544,7 +1544,7 @@ cfline(char *line, char *prog)
 {
 	int i, pri;
 	size_t rb_len;
-	char *bp, *p, *q, *proto, *host, *port, *ipproto;;
+	char *bp, *p, *q, *proto, *host, *port, *ipproto;
 	char buf[MAXLINE], ebuf[100];
 	struct filed *xf, *f, *d;
 
