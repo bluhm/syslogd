@@ -140,7 +140,6 @@ buffertls_readcb(int fd, short event, void *arg)
 		what |= EVBUFFER_EOF;
 		break;
 	}
-
 	if (res <= 0)
 		goto error;
 
@@ -186,23 +185,34 @@ buffertls_writecb(int fd, short event, void *arg)
 		goto error;
 	}
 
-	if (EVBUFFER_LENGTH(bufev->output)) {
-	    res = evtls_write(bufev->output, fd, ctx);
-	    if (res == -1) {
-		    if (errno == EAGAIN ||
-			errno == EINTR ||
-			errno == EINPROGRESS)
-			    goto reschedule;
-		    /* error case */
-		    what |= EVBUFFER_ERROR;
-	    } else if (res == 0) {
-		    /* eof case */
-		    what |= EVBUFFER_EOF;
-	    }
-	    if (res <= 0)
-		    goto error;
+	if (EVBUFFER_LENGTH(bufev->output) != 0) {
+		res = evtls_write(bufev->output, fd, ctx);
+		switch (res) {
+		case TLS_READ_AGAIN:
+			event_set(&bufev->ev_write, fd, EV_READ,
+			    buffertls_writecb, buftls);
+			goto reschedule;
+		case TLS_WRITE_AGAIN:
+			event_set(&bufev->ev_write, fd, EV_WRITE,
+			    buffertls_writecb, buftls);
+			goto reschedule;
+		case -1:
+			if (errno == EAGAIN || errno == EINTR ||
+			    errno == EINPROGRESS)
+				goto reschedule;
+			/* error case */
+			what |= EVBUFFER_ERROR;
+			break;
+		case 0:
+			/* eof case */
+			what |= EVBUFFER_EOF;
+			break;
+		}
+		if (res <= 0)
+			goto error;
 	}
 
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	if (EVBUFFER_LENGTH(bufev->output) != 0)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 
