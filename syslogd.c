@@ -273,11 +273,11 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 int	 tcp_socket(struct filed *);
+struct tls *tls_socket(struct filed *, int, const char *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
-struct tls	*tls_socket(struct filed *, int, const char *);
 void	 tls_errorcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
@@ -714,6 +714,28 @@ tcp_socket(struct filed *f)
 	return (s);
 }
 
+struct tls *
+tls_socket(struct filed *f, int s, const char *host)
+{
+	struct tls	*ctx;
+	char		 ebuf[100];
+
+	if ((ctx = tls_client()) == NULL) {
+		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		logerror(ebuf);
+		return (NULL);
+	}
+	if (tls_connect_socket(ctx, s, host) < 0) {
+		snprintf(ebuf, sizeof(ebuf), "tls_connect_socket \"%s\": %s",
+		    f->f_un.f_forw.f_loghost, tls_error(ctx));
+		logerror(ebuf);
+		tls_free(ctx);
+		return (NULL);
+	}
+	return (ctx);
+}
+
 void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
@@ -813,28 +835,6 @@ tcp_connectcb(int fd, short event, void *arg)
 	/* We can reuse the write event as bufferevent is disabled. */
 	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
 	evtimer_add(&bufev->ev_write, &to);
-}
-
-struct tls *
-tls_socket(struct filed *f, int s, const char *host)
-{
-	struct tls	*ctx;
-	char		 ebuf[100];
-
-	if ((ctx = tls_client()) == NULL) {
-		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
-		    f->f_un.f_forw.f_loghost);
-		logerror(ebuf);
-		return (NULL);
-	}
-	if (tls_connect_socket(ctx, s, host) < 0) {
-		snprintf(ebuf, sizeof(ebuf), "tls_connect_socket \"%s\": %s",
-		    f->f_un.f_forw.f_loghost, tls_error(ctx));
-		logerror(ebuf);
-		tls_free(ctx);
-		return (NULL);
-	}
-	return (ctx);
 }
 
 void
