@@ -711,23 +711,38 @@ tcp_socket(struct filed *f)
 struct tls *
 tls_socket(struct filed *f, int s, const char *host)
 {
-	static int	 initialized;
+	static struct tls_config *config;
 	struct tls	*ctx;
 	char		 ebuf[100];
 
-	if (!initialized) {
+	if (config == NULL) {
 		if (tls_init() < 0) {
 			snprintf(ebuf, sizeof(ebuf), "tls_init \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
 			return (NULL);
 		}
-		initialized = 1;
+		if ((config = tls_config_new()) == NULL) {
+			snprintf(ebuf, sizeof(ebuf), "tls_config_new \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			logerror(ebuf);
+			return (NULL);
+		}
+		/* XXX no verify for now, ca certs are outside of privsep */
+		tls_config_insecure_noverifyhost(config);
+		tls_config_insecure_noverifycert(config);
 	}
 	if ((ctx = tls_client()) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
 		    f->f_un.f_forw.f_loghost);
 		logerror(ebuf);
+		return (NULL);
+	}
+	if (tls_configure(ctx, config) < 0) {
+		snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\": %s",
+		    f->f_un.f_forw.f_loghost, tls_error(ctx));
+		logerror(ebuf);
+		tls_free(ctx);
 		return (NULL);
 	}
 	if (tls_connect_socket(ctx, s, host) < 0) {
