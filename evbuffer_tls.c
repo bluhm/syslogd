@@ -508,5 +508,5 @@ evtls_write(struct evbuffer *buffer, int fd, struct tls *ctx)
 
 	evbuffer_drain(buffer, len);
 
-	return (n);
+	return (len);
 }
