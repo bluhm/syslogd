@@ -1418,8 +1418,11 @@ init(void)
 			break;
 		case F_FORWUDP:
 			break;
-		case F_FORWTCP:
 		case F_FORWTLS:
+			tls_close(f->f_un.f_forw.f_ctx);
+			tls_free(f->f_un.f_forw.f_ctx);
+			/* FALLTHROUGH */
+		case F_FORWTCP:
 			/* XXX save messages in output buffer for reconnect */
 			bufferevent_free(f->f_un.f_forw.f_bufev);
 			close(f->f_un.f_forw.f_fd);
