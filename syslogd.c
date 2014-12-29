@@ -275,7 +275,6 @@ void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
-void	 tls_readcb(struct bufferevent *, void *);
 void	 tls_errorcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
@@ -811,19 +810,6 @@ tcp_connectcb(int fd, short event, void *arg)
 	/* We can reuse the write event as bufferevent is disabled. */
 	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
 	evtimer_add(&bufev->ev_write, &to);
-}
-
-void
-tls_readcb(struct bufferevent *bufev, void *arg)
-{
-	struct filed	*f = arg;
-
-	/*
-	 * Drop data received from the forward log server.
-	 */
-	dprintf("loghost \"%s\" did send %zu bytes back\n",
-	    f->f_un.f_forw.f_loghost, EVBUFFER_LENGTH(bufev->input));
-	evbuffer_drain(bufev->input, -1);
 }
 
 void
@@ -1872,7 +1858,7 @@ cfline(char *line, char *prog)
 				break;
 			}
 			if ((f->f_un.f_forw.f_buftls = buffertls_new(s,
-			    tls_readcb, NULL, tls_errorcb, f, ctx)) == NULL) {
+			    tcp_readcb, NULL, tls_errorcb, f, ctx)) == NULL) {
 				snprintf(ebuf, sizeof(ebuf),
 				    "buffertls \"%s\"",
 				    f->f_un.f_forw.f_loghost);
