@@ -27,9 +27,9 @@ struct buffertls {
 	struct tls		*bt_ctx;
 };
 
-struct buffertls	*buffertls_new(int fd, evbuffercb readcb,
-    evbuffercb writecb, everrorcb errorcb, void *cbarg, struct tls *ctx);
-void			 buffertls_free(struct buffertls *buftls);
+struct buffertls	*buffertls_new(int, evbuffercb, evbuffercb, everrorcb,
+    void *, struct tls *);
+void			 buffertls_free(struct buffertls *);
 
 
 #endif /* _EVBUFFER_TLS_H_ */
