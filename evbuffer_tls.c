@@ -271,15 +271,10 @@ bufferevent_priority_set(struct bufferevent *bufev, int priority)
 #endif
 
 void
-bufferevent_tls_free(struct bufferevent *bufev)
+bufferevent_tls_free(struct bufferevent_tls *buftls)
 {
-	event_del(&bufev->ev_read);
-	event_del(&bufev->ev_write);
-
-	evbuffer_free(bufev->input);
-	evbuffer_free(bufev->output);
-
-	free(bufev);
+	bufferevent_free(buftls->bet_bufev);
+	free(buftls);
 }
 
 #if 0
