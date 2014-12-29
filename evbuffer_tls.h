@@ -30,6 +30,6 @@ struct buffertls {
 struct buffertls	*buffertls_new(int, evbuffercb, evbuffercb, everrorcb,
     void *, struct tls *);
 void			 buffertls_free(struct buffertls *);
-
+void			 buffertls_setfd(struct buffertls *, int);
 
 #endif /* _EVBUFFER_TLS_H_ */
