@@ -1606,7 +1606,7 @@ cfline(char *line, char *prog)
 {
 	int i, pri;
 	size_t rb_len;
-	char *bp, *p, *q, *proto, *host, *port;
+	char *bp, *p, *q, *proto, *host, *port, *ipproto;;
 	char buf[MAXLINE], ebuf[100];
 	struct filed *xf, *f, *d;
 
@@ -1716,11 +1716,13 @@ cfline(char *line, char *prog)
 		}
 		if (proto == NULL)
 			proto = "udp";
+		ipproto = proto;
 		if (strcmp(proto, "udp") == 0) {
 			if (fd_udp == -1)
 				proto = "udp6";
 			if (fd_udp6 == -1)
 				proto = "udp4";
+			ipproto = proto;
 		} else if (strcmp(proto, "udp4") == 0) {
 			if (fd_udp == -1) {
 				snprintf(ebuf, sizeof(ebuf), "no udp4 \"%s\"",
@@ -1736,10 +1738,14 @@ cfline(char *line, char *prog)
 				break;
 			}
 		} else if (strcmp(proto, "tcp") == 0 ||
-		    strcmp(proto, "tcp4") == 0 || strcmp(proto, "tcp6") == 0 ||
-		    strcmp(proto, "tls") == 0 ||
-		    strcmp(proto, "tls4") == 0 || strcmp(proto, "tls6") == 0) {
+		    strcmp(proto, "tcp4") == 0 || strcmp(proto, "tcp6") == 0) {
 			;
+		} else if (strcmp(proto, "tls") == 0) {
+			ipproto = "tcp";
+		} else if (strcmp(proto, "tls4") == 0) {
+			ipproto = "tcp4";
+		} else if (strcmp(proto, "tls6") == 0) {
+			ipproto = "tcp6";
 		} else {
 			snprintf(ebuf, sizeof(ebuf), "bad protocol \"%s\"",
 			    f->f_un.f_forw.f_loghost);
@@ -1760,8 +1766,8 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (priv_getaddrinfo(strncmp(proto, "tls", 3) ? proto : "tcp",
-		    host, port, (struct sockaddr*)&f->f_un.f_forw.f_addr,
+		if (priv_getaddrinfo(ipproto, host, port,
+		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
