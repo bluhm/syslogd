@@ -465,7 +465,7 @@ evtls_read(struct evbuffer *buf, int fd, int howmuch, struct tls *ctx)
 	p = buf->buffer + buf->off;
 
 	n = tls_read(ctx, p, howmuch, &len);
-	if (n < 0)
+	if (n < 0 || len == 0)
 		return (n);
 
 	buf->off += len;
@@ -482,13 +482,11 @@ evtls_write(struct evbuffer *buffer, int fd, struct tls *ctx)
 {
 	int n;
 
-	n = write(fd, buffer->buffer, buffer->off);
-	if (n == -1)
-		return (-1);
-	if (n == 0)
-		return (0);
-	evbuffer_drain(buffer, n);
+	n = tls_write(ctx, buffer->buffer, buffer->off);
+	if (n < 0 || len == 0)
+		return (n);
+
+	evbuffer_drain(buffer, len);
 
 	return (n);
 }
-
