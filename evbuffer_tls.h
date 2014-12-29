@@ -27,10 +27,7 @@ struct buffertls {
 	struct tls		*bt_ctx;
 };
 
-struct buffertls	*buffertls_new(int, evbuffercb, evbuffercb, everrorcb,
-    void *, struct tls *);
-void			 buffertls_free(struct buffertls *);
-void			 buffertls_setfd(struct buffertls *, int,
-    struct tls *ctx);
+void	buffertls_set(struct buffertls *, struct bufferevent *, struct tls *,
+    int);
 
 #endif /* _EVBUFFER_TLS_H_ */
