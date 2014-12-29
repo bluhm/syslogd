@@ -1761,7 +1761,8 @@ cfline(char *line, char *prog)
 			break;
 		}
 		if (port == NULL)
-			port = strcmp(proto, "tls", 3) ? "syslog", "syslog-tls";
+			port = strncmp(proto, "tls", 3) == 0 ?
+			    "syslog-tls" : "syslog";
 		if (strlen(port) >= NI_MAXSERV) {
 			snprintf(ebuf, sizeof(ebuf), "port too long \"%s\"",
 			    f->f_un.f_forw.f_loghost);
