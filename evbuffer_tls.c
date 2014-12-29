@@ -252,14 +252,14 @@ bufferevent_setcb(struct bufferevent *bufev,
 #endif
 
 void
-buffertls_setfd(struct buffertls *buftls, int fd)
+buffertls_setfd(struct buffertls *buftls, int fd, struct tls *ctx)
 {
 	bufferevent_setfd(buftls->bt_bufev, fd);
-
 	event_set(&buftls->bt_bufev->ev_read, fd, EV_READ, buffertls_readcb,
 	    buftls);
 	event_set(&buftls->bt_bufev->ev_write, fd, EV_WRITE, buffertls_writecb,
 	    buftls);
+	buftls->bt_ctx = ctx;
 }
 
 #if 0
