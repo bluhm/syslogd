@@ -1,7 +1,8 @@
-/*	$OpenBSD: evbuffer.c,v 1.17 2014/10/30 16:45:37 bluhm Exp $	*/
+/*	$OpenBSD$ */
 
 /*
  * Copyright (c) 2002-2004 Niels Provos <provos@citi.umich.edu>
+ * Copyright (c) 2014 Alexander Bluhm <bluhm@openbsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,11 +37,13 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "event.h"
+#include "evbuffer_tls.h"
 
 /* prototypes */
 
 void bufferevent_read_pressure_cb(struct evbuffer *, size_t, size_t, void *);
+
+#if 0
 
 static int
 bufferevent_add(struct event *ev, int timeout)
@@ -77,8 +80,10 @@ bufferevent_read_pressure_cb(struct evbuffer *buf, size_t old, size_t now,
 	}
 }
 
+#endif
+
 static void
-bufferevent_readcb(int fd, short event, void *arg)
+bufferevent_tls_readcb(int fd, short event, void *arg)
 {
 	struct bufferevent *bufev = arg;
 	int res = 0;
@@ -149,7 +154,7 @@ bufferevent_readcb(int fd, short event, void *arg)
 }
 
 static void
-bufferevent_writecb(int fd, short event, void *arg)
+bufferevent_tls_writecb(int fd, short event, void *arg)
 {
 	struct bufferevent *bufev = arg;
 	int res = 0;
@@ -210,8 +215,8 @@ bufferevent_writecb(int fd, short event, void *arg)
  * allowed to be NULL and have to be provided always.
  */
 
-struct bufferevent *
-bufferevent_new(int fd, evbuffercb readcb, evbuffercb writecb,
+struct bufferevent_tls *
+bufferevent_tls_new(int fd, evbuffercb readcb, evbuffercb writecb,
     everrorcb errorcb, void *cbarg)
 {
 	struct bufferevent *bufev;
@@ -244,6 +249,8 @@ bufferevent_new(int fd, evbuffercb readcb, evbuffercb writecb,
 
 	return (bufev);
 }
+
+#if 0
 
 void
 bufferevent_setcb(struct bufferevent *bufev,
@@ -285,8 +292,10 @@ bufferevent_priority_set(struct bufferevent *bufev, int priority)
 
 /* Closing the file descriptor is the responsibility of the caller */
 
+#endif
+
 void
-bufferevent_free(struct bufferevent *bufev)
+bufferevent_tls_free(struct bufferevent *bufev)
 {
 	event_del(&bufev->ev_read);
 	event_del(&bufev->ev_write);
@@ -296,6 +305,8 @@ bufferevent_free(struct bufferevent *bufev)
 
 	free(bufev);
 }
+
+#if 0
 
 /*
  * Returns 0 on success;
@@ -433,3 +444,5 @@ bufferevent_base_set(struct event_base *base, struct bufferevent *bufev)
 	res = event_base_set(base, &bufev->ev_write);
 	return (res);
 }
+
+#endif
