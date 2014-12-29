@@ -713,9 +713,19 @@ tcp_socket(struct filed *f)
 struct tls *
 tls_socket(struct filed *f, int s, const char *host)
 {
+	static int	 initialized;
 	struct tls	*ctx;
 	char		 ebuf[100];
 
+	if (!initialized) {
+		if (tls_init() < 0) {
+			snprintf(ebuf, sizeof(ebuf), "tls_init \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			logerror(ebuf);
+			return (NULL);
+		}
+		initialized = 1;
+	}
 	if ((ctx = tls_client()) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
 		    f->f_un.f_forw.f_loghost);
