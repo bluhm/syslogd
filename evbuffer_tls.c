@@ -497,7 +497,7 @@ evtls_read(struct evbuffer *buf, int fd, int howmuch, struct tls *ctx)
 	if (buf->off != oldoff && buf->cb != NULL)
 		(*buf->cb)(buf, oldoff, buf->off, buf->cbarg);
 
-	return (n);
+	return (len);
 }
 
 int
