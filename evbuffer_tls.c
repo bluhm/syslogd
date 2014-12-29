@@ -89,6 +89,7 @@ buffertls_readcb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
 	struct bufferevent *bufev = buftls->bt_bufev;
+	struct tls *ctx = buftls->bt_ctx;
 	int res = 0;
 	short what = EVBUFFER_READ;
 	size_t len;
@@ -115,7 +116,7 @@ buffertls_readcb(int fd, short event, void *arg)
 		}
 	}
 
-	res = evbuffer_read(bufev->input, fd, howmuch);
+	res = evtls_read(bufev->input, fd, howmuch);
 	if (res == -1) {
 		if (errno == EAGAIN || errno == EINTR)
 			goto reschedule;
@@ -161,6 +162,7 @@ buffertls_writecb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
 	struct bufferevent *bufev = buftls->bt_bufev;
+	struct tls *ctx = buftls->bt_ctx;
 	int res = 0;
 	short what = EVBUFFER_WRITE;
 
@@ -421,3 +423,72 @@ bufferevent_base_set(struct event_base *base, struct bufferevent *bufev)
 }
 
 #endif
+
+/*
+ * Reads data from a file descriptor into a buffer.
+ */
+
+#define EVBUFFER_MAX_READ	4096
+
+int
+evbuffer_read(struct evbuffer *buf, int fd, int howmuch)
+{
+	u_char *p;
+	size_t oldoff = buf->off;
+	int n = EVBUFFER_MAX_READ;
+
+	if (ioctl(fd, FIONREAD, &n) == -1 || n <= 0) {
+		n = EVBUFFER_MAX_READ;
+	} else if (n > EVBUFFER_MAX_READ && n > howmuch) {
+		/*
+		 * It's possible that a lot of data is available for
+		 * reading.  We do not want to exhaust resources
+		 * before the reader has a chance to do something
+		 * about it.  If the reader does not tell us how much
+		 * data we should read, we artifically limit it.
+		 */
+		if ((size_t)n > buf->totallen << 2)
+			n = buf->totallen << 2;
+		if (n < EVBUFFER_MAX_READ)
+			n = EVBUFFER_MAX_READ;
+	}
+	if (howmuch < 0 || howmuch > n)
+		howmuch = n;
+
+	/* If we don't have FIONREAD, we might waste some space here */
+	if (evbuffer_expand(buf, howmuch) == -1)
+		return (-1);
+
+	/* We can append new data at this point */
+	p = buf->buffer + buf->off;
+
+	n = read(fd, p, howmuch);
+	if (n == -1)
+		return (-1);
+	if (n == 0)
+		return (0);
+
+	buf->off += n;
+
+	/* Tell someone about changes in this buffer */
+	if (buf->off != oldoff && buf->cb != NULL)
+		(*buf->cb)(buf, oldoff, buf->off, buf->cbarg);
+
+	return (n);
+}
+
+int
+evbuffer_write(struct evbuffer *buffer, int fd)
+{
+	int n;
+
+	n = write(fd, buffer->buffer, buffer->off);
+	if (n == -1)
+		return (-1);
+	if (n == 0)
+		return (0);
+	evbuffer_drain(buffer, n);
+
+	return (n);
+}
+
