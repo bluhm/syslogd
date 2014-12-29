@@ -50,7 +50,7 @@
  * extensive changes by Ralph Campbell
  * more extensive changes by Eric Allman (again)
  * memory buffer logging by Damien Miller
- * IPv6, libevent, sending via TCP by Alexander Bluhm
+ * IPv6, libevent, sending via TCP and TLS by Alexander Bluhm
  */
 
 #define	MAXLINE		1024		/* maximum line length */
@@ -180,11 +180,12 @@ int	repeatinterval[] = { 30, 120, 600 };	/* # of secs before flush */
 #define F_MEMBUF	7		/* memory buffer */
 #define F_PIPE		8		/* pipe to external program */
 #define F_FORWTCP	9		/* remote machine via TCP */
+#define F_FORWTLS	10		/* remote machine via TLS */
 
 char	*TypeNames[] = {
 	"UNUSED",	"FILE",		"TTY",		"CONSOLE",
 	"FORWUDP",	"USERS",	"WALL",		"MEMBUF",
-	"PIPE",		"FORWTCP",
+	"PIPE",		"FORWTCP",	"FORWTLS",
 };
 
 SIMPLEQ_HEAD(filed_list, filed) Files;
@@ -1051,6 +1052,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		break;
 
 	case F_FORWTCP:
+	case F_FORWTLS:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
 		if (EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) >=
 		    MAX_TCPBUF)
@@ -1348,6 +1350,7 @@ init(void)
 		case F_FORWUDP:
 			break;
 		case F_FORWTCP:
+		case F_FORWTLS:
 			/* XXX save messages in output buffer for reconnect */
 			bufferevent_free(f->f_un.f_forw.f_bufev);
 			close(f->f_un.f_forw.f_fd);
@@ -1482,6 +1485,7 @@ init(void)
 
 			case F_FORWUDP:
 			case F_FORWTCP:
+			case F_FORWTLS:
 				printf("%s", f->f_un.f_forw.f_loghost);
 				break;
 
