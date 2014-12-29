@@ -30,6 +30,7 @@
 
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
 
 #include <errno.h>
 #include <stdio.h>
@@ -174,7 +175,7 @@ buffertls_writecb(int fd, short event, void *arg)
 	}
 
 	if (EVBUFFER_LENGTH(bufev->output)) {
-	    res = evbuffer_write(bufev->output, fd);
+	    res = evtls_write(bufev->output, fd, ctx);
 	    if (res == -1) {
 		    if (errno == EAGAIN ||
 			errno == EINTR ||
@@ -480,9 +481,10 @@ evtls_read(struct evbuffer *buf, int fd, int howmuch, struct tls *ctx)
 int
 evtls_write(struct evbuffer *buffer, int fd, struct tls *ctx)
 {
+	size_t len;
 	int n;
 
-	n = tls_write(ctx, buffer->buffer, buffer->off);
+	n = tls_write(ctx, buffer->buffer, buffer->off, &len);
 	if (n < 0 || len == 0)
 		return (n);
 
