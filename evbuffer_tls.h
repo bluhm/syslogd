@@ -19,8 +19,8 @@
 #ifndef _EVBUFFER_TLS_H_
 #define _EVBUFFER_TLS_H_
 
-#include <event.h>
-#include <tls.h>
+struct bufferevent;
+struct tls;
 
 struct buffertls {
 	struct bufferevent	*bt_bufev;
