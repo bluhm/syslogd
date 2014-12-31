@@ -1133,7 +1133,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 			if (strcmp(prog, f->f_program) != 0)
 				continue;
 		if (f->f_hostname)
-			if (strcmp(from,f->f_hostname) != 0)
+			if (strcmp(from, f->f_hostname) != 0)
 				continue;
 
 		if (f->f_type == F_CONSOLE && (flags & IGN_CONS))
