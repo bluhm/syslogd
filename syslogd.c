@@ -135,7 +135,7 @@ struct filed {
 	time_t	f_time;			/* time this was last written */
 	u_char	f_pmask[LOG_NFACILITIES+1];	/* priority mask */
 	char	*f_program;		/* program this applies to */
-	char	*f_host;		/* host this applies to */
+	char	*f_hostname;		/* host this applies to */
 	union {
 		char	f_uname[MAXUNAMES][UT_NAMESIZE+1];
 		struct {
@@ -1132,8 +1132,8 @@ logmsg(int pri, char *msg, char *from, int flags)
 		if (f->f_program)
 			if (strcmp(prog, f->f_program) != 0)
 				continue;
-		if (f->f_host)
-			if (strcmp(from,f->f_host) != 0)
+		if (f->f_hostname)
+			if (strcmp(from,f->f_hostname) != 0)
 				continue;
 
 		if (f->f_type == F_CONSOLE && (flags & IGN_CONS))
@@ -1599,7 +1599,7 @@ die(int signo)
 void
 init(void)
 {
-	char prog[NAME_MAX+1], host[NAME_MAX+1], *cline, *p;
+	char prog[NAME_MAX+1], hostname[NAME_MAX+1], *cline, *p;
 	struct filed_list mb;
 	struct filed *f, *m;
 	FILE *cf;
@@ -1648,8 +1648,8 @@ init(void)
 		}
 		if (f->f_program)
 			free(f->f_program);
-		if (f->f_host)
-			free(f->f_host);
+		if (f->f_hostname)
+			free(f->f_hostname);
 
 		if (f->f_type == F_MEMBUF) {
 			f->f_program = NULL;
@@ -1677,7 +1677,7 @@ init(void)
 	cline = NULL;
 	s = 0;
 	strlcpy(prog, "*", sizeof(prog));
-	strlcpy(host, "*", sizeof(host));
+	strlcpy(hostname, "*", sizeof(hostname));
 	while (getline(&cline, &s, cf) != -1) {
 		/*
 		 * check for end-of-section, comments, strip off trailing
@@ -1712,16 +1712,16 @@ init(void)
 				p++;
 			if (!*p || (*p == '*' && (!p[1] ||
 			    isspace((unsigned char)p[1])))) {
-				strlcpy(host, "*", sizeof(host));
+				strlcpy(hostname, "*", sizeof(hostname));
 				continue;
 			}
 			for (i = 0; i < NAME_MAX; i++) {
 				if (!isalnum((unsigned char)p[i]) &&
 				    p[i] != '-' && p[i] != '!')
 					break;
-				host[i] = p[i];
+				hostname[i] = p[i];
 			}
-			host[i] = 0;
+			hostname[i] = 0;
 			continue;
 		}
 
@@ -1732,7 +1732,7 @@ init(void)
 				break;
 			}
 		*p = '\0';
-		f = cfline(cline, prog, host);
+		f = cfline(cline, prog, hostname);
 		if (f != NULL)
 			SIMPLEQ_INSERT_TAIL(&Files, f, f_next);
 	}
@@ -1847,14 +1847,14 @@ find_dup(struct filed *f)
 		case F_PIPE:
 			if (strcmp(list->f_un.f_fname, f->f_un.f_fname) == 0 &&
 			    (progmatches(list->f_program, f->f_program) ||
-			     progmatches(list->f_host, f->f_host)))
+			     progmatches(list->f_hostname, f->f_hostname)))
 				return (list);
 			break;
 		case F_MEMBUF:
 			if (strcmp(list->f_un.f_mb.f_mname,
 			    f->f_un.f_mb.f_mname) == 0 &&
 			    (progmatches(list->f_program, f->f_program) ||
-			     progmatches(list->f_host, f->f_host)))
+			     progmatches(list->f_hostname, f->f_hostname)))
 				return (list);
 			break;
 		}
@@ -1866,7 +1866,7 @@ find_dup(struct filed *f)
  * Crack a configuration file line
  */
 struct filed *
-cfline(char *line, char *prog, char *host)
+cfline(char *line, char *prog, char *hostname)
 {
 	int i, pri;
 	size_t rb_len;
@@ -1875,7 +1875,7 @@ cfline(char *line, char *prog, char *host)
 	struct filed *xf, *f, *d;
 	struct timeval to;
 
-	dprintf("cfline(\"%s\", f, \"%s\",\"%s\")\n", line, prog, host);
+	dprintf("cfline(\"%s\", f, \"%s\",\"%s\")\n", line, prog, hostname);
 
 	errno = 0;	/* keep strerror() stuff out of logerror messages */
 
@@ -1887,7 +1887,7 @@ cfline(char *line, char *prog, char *host)
 		f->f_pmask[i] = INTERNAL_NOPRI;
 
 	/* save program name if any */
-	if (*prog == '!' || *host == '!') {
+	if (*prog == '!' || *hostname == '!') {
 		f->f_quick = 1;
 		prog++;
 	} else
@@ -1896,10 +1896,10 @@ cfline(char *line, char *prog, char *host)
 		prog = NULL;
 	else
 		f->f_program = strdup(prog);
-	if (!strcmp(host, "*"))
-		host = NULL;
+	if (!strcmp(hostname, "*"))
+		hostname = NULL;
 	else
-		f->f_host = strdup(host);
+		f->f_hostname = strdup(hostname);
 
 	/* scan through the list of selectors */
 	for (p = line; *p && *p != '\t';) {
