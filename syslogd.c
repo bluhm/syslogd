@@ -276,7 +276,7 @@ void	 ctlconn_writecb(int, short, void *);
 void	 ctlconn_logto(char *);
 void	 ctlconn_cleanup(void);
 
-struct filed *cfline(char *, char *);
+struct filed *cfline(char *, char *, char *);
 void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
 void	die(int);
@@ -1594,6 +1594,10 @@ cfline(char *line, char *prog, char *host)
 		prog = NULL;
 	else
 		f->f_program = strdup(prog);
+	if (!strcmp(host, "*"))
+		host = NULL;
+	else
+		f->f_host = strdup(host);
 
 	/* scan through the list of selectors */
 	for (p = line; *p && *p != '\t';) {
