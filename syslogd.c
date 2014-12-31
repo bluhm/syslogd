@@ -135,6 +135,7 @@ struct filed {
 	time_t	f_time;			/* time this was last written */
 	u_char	f_pmask[LOG_NFACILITIES+1];	/* priority mask */
 	char	*f_program;		/* program this applies to */
+	char	*f_host;		/* host this applies to */
 	union {
 		char	f_uname[MAXUNAMES][UT_NAMESIZE+1];
 		struct {
@@ -1131,6 +1132,9 @@ logmsg(int pri, char *msg, char *from, int flags)
 		if (f->f_program)
 			if (strcmp(prog, f->f_program) != 0)
 				continue;
+		if (f->f_host)
+			if (strcmp(from,f->f_host) != 0)
+				continue;
 
 		if (f->f_type == F_CONSOLE && (flags & IGN_CONS))
 			continue;
@@ -1595,7 +1599,7 @@ die(int signo)
 void
 init(void)
 {
-	char prog[NAME_MAX+1], *cline, *p;
+	char prog[NAME_MAX+1], host[NAME_MAX+1], *cline, *p;
 	struct filed_list mb;
 	struct filed *f, *m;
 	FILE *cf;
@@ -1644,6 +1648,10 @@ init(void)
 		}
 		if (f->f_program)
 			free(f->f_program);
+
+		if (f->f_host)
+			free(f->f_host);
+ 
 		if (f->f_type == F_MEMBUF) {
 			f->f_program = NULL;
 			dprintf("add %p to mb\n", f);
@@ -1656,9 +1664,10 @@ init(void)
 	/* open the configuration file */
 	if ((cf = priv_open_config()) == NULL) {
 		dprintf("cannot open %s\n", ConfFile);
-		SIMPLEQ_INSERT_TAIL(&Files, cfline("*.ERR\t/dev/console", "*"),
-		    f_next);
-		SIMPLEQ_INSERT_TAIL(&Files, cfline("*.PANIC\t*", "*"), f_next);
+		SIMPLEQ_INSERT_TAIL(&Files,
+		    cfline("*.ERR\t/dev/console", "*", "*"), f_next);
+		SIMPLEQ_INSERT_TAIL(&Files,
+		    cfline("*.PANIC\t*", "*", "*"), f_next);
 		Initialized = 1;
 		return;
 	}
@@ -1669,6 +1678,7 @@ init(void)
 	cline = NULL;
 	s = 0;
 	strlcpy(prog, "*", sizeof(prog));
+	strlcpy(host, "*", sizeof(host));
 	while (getline(&cline, &s, cf) != -1) {
 		/*
 		 * check for end-of-section, comments, strip off trailing
@@ -1697,6 +1707,24 @@ init(void)
 			prog[i] = 0;
 			continue;
 		}
+		if (*p == '+') {
+			p++;
+			while (isspace(*p))
+				p++;
+			if (!*p || (*p == '*' && (!p[1] || isspace(p[1])))) {
+				strlcpy(host, "*", sizeof(host));
+				continue;
+			}
+			for (i = 0; i < NAME_MAX; i++) {
+				if (!isalnum(p[i]) && p[i] != '-' && p[i] != '!')
+					break;
+				host[i] = p[i];
+			}
+                        host[i] = 0;
+                        continue;
+                }
+		
+  
 		p = cline + strlen(cline);
 		while (p > cline)
 			if (!isspace((unsigned char)*--p)) {
@@ -1704,7 +1732,7 @@ init(void)
 				break;
 			}
 		*p = '\0';
-		f = cfline(cline, prog);
+		f = cfline(cline, prog, host);
 		if (f != NULL)
 			SIMPLEQ_INSERT_TAIL(&Files, f, f_next);
 	}
@@ -1818,13 +1846,15 @@ find_dup(struct filed *f)
 		case F_CONSOLE:
 		case F_PIPE:
 			if (strcmp(list->f_un.f_fname, f->f_un.f_fname) == 0 &&
-			    progmatches(list->f_program, f->f_program))
+			    (progmatches(list->f_program, f->f_program) ||
+			     progmatches(list->f_host, f->f_host)))
 				return (list);
 			break;
 		case F_MEMBUF:
 			if (strcmp(list->f_un.f_mb.f_mname,
 			    f->f_un.f_mb.f_mname) == 0 &&
-			    progmatches(list->f_program, f->f_program))
+			    (progmatches(list->f_program, f->f_program) ||
+			     progmatches(list->f_host, f->f_host)))
 				return (list);
 			break;
 		}
@@ -1836,7 +1866,7 @@ find_dup(struct filed *f)
  * Crack a configuration file line
  */
 struct filed *
-cfline(char *line, char *prog)
+cfline(char *line, char *prog, char *host)
 {
 	int i, pri;
 	size_t rb_len;
@@ -1845,7 +1875,7 @@ cfline(char *line, char *prog)
 	struct filed *xf, *f, *d;
 	struct timeval to;
 
-	dprintf("cfline(\"%s\", f, \"%s\")\n", line, prog);
+	dprintf("cfline(\"%s\", f, \"%s\",\"%s\")\n", line, prog, host);
 
 	errno = 0;	/* keep strerror() stuff out of logerror messages */
 
@@ -1857,7 +1887,7 @@ cfline(char *line, char *prog)
 		f->f_pmask[i] = INTERNAL_NOPRI;
 
 	/* save program name if any */
-	if (*prog == '!') {
+	if (*prog == '!' || *host == '!') {
 		f->f_quick = 1;
 		prog++;
 	} else
