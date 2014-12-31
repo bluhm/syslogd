@@ -1355,7 +1355,6 @@ init(void)
 		}
 		if (f->f_program)
 			free(f->f_program);
-
 		if (f->f_host)
 			free(f->f_host);
  
@@ -1429,8 +1428,7 @@ init(void)
                         host[i] = 0;
                         continue;
                 }
-		
-  
+
 		p = cline + strlen(cline);
 		while (p > cline)
 			if (!isspace((unsigned char)*--p)) {
