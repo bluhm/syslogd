@@ -1414,14 +1414,16 @@ init(void)
 		}
 		if (*p == '+') {
 			p++;
-			while (isspace(*p))
+			while (isspace((unsigned char)*p))
 				p++;
-			if (!*p || (*p == '*' && (!p[1] || isspace(p[1])))) {
+			if (!*p || (*p == '*' && (!p[1] ||
+			    isspace((unsigned char)p[1])))) {
 				strlcpy(host, "*", sizeof(host));
 				continue;
 			}
 			for (i = 0; i < NAME_MAX; i++) {
-				if (!isalnum(p[i]) && p[i] != '-' && p[i] != '!')
+				if (!isalnum((unsigned char)p[i]) &&
+				    p[i] != '-' && p[i] != '!')
 					break;
 				host[i] = p[i];
 			}
