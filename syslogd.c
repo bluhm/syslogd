@@ -1354,7 +1354,7 @@ init(void)
 			free(f->f_program);
 		if (f->f_host)
 			free(f->f_host);
- 
+
 		if (f->f_type == F_MEMBUF) {
 			f->f_next = mb;
 			f->f_program = NULL;
@@ -1422,9 +1422,9 @@ init(void)
 					break;
 				host[i] = p[i];
 			}
-                        host[i] = 0;
-                        continue;
-                }
+			host[i] = 0;
+			continue;
+		}
 
 		p = cline + strlen(cline);
 		while (p > cline)
