@@ -1330,8 +1330,7 @@ init(void)
 	 */
 	Initialized = 0;
 	SIMPLEQ_INIT(&mb);
-	while (!SIMPLEQ_EMPTY(&Files)) {
-		f = SIMPLEQ_FIRST(&Files);
+	while (f = SIMPLEQ_FIRST(&Files)) {
 		SIMPLEQ_REMOVE_HEAD(&Files, f_next);
 		/* flush any pending output */
 		if (f->f_prevcount)
