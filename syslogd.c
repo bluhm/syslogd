@@ -1422,7 +1422,7 @@ init(void)
 			continue;
 		dprintf("Initialize membuf %s at %p\n", f->f_un.f_mb.f_mname, f);
 
-		for (m = mb; m != NULL; m = m->f_next) {
+		SIMPLEQ_FOREACH(m, &mp, f_next) {
 			if (m->f_un.f_mb.f_rb == NULL)
 				continue;
 			if (strcmp(m->f_un.f_mb.f_mname,
