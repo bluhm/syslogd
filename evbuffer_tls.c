@@ -2,7 +2,7 @@
 
 /*
  * Copyright (c) 2002-2004 Niels Provos <provos@citi.umich.edu>
- * Copyright (c) 2014 Alexander Bluhm <bluhm@openbsd.org>
+ * Copyright (c) 2014-2015 Alexander Bluhm <bluhm@openbsd.org>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
