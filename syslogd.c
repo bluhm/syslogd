@@ -186,7 +186,7 @@ char	*TypeNames[] = {
 	"PIPE",		"FORWTCP",
 };
 
-SLIST_HEAD(, filed) Files;
+SLIST_HEAD(filed_list, filed) Files;
 struct	filed consfile;
 
 int	nunix = 1;		/* Number of Unix domain sockets requested */
@@ -1312,7 +1312,8 @@ void
 init(void)
 {
 	char cline[LINE_MAX], prog[NAME_MAX+1], *p;
-	struct filed *f, *next, **nextp, *mb, *m;
+	struct filed_list mb;
+	struct filed *f, *next, **nextp, *m;
 	FILE *cf;
 	int i;
 
@@ -1328,8 +1329,10 @@ init(void)
 	 *  Close all open log files.
 	 */
 	Initialized = 0;
-	mb = NULL;
-	for (f = Files; f != NULL; f = next) {
+	SLIST_INIT(&mb);
+	while (!SLIST_EMPTY(&Files)) {
+		f = SLIST_FIRST(&Files);
+		SLIST_REMOVE_HEAD(&Files, f_next);
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
@@ -1345,16 +1348,14 @@ init(void)
 		case F_FORWTCP:  /* XXX close and reconnect? */
 			break;
 		}
-		next = f->f_next;
 		if (f->f_program)
 			free(f->f_program);
 		if (f->f_type == F_MEMBUF) {
-			f->f_next = mb;
 			f->f_program = NULL;
-			dprintf("add %p to mb: %p\n", f, mb);
-			mb = f;
+			dprintf("add %p to mb\n", f);
+			SLIST_INSERT_HEAD(&mb, f_next, f))
 		} else
-			free((char *)f);
+			free(f);
 	}
 	Files = NULL;
 	nextp = &Files;
