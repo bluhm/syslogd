@@ -1357,18 +1357,17 @@ init(void)
 		if (f->f_type == F_MEMBUF) {
 			f->f_program = NULL;
 			dprintf("add %p to mb\n", f);
-			SLIST_INSERT_HEAD(&mb, f_next, f))
+			SLIST_INSERT_HEAD(&mb, f, f_next);
 		} else
 			free(f);
 	}
-	Files = NULL;
-	nextp = &Files;
 
 	/* open the configuration file */
 	if ((cf = priv_open_config()) == NULL) {
 		dprintf("cannot open %s\n", ConfFile);
-		*nextp = cfline("*.ERR\t/dev/console", "*");
-		(*nextp)->f_next = cfline("*.PANIC\t*", "*");
+		SLIST_INSERT_TAIL(&Files, cfline("*.ERR\t/dev/console", "*"),
+		    f_next);
+		SLIST_INSERT_TAIL(&Files, cfline("*.PANIC\t*", "*"), f_next);
 		Initialized = 1;
 		return;
 	}
@@ -1414,10 +1413,8 @@ init(void)
 			}
 		*p = '\0';
 		f = cfline(cline, prog);
-		if (f != NULL) {
-			*nextp = f;
-			nextp = &f->f_next;
-		}
+		if (f != NULL)
+			SLIST_INSERT_TAIL(&Files, f, f_next);
 	}
 
 	/* Match and initialize the memory buffers */
