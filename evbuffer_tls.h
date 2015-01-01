@@ -19,12 +19,15 @@
 #ifndef _EVBUFFER_TLS_H_
 #define _EVBUFFER_TLS_H_
 
+#define EVBUFFER_CONNECT	0x80
+
 struct bufferevent;
 struct tls;
 
 struct buffertls {
 	struct bufferevent	*bt_bufev;
 	struct tls		*bt_ctx;
+	const char		*bt_hostname;
 };
 
 void	buffertls_set(struct buffertls *, struct bufferevent *, struct tls *,
