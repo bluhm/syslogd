@@ -744,6 +744,8 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		tls_free(ctx);
 	}
 	close(s);
+
+	sleep(1);  /* XXX avoid endless loop */
 	if ((s = tcp_socket(f)) == -1) {
 		/* XXX log error and reconnect later */
 		bufferevent_free(bufev);
