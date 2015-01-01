@@ -1330,7 +1330,7 @@ init(void)
 	 */
 	Initialized = 0;
 	SIMPLEQ_INIT(&mb);
-	while (f = SIMPLEQ_FIRST(&Files)) {
+	while ((f = SIMPLEQ_FIRST(&Files))) {
 		SIMPLEQ_REMOVE_HEAD(&Files, f_next);
 		/* flush any pending output */
 		if (f->f_prevcount)
@@ -1418,7 +1418,7 @@ init(void)
 			continue;
 		dprintf("Initialize membuf %s at %p\n", f->f_un.f_mb.f_mname, f);
 
-		SIMPLEQ_FOREACH(m, &mp, f_next) {
+		SIMPLEQ_FOREACH(m, &mb, f_next) {
 			if (m->f_un.f_mb.f_rb == NULL)
 				continue;
 			if (strcmp(m->f_un.f_mb.f_mname,
@@ -1440,15 +1440,14 @@ init(void)
 	}
 
 	/* make sure remaining buffers are freed */
-	while (mb != NULL) {
-		m = mb;
+	while ((m = SIMPLEQ_FIRST(&mb))) {
+		SIMPLEQ_REMOVE_HEAD(&mb, f_next);
 		if (m->f_un.f_mb.f_rb != NULL) {
 			logerror("Mismatched membuf");
 			ringbuf_free(m->f_un.f_mb.f_rb);
 		}
 		dprintf("Freeing membuf %p\n", m);
 
-		mb = m->f_next;
 		free(m);
 	}
 
