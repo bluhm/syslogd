@@ -270,7 +270,7 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 int	 tcp_socket(struct filed *);
-struct tls *tls_socket(struct filed *, int, const char *);
+struct tls *tls_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
@@ -709,7 +709,7 @@ tcp_socket(struct filed *f)
 }
 
 struct tls *
-tls_socket(struct filed *f, int s, const char *host)
+tls_socket(struct filed *f)
 {
 	static struct tls_config *config;
 	struct tls	*ctx;
@@ -740,13 +740,6 @@ tls_socket(struct filed *f, int s, const char *host)
 	}
 	if (tls_configure(ctx, config) < 0) {
 		snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\": %s",
-		    f->f_un.f_forw.f_loghost, tls_error(ctx));
-		logerror(ebuf);
-		tls_free(ctx);
-		return (NULL);
-	}
-	if (tls_connect_socket(ctx, s, host) < 0) {
-		snprintf(ebuf, sizeof(ebuf), "tls_connect_socket \"%s\": %s",
 		    f->f_un.f_forw.f_loghost, tls_error(ctx));
 		logerror(ebuf);
 		tls_free(ctx);
@@ -799,22 +792,23 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		return;
 	}
 	if (f->f_type == F_FORWTLS) {
-		/* XXX no host given */
-		if ((ctx = tls_socket(f, s, NULL)) == NULL) {
+		if ((ctx = tls_socket(f)) == NULL) {
 			/* XXX log error and reconnect later */
 			close(s);
 			bufferevent_free(bufev);
 			f->f_type = F_UNUSED;
 			return;
 		}
-	}
-	/* XXX The messages in the output buffer may be out of sync. */
-	if (f->f_type == F_FORWTLS)
 		buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
-	bufferevent_setfd(bufev, s);
-	bufferevent_enable(bufev, EV_READ);
-	f->f_un.f_forw.f_ctx = ctx;
-	f->f_file = s;
+		f->f_un.f_forw.f_ctx = ctx;
+		f->f_file = s;
+		/* XXX no host given */
+		buffertls_connect(&f->f_un.f_forw.f_buftls, s, NULL);
+	} else {
+		bufferevent_setfd(bufev, s);
+		f->f_file = s;
+		bufferevent_enable(bufev, EV_READ);
+	}
 
 	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
@@ -1800,7 +1794,6 @@ cfline(char *line, char *prog)
 			f->f_type = F_FORWUDP;
 		} else if (strncmp(ipproto, "tcp", 3) == 0) {
 			struct bufferevent	*bufev;
-			struct tls		*ctx;
 			int			 s;
 
 			if ((s = tcp_socket(f)) == -1)
@@ -1815,22 +1808,27 @@ cfline(char *line, char *prog)
 				break;
 			}
 			if (strncmp(proto, "tls", 3) == 0) {
-				if ((ctx = tls_socket(f, s, host)) == NULL) {
+				struct tls	*ctx;
+
+				if ((ctx = tls_socket(f)) == NULL) {
 					bufferevent_free(bufev);
 					close(s);
 					break;
 				}
 				buffertls_set(&f->f_un.f_forw.f_buftls,
 				    bufev, ctx, s);
+				f->f_un.f_forw.f_bufev = bufev;
+				f->f_un.f_forw.f_ctx = ctx;
+				f->f_file = s;
 				f->f_type = F_FORWTLS;
+				buffertls_connect(&f->f_un.f_forw.f_buftls,
+				    s, host);
 			} else {
-				ctx = NULL;
+				f->f_un.f_forw.f_bufev = bufev;
+				f->f_file = s;
 				f->f_type = F_FORWTCP;
+				bufferevent_enable(bufev, EV_READ);
 			}
-			bufferevent_enable(bufev, EV_READ);
-			f->f_un.f_forw.f_bufev = bufev;
-			f->f_un.f_forw.f_ctx = ctx;
-			f->f_file = s;
 		}
 		break;
 
