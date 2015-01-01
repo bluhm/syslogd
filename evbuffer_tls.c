@@ -210,6 +210,67 @@ buffertls_writecb(int fd, short event, void *arg)
 	(*bufev->errorcb)(bufev, what, bufev->cbarg);
 }
 
+static void
+buffertls_connectcb(int fd, short event, void *arg)
+{
+	struct buffertls *buftls = arg;
+	struct bufferevent *bufev = buftls->bt_bufev;
+	struct tls *ctx = buftls->bt_ctx;
+	const char *hostname = buftls->bt_hostname;
+	int res = 0;
+	short what = EVBUFFER_CONNECT;
+
+	if (event == EV_TIMEOUT) {
+		what |= EVBUFFER_TIMEOUT;
+		goto error;
+	}
+
+	res = tls_connect_socket(ctx, fd, hostname);
+	switch (res) {
+	case TLS_READ_AGAIN:
+		event_set(&bufev->ev_write, fd, EV_READ,
+		    buffertls_connectcb, buftls);
+		goto reschedule;
+	case TLS_WRITE_AGAIN:
+		event_set(&bufev->ev_write, fd, EV_WRITE,
+		    buffertls_connectcb, buftls);
+		goto reschedule;
+	case -1:
+		if (errno == EAGAIN || errno == EINTR ||
+		    errno == EINPROGRESS)
+			goto reschedule;
+		/* error case */
+		what |= EVBUFFER_ERROR;
+		break;
+	case 0:
+		/* eof case */
+		what |= EVBUFFER_EOF;
+		break;
+	}
+	if (res <= 0)
+		goto error;
+
+	/*
+         * There might be data available in the tls layer.  Try
+	 * an read operation and setup the callbacks.  Call the read
+	 * callback after enabling the write callback to give the
+	 * read error handler a chance to disable the write event.
+	 */
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
+	if (EVBUFFER_LENGTH(bufev->output) != 0)
+		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
+	buffertls_readcb(fd, 0, buftls);
+
+	return;
+
+ reschedule:
+	bufferevent_add(&bufev->ev_write, bufev->timeout_write);
+	return;
+
+ error:
+	(*bufev->errorcb)(bufev, what, bufev->cbarg);
+}
+
 void
 buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
     struct tls *ctx, int fd)
@@ -219,6 +280,18 @@ buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	buftls->bt_bufev = bufev;
 	buftls->bt_ctx = ctx;
+}
+
+void
+buffertls_connect(struct buffertls *buftls, int fd, const char *hostname)
+{
+	struct bufferevent *bufev = buftls->bt_bufev;
+
+	event_del(&bufev->ev_read);
+	event_del(&bufev->ev_write);
+
+	buftls->bt_hostname = hostname;
+	buffertls_connectcb(fd, 0, buftls);
 }
 
 /*
