@@ -242,12 +242,8 @@ buffertls_connectcb(int fd, short event, void *arg)
 		/* error case */
 		what |= EVBUFFER_ERROR;
 		break;
-	case 0:
-		/* eof case */
-		what |= EVBUFFER_EOF;
-		break;
 	}
-	if (res <= 0)
+	if (res < 0)
 		goto error;
 
 	/*
