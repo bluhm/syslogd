@@ -270,7 +270,7 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 int	 tcp_socket(struct filed *);
-struct tls *tls_socket(struct filed *, int, const char *);
+struct tls *tls_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
@@ -711,7 +711,7 @@ tcp_socket(struct filed *f)
 }
 
 struct tls *
-tls_socket(struct filed *f, int s, const char *host)
+tls_socket(struct filed *f)
 {
 	static struct tls_config *config;
 	struct tls	*ctx;
@@ -742,13 +742,6 @@ tls_socket(struct filed *f, int s, const char *host)
 	}
 	if (tls_configure(ctx, config) < 0) {
 		snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\": %s",
-		    f->f_un.f_forw.f_loghost, tls_error(ctx));
-		logerror(ebuf);
-		tls_free(ctx);
-		return (NULL);
-	}
-	if (tls_connect_socket(ctx, s, host) < 0) {
-		snprintf(ebuf, sizeof(ebuf), "tls_connect_socket \"%s\": %s",
 		    f->f_un.f_forw.f_loghost, tls_error(ctx));
 		logerror(ebuf);
 		tls_free(ctx);
@@ -841,13 +834,14 @@ tcp_connectcb(int fd, short event, void *arg)
 	dprintf("tcp connect callback: success, event %#x\n", event);
 
 	if (f->f_type == F_FORWTLS) {
-		/* XXX no host given */
-		if ((ctx = tls_socket(f, s, NULL)) == NULL) {
+		if ((ctx = tls_socket(f)) == NULL) {
 			close(f->f_file);
 			f->f_file = -1;
 			goto retry;
 		}
 		buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
+		/* XXX no host given */
+		buffertls_connect(&f->f_un.f_forw.f_buftls, s, NULL);
 		f->f_un.f_forw.f_ctx = ctx;
 	}
 	bufferevent_setfd(bufev, s);
