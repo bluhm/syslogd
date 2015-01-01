@@ -121,7 +121,7 @@ const char ctty[] = _PATH_CONSOLE;
  */
 
 struct filed {
-	struct	filed *f_next;		/* next in linked list */
+	SLIST_ENTRY(filed) *f_next;	/* next in linked list */
 	int	f_type;			/* entry type, see below */
 	int	f_file;			/* file descriptor */
 	time_t	f_time;			/* time this was last written */
@@ -186,7 +186,7 @@ char	*TypeNames[] = {
 	"PIPE",		"FORWTCP",
 };
 
-struct	filed *Files;
+SLIST_HEAD(, filed) Files;
 struct	filed consfile;
 
 int	nunix = 1;		/* Number of Unix domain sockets requested */
