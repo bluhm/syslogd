@@ -70,6 +70,7 @@
 #include <sys/wait.h>
 #include <sys/socket.h>
 #include <sys/msgbuf.h>
+#include <sys/queue.h>
 #include <sys/uio.h>
 #include <sys/sysctl.h>
 #include <sys/un.h>
