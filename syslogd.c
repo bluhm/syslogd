@@ -1330,7 +1330,8 @@ init(void)
 	 */
 	Initialized = 0;
 	SIMPLEQ_INIT(&mb);
-	while ((f = SIMPLEQ_FIRST(&Files))) {
+	while (!SIMPLEQ_EMPTY(&Files)) {
+		f = SIMPLEQ_FIRST(&Files);
 		SIMPLEQ_REMOVE_HEAD(&Files, f_next);
 		/* flush any pending output */
 		if (f->f_prevcount)
@@ -1444,7 +1445,8 @@ init(void)
 	}
 
 	/* make sure remaining buffers are freed */
-	while ((m = SIMPLEQ_FIRST(&mb))) {
+	while (!SIMPLEQ_EMPTY(&mb)) {
+		m = SIMPLEQ_FIRST(&mb);
 		SIMPLEQ_REMOVE_HEAD(&mb, f_next);
 		if (m->f_un.f_mb.f_rb != NULL) {
 			logerror("Mismatched membuf");
