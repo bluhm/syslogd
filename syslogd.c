@@ -897,7 +897,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 		}
 		return;
 	}
-	for (f = Files; f; f = f->f_next) {
+	SLIST_FOREACH(f, Files, f_next) {
 		/* skip messages that are incorrect priority */
 		if (f->f_pmask[fac] < prilev ||
 		    f->f_pmask[fac] == INTERNAL_NOPRI)
@@ -1416,7 +1416,7 @@ init(void)
 	}
 
 	/* Match and initialize the memory buffers */
-	for (f = Files; f != NULL; f = f->f_next) {
+	SLIST_FOREACH(f, Files, f_next) {
 		if (f->f_type != F_MEMBUF)
 			continue;
 		dprintf("Initialize membuf %s at %p\n", f->f_un.f_mb.f_mname, f);
@@ -1461,7 +1461,7 @@ init(void)
 	Initialized = 1;
 
 	if (Debug) {
-		for (f = Files; f; f = f->f_next) {
+		SLIST_FOREACH(f, Files, f_next) {
 			for (i = 0; i <= LOG_NFACILITIES; i++)
 				if (f->f_pmask[i] == INTERNAL_NOPRI)
 					printf("X ");
@@ -1509,7 +1509,7 @@ find_dup(struct filed *f)
 {
 	struct filed *list;
 
-	for (list = Files; list; list = list->f_next) {
+	SLIST_FOREACH(list, Files, f_next) {
 		if (list->f_quick || f->f_quick)
 			continue;
 		switch (list->f_type) {
@@ -1916,7 +1916,7 @@ markit(void)
 		MarkSeq = 0;
 	}
 
-	for (f = Files; f; f = f->f_next) {
+	SLIST_FOREACH(f, Files, f_next) {
 		if (f->f_prevcount && now >= REPEATTIME(f)) {
 			dprintf("flush %s: repeated %d times, %d sec.\n",
 			    TypeNames[f->f_type], f->f_prevcount,
@@ -2009,7 +2009,7 @@ ctlconn_cleanup(void)
 	event_add(&ev_ctlaccept, NULL);
 
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
-		for (f = Files; f != NULL; f = f->f_next)
+		SLIST_FOREACH(f, Files, f_next)
 			if (f->f_type == F_MEMBUF)
 				f->f_un.f_mb.f_attached = 0;
 
@@ -2060,7 +2060,7 @@ static struct filed
 {
 	struct filed *f;
 
-	for (f = Files; f != NULL; f = f->f_next) {
+	SLIST_FOREACH(f, Files, f_next) {
 		if (f->f_type == F_MEMBUF &&
 		    strcmp(f->f_un.f_mb.f_mname, name) == 0)
 			break;
@@ -2163,7 +2163,7 @@ ctlconn_readcb(int fd, short event, void *arg)
 		}
 		break;
 	case CMD_LIST:
-		for (f = Files; f != NULL; f = f->f_next) {
+		SLIST_FOREACH(f, Files, f_next) {
 			if (f->f_type == F_MEMBUF) {
 				strlcat(reply_text, f->f_un.f_mb.f_mname,
 				    MAX_MEMBUF);
