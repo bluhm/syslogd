@@ -251,7 +251,7 @@ buffertls_connectcb(int fd, short event, void *arg)
 		goto error;
 
 	/*
-         * There might be data available in the tls layer.  Try
+	 * There might be data available in the tls layer.  Try
 	 * an read operation and setup the callbacks.  Call the read
 	 * callback after enabling the write callback to give the
 	 * read error handler a chance to disable the write event.
