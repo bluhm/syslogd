@@ -1313,7 +1313,7 @@ init(void)
 {
 	char cline[LINE_MAX], prog[NAME_MAX+1], *p;
 	struct filed_list mb;
-	struct filed *f, *next, **nextp, *m;
+	struct filed *f, *m;
 	FILE *cf;
 	int i;
 
