@@ -1361,6 +1361,7 @@ init(void)
 		} else
 			free(f);
 	}
+	SIMPLEQ_INIT(&Files);
 
 	/* open the configuration file */
 	if ((cf = priv_open_config()) == NULL) {
