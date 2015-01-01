@@ -121,7 +121,7 @@ const char ctty[] = _PATH_CONSOLE;
  */
 
 struct filed {
-	SLIST_ENTRY(filed) f_next;	/* next in linked list */
+	SIMPLEQ_ENTRY(filed) f_next;	/* next in linked list */
 	int	f_type;			/* entry type, see below */
 	int	f_file;			/* file descriptor */
 	time_t	f_time;			/* time this was last written */
@@ -186,7 +186,7 @@ char	*TypeNames[] = {
 	"PIPE",		"FORWTCP",
 };
 
-SLIST_HEAD(filed_list, filed) Files;
+SIMPLEQ_HEAD(filed_list, filed) Files;
 struct	filed consfile;
 
 int	nunix = 1;		/* Number of Unix domain sockets requested */
@@ -897,7 +897,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 		}
 		return;
 	}
-	SLIST_FOREACH(f, &Files, f_next) {
+	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		/* skip messages that are incorrect priority */
 		if (f->f_pmask[fac] < prilev ||
 		    f->f_pmask[fac] == INTERNAL_NOPRI)
@@ -1289,7 +1289,7 @@ die(int signo)
 	char buf[100];
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
-	SLIST_FOREACH(f, &Files, f_next) {
+	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
@@ -1329,10 +1329,10 @@ init(void)
 	 *  Close all open log files.
 	 */
 	Initialized = 0;
-	SLIST_INIT(&mb);
-	while (!SLIST_EMPTY(&Files)) {
-		f = SLIST_FIRST(&Files);
-		SLIST_REMOVE_HEAD(&Files, f_next);
+	SIMPLEQ_INIT(&mb);
+	while (!SIMPLEQ_EMPTY(&Files)) {
+		f = SIMPLEQ_FIRST(&Files);
+		SIMPLEQ_REMOVE_HEAD(&Files, f_next);
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
@@ -1353,7 +1353,7 @@ init(void)
 		if (f->f_type == F_MEMBUF) {
 			f->f_program = NULL;
 			dprintf("add %p to mb\n", f);
-			SLIST_INSERT_HEAD(&mb, f, f_next);
+			SIMPLEQ_INSERT_HEAD(&mb, f, f_next);
 		} else
 			free(f);
 	}
@@ -1361,9 +1361,9 @@ init(void)
 	/* open the configuration file */
 	if ((cf = priv_open_config()) == NULL) {
 		dprintf("cannot open %s\n", ConfFile);
-		SLIST_INSERT_TAIL(&Files, cfline("*.ERR\t/dev/console", "*"),
+		SIMPLEQ_INSERT_TAIL(&Files, cfline("*.ERR\t/dev/console", "*"),
 		    f_next);
-		SLIST_INSERT_TAIL(&Files, cfline("*.PANIC\t*", "*"), f_next);
+		SIMPLEQ_INSERT_TAIL(&Files, cfline("*.PANIC\t*", "*"), f_next);
 		Initialized = 1;
 		return;
 	}
@@ -1410,11 +1410,11 @@ init(void)
 		*p = '\0';
 		f = cfline(cline, prog);
 		if (f != NULL)
-			SLIST_INSERT_TAIL(&Files, f, f_next);
+			SIMPLEQ_INSERT_TAIL(&Files, f, f_next);
 	}
 
 	/* Match and initialize the memory buffers */
-	SLIST_FOREACH(f, &Files, f_next) {
+	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		if (f->f_type != F_MEMBUF)
 			continue;
 		dprintf("Initialize membuf %s at %p\n", f->f_un.f_mb.f_mname, f);
@@ -1459,7 +1459,7 @@ init(void)
 	Initialized = 1;
 
 	if (Debug) {
-		SLIST_FOREACH(f, &Files, f_next) {
+		SIMPLEQ_FOREACH(f, &Files, f_next) {
 			for (i = 0; i <= LOG_NFACILITIES; i++)
 				if (f->f_pmask[i] == INTERNAL_NOPRI)
 					printf("X ");
@@ -1507,7 +1507,7 @@ find_dup(struct filed *f)
 {
 	struct filed *list;
 
-	SLIST_FOREACH(list, &Files, f_next) {
+	SIMPLEQ_FOREACH(list, &Files, f_next) {
 		if (list->f_quick || f->f_quick)
 			continue;
 		switch (list->f_type) {
@@ -1914,7 +1914,7 @@ markit(void)
 		MarkSeq = 0;
 	}
 
-	SLIST_FOREACH(f, &Files, f_next) {
+	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		if (f->f_prevcount && now >= REPEATTIME(f)) {
 			dprintf("flush %s: repeated %d times, %d sec.\n",
 			    TypeNames[f->f_type], f->f_prevcount,
@@ -2007,7 +2007,7 @@ ctlconn_cleanup(void)
 	event_add(&ev_ctlaccept, NULL);
 
 	if (ctl_state == CTL_WRITING_CONT_REPLY)
-		SLIST_FOREACH(f, &Files, f_next)
+		SIMPLEQ_FOREACH(f, &Files, f_next)
 			if (f->f_type == F_MEMBUF)
 				f->f_un.f_mb.f_attached = 0;
 
@@ -2058,7 +2058,7 @@ static struct filed
 {
 	struct filed *f;
 
-	SLIST_FOREACH(f, &Files, f_next) {
+	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		if (f->f_type == F_MEMBUF &&
 		    strcmp(f->f_un.f_mb.f_mname, name) == 0)
 			break;
@@ -2161,7 +2161,7 @@ ctlconn_readcb(int fd, short event, void *arg)
 		}
 		break;
 	case CMD_LIST:
-		SLIST_FOREACH(f, &Files, f_next) {
+		SIMPLEQ_FOREACH(f, &Files, f_next) {
 			if (f->f_type == F_MEMBUF) {
 				strlcat(reply_text, f->f_un.f_mb.f_mname,
 				    MAX_MEMBUF);
