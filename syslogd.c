@@ -272,11 +272,11 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 int	 tcp_socket(struct filed *);
-struct tls *tls_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
+struct tls *tls_socket(struct filed *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -712,46 +712,6 @@ tcp_socket(struct filed *f)
 	return (s);
 }
 
-struct tls *
-tls_socket(struct filed *f)
-{
-	static struct tls_config *config;
-	struct tls	*ctx;
-	char		 ebuf[100];
-
-	if (config == NULL) {
-		if (tls_init() < 0) {
-			snprintf(ebuf, sizeof(ebuf), "tls_init \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
-			return (NULL);
-		}
-		if ((config = tls_config_new()) == NULL) {
-			snprintf(ebuf, sizeof(ebuf), "tls_config_new \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
-			return (NULL);
-		}
-		/* XXX no verify for now, ca certs are outside of privsep */
-		tls_config_insecure_noverifyhost(config);
-		tls_config_insecure_noverifycert(config);
-	}
-	if ((ctx = tls_client()) == NULL) {
-		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
-		    f->f_un.f_forw.f_loghost);
-		logerror(ebuf);
-		return (NULL);
-	}
-	if (tls_configure(ctx, config) < 0) {
-		snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\": %s",
-		    f->f_un.f_forw.f_loghost, tls_error(ctx));
-		logerror(ebuf);
-		tls_free(ctx);
-		return (NULL);
-	}
-	return (ctx);
-}
-
 void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
@@ -870,6 +830,46 @@ tcp_connectcb(int fd, short event, void *arg)
 	/* We can reuse the write event as bufferevent is disabled. */
 	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
 	evtimer_add(&bufev->ev_write, &to);
+}
+
+struct tls *
+tls_socket(struct filed *f)
+{
+	static struct tls_config *config;
+	struct tls	*ctx;
+	char		 ebuf[100];
+
+	if (config == NULL) {
+		if (tls_init() < 0) {
+			snprintf(ebuf, sizeof(ebuf), "tls_init \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			logerror(ebuf);
+			return (NULL);
+		}
+		if ((config = tls_config_new()) == NULL) {
+			snprintf(ebuf, sizeof(ebuf), "tls_config_new \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			logerror(ebuf);
+			return (NULL);
+		}
+		/* XXX no verify for now, ca certs are outside of privsep */
+		tls_config_insecure_noverifyhost(config);
+		tls_config_insecure_noverifycert(config);
+	}
+	if ((ctx = tls_client()) == NULL) {
+		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		logerror(ebuf);
+		return (NULL);
+	}
+	if (tls_configure(ctx, config) < 0) {
+		snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\": %s",
+		    f->f_un.f_forw.f_loghost, tls_error(ctx));
+		logerror(ebuf);
+		tls_free(ctx);
+		return (NULL);
+	}
+	return (ctx);
 }
 
 void
