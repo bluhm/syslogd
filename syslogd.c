@@ -741,16 +741,22 @@ void
 tcp_connectcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
+	int s;
 
-	if ((f->f_file = tcp_socket(f)) == -1) {
-		/* XXX reconnect later */
-		bufferevent_free(bufev);
-		f->f_type = F_UNUSED;
-	} else {
-		/* XXX The messages in the output buffer may be out of sync. */
-		bufferevent_setfd(bufev, f->f_file);
-		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
-	}
+	if ((s = tcp_socket(f)) == -1)
+		goto retry;
+
+	/* XXX The messages in the output buffer may be out of sync. */
+	bufferevent_setfd(bufev, s);
+	bufferevent_enable(bufev, EV_READ);
+	f->f_file = s;
+	return;
+
+ retry:
+	bufferevent_setfd(bufev, -1);
+	bufferevent_setcb(bufev, NULL, NULL, tcp_connectcb, f);
+	/* XXX why 2 seconds? */
+	bufferevent_settimeout(bufev, 0, 2);
 }
 
 void
