@@ -732,9 +732,18 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		    f->f_un.f_forw.f_loghost, strerror(errno));
 	dprintf("%s\n", ebuf);
 
+	/* The SIGHUP handler may also close the socket, so invalidate it. */
 	close(f->f_file);
-	/* XXX The messages in the output buffer may be out of sync. */
+	f->f_file = -1;
+
+	/*
+	 * XXX The messages in the output buffer may be out of sync.
+	 * Here we should clear the buffer or at least remove partial
+	 * messages from the beginning.
+	 */
 	tcp_connectcb(bufev, 0, f);
+
+	/* Log the connection error to the fresh buffer after reconnecting. */
 	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
 
@@ -760,8 +769,9 @@ tcp_connectcb(struct bufferevent *bufev, short event, void *arg)
 
  retry:
 	bufferevent_setfd(bufev, -1);
+	/* XXX Timeout not activated. */
 	bufferevent_setcb(bufev, NULL, NULL, tcp_connectcb, f);
-	/* XXX why 2 seconds? */
+	/* XXX Why 2 seconds? */
 	bufferevent_settimeout(bufev, 0, 2);
 }
 
@@ -1733,22 +1743,16 @@ cfline(char *line, char *prog)
 			}
 			f->f_type = F_FORWUDP;
 		} else if (strncmp(proto, "tcp", 3) == 0) {
-			int s;
-
-			if ((s = tcp_socket(f)) == -1)
-				break;
-			if ((f->f_un.f_forw.f_bufev = bufferevent_new(s,
+			if ((f->f_un.f_forw.f_bufev = bufferevent_new(-1,
 			    tcp_readcb, NULL, tcp_errorcb, f)) == NULL) {
 				snprintf(ebuf, sizeof(ebuf),
 				    "bufferevent \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				logerror(ebuf);
-				close(s);
 				break;
 			}
-			bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
-			f->f_file = s;
 			f->f_type = F_FORWTCP;
+			tcp_connectcb(f->f_un.f_forw.f_bufev, 0, f);
 		}
 		break;
 
