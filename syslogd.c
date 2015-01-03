@@ -266,6 +266,7 @@ void	 unix_readcb(int, short, void *);
 int	 tcp_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
+void	 tcp_connectcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -732,6 +733,15 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	dprintf("%s\n", ebuf);
 
 	close(f->f_file);
+	tcp_connectcb(bufev, 0, f);
+	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+}
+
+void
+tcp_connectcb(struct bufferevent *bufev, short event, void *arg)
+{
+	struct filed	*f = arg;
+
 	if ((f->f_file = tcp_socket(f)) == -1) {
 		/* XXX reconnect later */
 		bufferevent_free(bufev);
@@ -741,7 +751,6 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		bufferevent_setfd(bufev, f->f_file);
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_READ);
 	}
-	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
 
 void
