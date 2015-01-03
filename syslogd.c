@@ -733,6 +733,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	dprintf("%s\n", ebuf);
 
 	close(f->f_file);
+	/* XXX The messages in the output buffer may be out of sync. */
 	tcp_connectcb(bufev, 0, f);
 	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
@@ -743,12 +744,17 @@ tcp_connectcb(struct bufferevent *bufev, short event, void *arg)
 	struct filed	*f = arg;
 	int s;
 
+	bufferevent_disable(bufev, EV_READ|EV_WRITE);
 	if ((s = tcp_socket(f)) == -1)
 		goto retry;
 
-	/* XXX The messages in the output buffer may be out of sync. */
 	bufferevent_setfd(bufev, s);
-	bufferevent_enable(bufev, EV_READ);
+	bufferevent_setcb(bufev, tcp_readcb, NULL, tcp_errorcb, f);
+	/*
+	 * Although syslog is a write only protocol, enable reading from
+	 * the socket to detect connection close and errors.
+	 */
+	bufferevent_enable(bufev, EV_READ|EV_WRITE);
 	f->f_file = s;
 	return;
 
