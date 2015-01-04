@@ -135,7 +135,7 @@ struct filed {
 				/* @proto46://[hostname]:servname\0 */
 			struct sockaddr_storage	f_addr;
 			struct bufferevent	*f_bufev;
-			int	*f_reconnectwait;
+			int	f_reconnectwait;
 		} f_forw;		/* forwarding address */
 		char	f_fname[MAXPATHLEN];
 		struct {
@@ -268,7 +268,7 @@ int	 tcp_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
-void	 tcp_connectcb(struct bufferevent *, short, void *);
+void	 tcp_connectcb(int, short, void *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -752,19 +752,22 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	 * Here we should clear the buffer or at least remove partial
 	 * messages from the beginning.
 	 */
-	tcp_connectcb(bufev, 0, f);
+	tcp_connectcb(-1, 0, f);
 
 	/* Log the connection error to the fresh buffer after reconnecting. */
 	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 }
 
 void
-tcp_connectcb(struct bufferevent *bufev, short event, void *arg)
+tcp_connectcb(int fd, short event, void *arg)
 {
-	struct filed	*f = arg;
-	int s;
+	struct filed		*f = arg;
+	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
+	struct timeval		 to;
+	int			 s;
 
-	bufferevent_disable(bufev, EV_READ|EV_WRITE);
+	if ((event & EV_TIMEOUT) == 0 && f->f_un.f_forw.f_reconnectwait > 0)
+		goto retry;
 	if ((s = tcp_socket(f)) == -1)
 		goto retry;
 
@@ -779,11 +782,19 @@ tcp_connectcb(struct bufferevent *bufev, short event, void *arg)
 	return;
 
  retry:
+	if (f->f_un.f_forw.f_reconnectwait == 0)
+		f->f_un.f_forw.f_reconnectwait = 1;
+	else
+		f->f_un.f_forw.f_reconnectwait <<= 1;
+	if (f->f_un.f_forw.f_reconnectwait > 600)
+		f->f_un.f_forw.f_reconnectwait = 600;
+	to.tv_sec = f->f_un.f_forw.f_reconnectwait;
+	to.tv_usec = 0;
+
 	bufferevent_setfd(bufev, -1);
-	/* XXX Timeout not activated. */
-	bufferevent_setcb(bufev, NULL, NULL, tcp_connectcb, f);
-	/* XXX Why 2 seconds? */
-	bufferevent_settimeout(bufev, 0, 2);
+	/* We can reuse the write event as bufferevent is disabled. */
+	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
+	evtimer_add(&bufev->ev_write, &to);
 }
 
 void
@@ -1763,7 +1774,7 @@ cfline(char *line, char *prog)
 				break;
 			}
 			f->f_type = F_FORWTCP;
-			tcp_connectcb(f->f_un.f_forw.f_bufev, 0, f);
+			tcp_connectcb(-1, 0, f);
 		}
 		break;
 
