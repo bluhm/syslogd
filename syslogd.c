@@ -1338,6 +1338,10 @@ init(void)
 			fprintlog(f, 0, (char *)NULL);
 
 		switch (f->f_type) {
+		case F_FORWTCP:
+			/* XXX Save messages in output buffer for reconnect. */
+			bufferevent_free(f->f_un.f_forw.f_bufev);
+			/* FALLTHROUGH */
 		case F_FILE:
 		case F_TTY:
 		case F_CONSOLE:
@@ -1345,11 +1349,6 @@ init(void)
 			(void)close(f->f_file);
 			break;
 		case F_FORWUDP:
-			break;
-		case F_FORWTCP:
-			/* XXX save messages in output buffer for reconnect */
-			bufferevent_free(f->f_un.f_forw.f_bufev);
-			close(f->f_file);
 			break;
 		}
 		if (f->f_program)
