@@ -135,6 +135,7 @@ struct filed {
 				/* @proto46://[hostname]:servname\0 */
 			struct sockaddr_storage	f_addr;
 			struct bufferevent	*f_bufev;
+			int	*f_reconnectwait;
 		} f_forw;		/* forwarding address */
 		char	f_fname[MAXPATHLEN];
 		struct {
@@ -265,6 +266,7 @@ void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 int	 tcp_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
+void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(struct bufferevent *, short, void *);
 void	 die_signalcb(int, short, void *);
@@ -714,6 +716,15 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	    f->f_un.f_forw.f_loghost,
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->input));
 	evbuffer_drain(bufev->input, -1);
+}
+
+void
+tcp_writecb(struct bufferevent *bufev, void *arg)
+{
+	struct filed	*f = arg;
+
+	/* Successful write, connection to server is good, reset wait time. */
+	f->f_un.f_forw.f_reconnectwait = 0;
 }
 
 void
