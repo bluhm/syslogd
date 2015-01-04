@@ -1348,8 +1348,6 @@ init(void)
 		case F_PIPE:
 			(void)close(f->f_file);
 			break;
-		case F_FORWUDP:
-			break;
 		}
 		if (f->f_program)
 			free(f->f_program);
