@@ -769,7 +769,7 @@ tcp_connectcb(struct bufferevent *bufev, short event, void *arg)
 		goto retry;
 
 	bufferevent_setfd(bufev, s);
-	bufferevent_setcb(bufev, tcp_readcb, NULL, tcp_errorcb, f);
+	bufferevent_setcb(bufev, tcp_readcb, tcp_writecb, tcp_errorcb, f);
 	/*
 	 * Although syslog is a write only protocol, enable reading from
 	 * the socket to detect connection close and errors.
@@ -1755,7 +1755,7 @@ cfline(char *line, char *prog)
 			f->f_type = F_FORWUDP;
 		} else if (strncmp(proto, "tcp", 3) == 0) {
 			if ((f->f_un.f_forw.f_bufev = bufferevent_new(-1,
-			    tcp_readcb, NULL, tcp_errorcb, f)) == NULL) {
+			    tcp_readcb, tcp_writecb, tcp_errorcb, f)) == NULL) {
 				snprintf(ebuf, sizeof(ebuf),
 				    "bufferevent \"%s\"",
 				    f->f_un.f_forw.f_loghost);
