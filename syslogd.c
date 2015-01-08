@@ -138,7 +138,6 @@ struct filed {
 			struct sockaddr_storage	 f_addr;
 			struct buffertls	 f_buftls;
 			struct bufferevent	*f_bufev;
-			struct buffertls	*f_buftls;
 			struct tls		*f_ctx;
 		} f_forw;		/* forwarding address */
 		char	f_fname[MAXPATHLEN];
