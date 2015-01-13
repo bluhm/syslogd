@@ -771,6 +771,11 @@ tcp_connectcb(int fd, short event, void *arg)
 
 	if ((event & EV_TIMEOUT) == 0 && f->f_un.f_forw.f_reconnectwait > 0)
 		goto retry;
+
+	/* Avoid busy reconnect loop, delay until successful write. */
+	if (f->f_un.f_forw.f_reconnectwait == 0)
+		f->f_un.f_forw.f_reconnectwait = 1;
+
 	if ((s = tcp_socket(f)) == -1)
 		goto retry;
 
@@ -784,15 +789,10 @@ tcp_connectcb(int fd, short event, void *arg)
 	bufferevent_enable(bufev, EV_READ|EV_WRITE);
 	f->f_file = s;
 
-	/* Avoid endless reconnect loop, delay until successful write. */
-	f->f_un.f_forw.f_reconnectwait = 1;
 	return;
 
  retry:
-	if (f->f_un.f_forw.f_reconnectwait == 0)
-		f->f_un.f_forw.f_reconnectwait = 1;
-	else
-		f->f_un.f_forw.f_reconnectwait <<= 1;
+	f->f_un.f_forw.f_reconnectwait <<= 1;
 	if (f->f_un.f_forw.f_reconnectwait > 600)
 		f->f_un.f_forw.f_reconnectwait = 600;
 	to.tv_sec = f->f_un.f_forw.f_reconnectwait;
