@@ -771,6 +771,7 @@ tcp_connectcb(int fd, short event, void *arg)
 	if ((s = tcp_socket(f)) == -1)
 		goto retry;
 
+	dprintf("tcp connect callback: success, event %#x\n", event);
 	bufferevent_setfd(bufev, s);
 	bufferevent_setcb(bufev, tcp_readcb, tcp_writecb, tcp_errorcb, f);
 	/*
@@ -791,6 +792,8 @@ tcp_connectcb(int fd, short event, void *arg)
 	to.tv_sec = f->f_un.f_forw.f_reconnectwait;
 	to.tv_usec = 0;
 
+	dprintf("tcp connect callback: retry, event %#x, wait %d\n",
+	    event, f->f_un.f_forw.f_reconnectwait);
 	bufferevent_setfd(bufev, -1);
 	/* We can reuse the write event as bufferevent is disabled. */
 	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
