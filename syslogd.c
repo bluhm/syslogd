@@ -723,7 +723,10 @@ tcp_writecb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
 
-	/* Successful write, connection to server is good, reset wait time. */
+	/*
+	 * Successful write, connection to server is good, reset wait time.
+	 */
+	dprintf("loghost \"%s\" successful write\n", f->f_un.f_forw.f_loghost);
 	f->f_un.f_forw.f_reconnectwait = 0;
 }
 
@@ -780,6 +783,9 @@ tcp_connectcb(int fd, short event, void *arg)
 	 */
 	bufferevent_enable(bufev, EV_READ|EV_WRITE);
 	f->f_file = s;
+
+	/* Avoid endless reconnect loop, delay until successful write. */
+	f->f_un.f_forw.f_reconnectwait = 1;
 	return;
 
  retry:
