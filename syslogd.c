@@ -793,6 +793,7 @@ tcp_connectcb(int fd, short event, void *arg)
 	if ((s = tcp_socket(f)) == -1)
 		goto retry;
 	dprintf("tcp connect callback: socket success, event %#x\n", event);
+	f->f_file = s;
 
 	bufferevent_setfd(bufev, s);
 	bufferevent_setcb(bufev, tcp_readcb, tcp_writecb, tcp_errorcb, f);
@@ -801,7 +802,6 @@ tcp_connectcb(int fd, short event, void *arg)
 	 * the socket to detect connection close and errors.
 	 */
 	bufferevent_enable(bufev, EV_READ|EV_WRITE);
-	f->f_file = s;
 
 	if (f->f_type == F_FORWTLS) {
 		if ((ctx = tls_socket(f)) == NULL) {
@@ -810,11 +810,11 @@ tcp_connectcb(int fd, short event, void *arg)
 			goto retry;
 		}
 		dprintf("tcp connect callback: TLS context success\n");
+		f->f_un.f_forw.f_ctx = ctx;
 
 		buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
 		/* XXX no host given */
 		buffertls_connect(&f->f_un.f_forw.f_buftls, s, NULL);
-		f->f_un.f_forw.f_ctx = ctx;
 	}
 
 	return;
