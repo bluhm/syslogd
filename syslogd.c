@@ -50,7 +50,7 @@
  * extensive changes by Ralph Campbell
  * more extensive changes by Eric Allman (again)
  * memory buffer logging by Damien Miller
- * IPv6, libevent, sending via TCP and TLS by Alexander Bluhm
+ * IPv6, libevent, sending over TCP and TLS by Alexander Bluhm
  */
 
 #define	MAXLINE		1024		/* maximum line length */
@@ -850,7 +850,7 @@ tls_socket(struct filed *f)
 			logerror(ebuf);
 			return (NULL);
 		}
-		/* XXX no verify for now, ca certs are outside of privsep */
+		/* XXX No verify for now, ca certs are outside of privsep. */
 		tls_config_insecure_noverifyhost(config);
 		tls_config_insecure_noverifycert(config);
 	}
