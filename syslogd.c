@@ -1470,8 +1470,10 @@ init(void)
 
 		switch (f->f_type) {
 		case F_FORWTLS:
-			tls_close(f->f_un.f_forw.f_ctx);
-			tls_free(f->f_un.f_forw.f_ctx);
+			if (f->f_un.f_forw.f_ctx) {
+				tls_close(f->f_un.f_forw.f_ctx);
+				tls_free(f->f_un.f_forw.f_ctx);
+			}
 			/* FALLTHROUGH */
 		case F_FORWTCP:
 			/* XXX Save messages in output buffer for reconnect. */
