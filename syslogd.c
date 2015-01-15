@@ -1679,6 +1679,7 @@ cfline(char *line, char *prog)
 	char *bp, *p, *q, *proto, *host, *port, *ipproto;
 	char buf[MAXLINE], ebuf[100];
 	struct filed *xf, *f, *d;
+	struct timeval to;
 
 	dprintf("cfline(\"%s\", f, \"%s\")\n", line, prog);
 
@@ -1870,7 +1871,18 @@ cfline(char *line, char *prog)
 			} else {
 				f->f_type = F_FORWTCP;
 			}
-			tcp_connectcb(-1, 0, f);
+			/*
+			 * If we try to connect to a TLS server immediately
+			 * syslogd gets an SIGPIPE as the signal handlers have
+			 * not been set up.  Delay the connection until the
+			 * event loop is started.  We can reuse the write event
+			 * for that as bufferevent is still disabled.
+			 */
+			to.tv_sec = 0;
+			to.tv_usec = 1;
+			evtimer_set(&f->f_un.f_forw.f_bufev->ev_write,
+			    tcp_connectcb, f);
+			evtimer_add(&f->f_un.f_forw.f_bufev->ev_write, &to);
 		}
 		break;
 
