@@ -750,12 +750,12 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	else
 		snprintf(ebuf, sizeof(ebuf),
 		    "syslogd: loghost \"%s\" connection error: %s",
-		    f->f_un.f_forw.f_loghost, f->f_type == F_FORWTLS ?
+		    f->f_un.f_forw.f_loghost, f->f_un.f_forw.f_ctx ?
 		    tls_error(f->f_un.f_forw.f_ctx) : strerror(errno));
 	dprintf("%s\n", ebuf);
 
 	/* The SIGHUP handler may also close the socket, so invalidate it. */
-	if (f->f_type == F_FORWTLS) {
+	if (f->f_un.f_forw.f_ctx) {
 		tls_close(f->f_un.f_forw.f_ctx);
 		tls_free(f->f_un.f_forw.f_ctx);
 		f->f_un.f_forw.f_ctx = NULL;
