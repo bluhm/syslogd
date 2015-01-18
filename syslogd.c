@@ -135,7 +135,7 @@ struct filed {
 	union {
 		char	f_uname[MAXUNAMES][UT_NAMESIZE+1];
 		struct {
-			char	f_loghost[1+4+3+1+HOST_NAME_MAX+1+1+NI_MAXSERV];
+			char	f_loghost[1+4+3+1+NI_MAXHOST+1+NI_MAXSERV];
 				/* @proto46://[hostname]:servname\0 */
 			struct sockaddr_storage	 f_addr;
 			struct buffertls	 f_buftls;
@@ -653,7 +653,7 @@ udp_readcb(int fd, short event, void *arg)
 	salen = sizeof(sa);
 	n = recvfrom(fd, linebuf, MAXLINE, 0, (struct sockaddr *)&sa, &salen);
 	if (n > 0) {
-		char	 resolve[HOST_NAME_MAX+1];
+		char	 resolve[NI_MAXHOST];
 
 		linebuf[n] = '\0';
 		cvthname((struct sockaddr *)&sa, resolve, sizeof(resolve));
@@ -1825,7 +1825,7 @@ cfline(char *line, char *prog)
 			logerror(ebuf);
 			break;
 		}
-		if (strlen(host) >= HOST_NAME_MAX+1) {
+		if (strlen(host) >= NI_MAXHOST) {
 			snprintf(ebuf, sizeof(ebuf), "host too long \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
