@@ -81,10 +81,11 @@
 #include <arpa/inet.h>
 
 #include <ctype.h>
-#include <errno.h>
 #include <err.h>
+#include <errno.h>
 #include <event.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <paths.h>
 #include <poll.h>
 #include <signal.h>
@@ -93,7 +94,6 @@
 #include <string.h>
 #include <tls.h>
 #include <unistd.h>
-#include <limits.h>
 #include <utmp.h>
 #include <vis.h>
 

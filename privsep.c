@@ -23,9 +23,11 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <netdb.h>
 #include <paths.h>
 #include <poll.h>
@@ -37,7 +39,7 @@
 #include <unistd.h>
 #include <util.h>
 #include <utmp.h>
-#include <limits.h>
+
 #include "syslogd.h"
 
 /*
