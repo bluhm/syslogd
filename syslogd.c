@@ -529,6 +529,8 @@ main(int argc, char *argv[])
 		} else if (tls_config_set_ca_mem(tlsconfig, p, sb.st_size)
 		    == -1) {
 			logerror("tls_config_set_ca_mem");
+		} else {
+			dprintf("CAfile %s, size %lld\n", CAfile, sb.st_size);
 		}
 		free(p);
 		close(fd);
