@@ -203,12 +203,14 @@ int	Debug;			/* debug flag */
 int	Startup = 1;		/* startup flag */
 char	LocalHostName[HOST_NAME_MAX+1];	/* our hostname */
 char	*LocalDomain;		/* our local domain name */
+char	*CAFile;		/* file containing trusted CA certificates */
 int	Initialized = 0;	/* set when we have initialized ourselves */
 
 int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
 int	MarkSeq = 0;		/* mark sequence number */
 int	SecureMode = 1;		/* when true, speak only unix domain socks */
 int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
+int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	IPv4Only = 0;		/* when true, disable IPv6 */
 int	IPv6Only = 0;		/* when true, disable IPv4 */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
@@ -316,7 +318,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46dhnuf:m:p:a:s:")) != -1)
+	while ((ch = getopt(argc, argv, "46C:dhnuf:m:p:a:s:V")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			IPv4Only = 1;
@@ -325,6 +327,9 @@ main(int argc, char *argv[])
 		case '6':		/* disable IPv4 */
 			IPv6Only = 1;
 			IPv4Only = 0;
+			break;
+		case 'C':		/* file containing CA certificates */
+			CAFile = optarg;
 			break;
 		case 'd':		/* debug */
 			Debug++;
@@ -357,6 +362,9 @@ main(int argc, char *argv[])
 			break;
 		case 's':
 			path_ctlsock = optarg;
+			break;
+		case 'V':		/* do not verify certificates */
+			NoVerify = 1;
 			break;
 		default:
 			usage();
@@ -879,8 +887,8 @@ usage(void)
 {
 
 	(void)fprintf(stderr,
-	    "usage: syslogd [-46dhnu] [-a path] [-f config_file] [-m mark_interval]\n"
-	    "               [-p log_socket] [-s reporting_socket]\n");
+	    "usage: syslogd [-46dhnuV] [-a path] [-C CAfile] [-f config_file]\n"
+	    "               [-m mark_interval] [-p log_socket] [-s reporting_socket]\n");
 	exit(1);
 }
 
