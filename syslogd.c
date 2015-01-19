@@ -141,6 +141,7 @@ struct filed {
 			struct buffertls	 f_buftls;
 			struct bufferevent	*f_bufev;
 			struct tls		*f_ctx;
+			char			*f_host;
 			int			 f_reconnectwait;
 		} f_forw;		/* forwarding address */
 		char	f_fname[PATH_MAX];
@@ -851,8 +852,8 @@ tcp_connectcb(int fd, short event, void *arg)
 		f->f_un.f_forw.f_ctx = ctx;
 
 		buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
-		/* XXX no host given */
-		buffertls_connect(&f->f_un.f_forw.f_buftls, s, NULL);
+		buffertls_connect(&f->f_un.f_forw.f_buftls, s,
+		    f->f_un.f_forw.f_host);
 	}
 
 	return;
@@ -1496,6 +1497,7 @@ init(void)
 				tls_close(f->f_un.f_forw.f_ctx);
 				tls_free(f->f_un.f_forw.f_ctx);
 			}
+			free(f->f_un.f_forw.f_host);
 			/* FALLTHROUGH */
 		case F_FORWTCP:
 			/* XXX Save messages in output buffer for reconnect. */
@@ -1891,6 +1893,7 @@ cfline(char *line, char *prog)
 				break;
 			}
 			if (strncmp(proto, "tls", 3) == 0) {
+				f->f_un.f_forw.f_host = strdup(host);
 				f->f_type = F_FORWTLS;
 			} else {
 				f->f_type = F_FORWTCP;
