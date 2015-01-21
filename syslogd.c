@@ -518,6 +518,7 @@ main(int argc, char *argv[])
 
 		fd = -1;
 		p = NULL;
+		errno = 0;
 		if ((fd = open(CAfile, O_RDONLY)) == -1) {
 			logerror("open CAfile");
 		} else if (fstat(fd, &sb) == -1) {
