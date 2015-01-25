@@ -390,33 +390,33 @@ main(int argc, char *argv[])
 					else
 						CAfile = str;
 					break;
-                                case SSL_CIPHERS:
+				case SSL_CIPHERS:
 					if (str == NULL)
 						warnx("missing cipher list");
 					else
 						Ciphers = str;
 					break;
-                                case SSL_DONTVERIFY:
+				case SSL_DONTVERIFY:
 					Verify = 0;
-                                        break;
-                                case SSL_DOVERIFY:
+					break;
+				case SSL_DOVERIFY:
 					Verify = 1;
-                                        break;
-                                case SSL_VERIFYDEPTH:
-                                        if (str == NULL) {
-                                                warnx("missing verify depth");
+					break;
+				case SSL_VERIFYDEPTH:
+					if (str == NULL) {
+						warnx("missing verify depth");
 						break;
 					}
-                                        i = strtonum(str, 0, INT_MAX, &errstr);
-                                        if (errstr)
-                                                warnx("certificate validation "
+					i = strtonum(str, 0, INT_MAX, &errstr);
+					if (errstr)
+						warnx("certificate validation "
 						    "depth is %s", errstr);
 					else
 						Depth = i;
-                                        break;
-                                default:
-                                        warnx("unknown -S suboption `%s'",
-                                            suboptarg ? suboptarg : "");
+					break;
+				default:
+					warnx("unknown -S suboption `%s'",
+					    suboptarg ? suboptarg : "");
 				}
 			}
 			break;
