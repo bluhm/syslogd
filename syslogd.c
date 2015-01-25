@@ -570,33 +570,45 @@ main(int argc, char *argv[])
 		logerror("tls_init");
 	} else if ((tlsconfig = tls_config_new()) == NULL) {
 		logerror("tls_config_new");
-	} else if (!Verify) {
-		tls_config_insecure_noverifyhost(tlsconfig);
-		tls_config_insecure_noverifycert(tlsconfig);
 	} else {
-		struct stat sb;
-
-		fd = -1;
-		p = NULL;
-		errno = 0;
-		if ((fd = open(CAfile, O_RDONLY)) == -1) {
-			logerror("open CAfile");
-		} else if (fstat(fd, &sb) == -1) {
-			logerror("fstat CAfile");
-		} else if (sb.st_size > 1024*1024*1024) {
-			logerror("CAfile larger than 1GB");
-		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
-			logerror("calloc CAfile");
-		} else if (read(fd, p, sb.st_size) != sb.st_size) {
-			logerror("read CAfile");
-		} else if (tls_config_set_ca_mem(tlsconfig, p, sb.st_size)
-		    == -1) {
-			logerror("tls_config_set_ca_mem");
+		if (!Verify) {
+			tls_config_insecure_noverifyhost(tlsconfig);
+			tls_config_insecure_noverifycert(tlsconfig);
 		} else {
-			dprintf("CAfile %s, size %lld\n", CAfile, sb.st_size);
+			struct stat sb;
+
+			fd = -1;
+			p = NULL;
+			errno = 0;
+			if ((fd = open(CAfile, O_RDONLY)) == -1) {
+				logerror("open CAfile");
+			} else if (fstat(fd, &sb) == -1) {
+				logerror("fstat CAfile");
+			} else if (sb.st_size > 1024*1024*1024) {
+				logerror("CAfile larger than 1GB");
+			} else if ((p = calloc(sb.st_size, 1)) == NULL) {
+				logerror("calloc CAfile");
+			} else if (read(fd, p, sb.st_size) != sb.st_size) {
+				logerror("read CAfile");
+			} else if (tls_config_set_ca_mem(tlsconfig, p,
+			    sb.st_size) == -1) {
+				logerror("tls_config_set_ca_mem");
+			} else {
+				dprintf("CAfile %s, size %lld\n",
+				    CAfile, sb.st_size);
+			}
+			free(p);
+			close(fd);
+
+			errno = 0;
+			if (Ciphers) {
+				if (tls_config_set_ciphers(tlsconfig,
+				    Ciphers) != 0)
+					logerror("tls_config_set_ciphers");
+			}
+			if (Depth != -1)
+				tls_config_set_verify_depth(tlsconfig, Depth);
 		}
-		free(p);
-		close(fd);
 	}
 
 	dprintf("off & running....\n");
