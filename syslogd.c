@@ -424,9 +424,8 @@ main(int argc, char *argv[])
 						Depth = i;
                                         break;
                                 default:
-                                        errx(1, "unknown -S suboption `%s'",
+                                        warnx("unknown -S suboption `%s'",
                                             suboptarg ? suboptarg : "");
-                                        /* NOTREACHED */
 				}
 			}
 			break;
