@@ -220,9 +220,24 @@ int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
+char *const ssl_opts[] = {
+#define SSL_CAFILE      0
+	"cafile",
+#define SSL_CIPHERS     1
+	"ciphers",
+#define SSL_DONTVERIFY  3
+	"dont",
+#define SSL_DOVERIFY    4
+	"do",
+#define SSL_VERIFYDEPTH 5
+	"depth",
+	NULL
+};
 struct	tls_config *tlsconfig;
-const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
-int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
+const	char *CAfile = "/etc/ssl/cert.pem"; /* file containing certificates */
+const	char *Ciphers = NULL;	/* list of ciphers that may be used */
+int	Verify = 1;		/* do verify TLS server x509 certificate */
+int	Depth = -1;		/* TLS verify depth */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
 
 #define CTL_READING_CMD		1
@@ -324,11 +339,11 @@ main(int argc, char *argv[])
 	struct addrinfo	 hints, *res, *res0;
 	struct timeval	 to;
 	const char	*errstr;
-	char		*p;
+	char		*cp, *p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46C:dhnuf:m:p:a:s:V")) != -1)
+	while ((ch = getopt(argc, argv, "46dhnuf:m:p:a:s:S:")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			IPv4Only = 1;
@@ -337,9 +352,6 @@ main(int argc, char *argv[])
 		case '6':		/* disable IPv4 */
 			IPv6Only = 1;
 			IPv4Only = 0;
-			break;
-		case 'C':		/* file containing CA certificates */
-			CAfile = optarg;
 			break;
 		case 'd':		/* debug */
 			Debug++;
@@ -375,8 +387,48 @@ main(int argc, char *argv[])
 		case 's':
 			path_ctlsock = optarg;
 			break;
-		case 'V':		/* do not verify certificates */
-			NoVerify = 1;
+		case 'S':
+			cp = optarg;
+			while (*cp) {
+				char *str;
+
+				switch (getsubopt(&cp, ssl_opts, &str)) {
+				case SSL_CAFILE:
+					if (str == NULL)
+						warnx("missing CA file");
+					else
+						CAfile = str;
+					break;
+                                case SSL_CIPHERS:
+					if (str == NULL)
+						warnx("missing cipher list");
+					else
+						Ciphers = str;
+					break;
+                                case SSL_DONTVERIFY:
+					Verify = 0;
+                                        break;
+                                case SSL_DOVERIFY:
+					Verify = 1;
+                                        break;
+                                case SSL_VERIFYDEPTH:
+                                        if (str == NULL) {
+                                                warnx("missing verify depth");
+						break;
+					}
+                                        i = strtonum(str, 0, INT_MAX, &errstr);
+                                        if (errstr)
+                                                warnx("certificate validation "
+						    "depth is %s", errstr);
+					else
+						Depth = i;
+                                        break;
+                                default:
+                                        errx(1, "unknown -S suboption `%s'",
+                                            suboptarg ? suboptarg : "");
+                                        /* NOTREACHED */
+				}
+			}
 			break;
 		default:
 			usage();
@@ -519,7 +571,7 @@ main(int argc, char *argv[])
 		logerror("tls_init");
 	} else if ((tlsconfig = tls_config_new()) == NULL) {
 		logerror("tls_config_new");
-	} else if (NoVerify) {
+	} else if (!Verify) {
 		tls_config_insecure_noverifyhost(tlsconfig);
 		tls_config_insecure_noverifycert(tlsconfig);
 	} else {
