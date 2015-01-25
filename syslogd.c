@@ -357,8 +357,7 @@ main(int argc, char *argv[])
 			break;
 		case 'a':
 			if (nunix >= MAXUNIX)
-				fprintf(stderr, "syslogd: "
-				    "out of descriptors, ignoring %s\n",
+				warnx("out of descriptors, ignoring %s\n",
 				    optarg);
 			else
 				path_unix[nunix++] = optarg;
