@@ -220,7 +220,7 @@ int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
-char *const ssl_opts[] = {
+char *const ssl_verify_opts[] = {
 #define SSL_CAFILE      0
 	"cafile",
 #define SSL_CIPHERS     1
@@ -392,7 +392,7 @@ main(int argc, char *argv[])
 			while (*cp) {
 				char *str;
 
-				switch (getsubopt(&cp, ssl_opts, &str)) {
+				switch (getsubopt(&cp, ssl_verify_opts, &str)) {
 				case SSL_CAFILE:
 					if (str == NULL)
 						warnx("missing CA file");
