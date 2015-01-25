@@ -221,11 +221,11 @@ char *const ssl_verify_opts[] = {
 	"cafile",
 #define SSL_CIPHERS     1
 	"ciphers",
-#define SSL_DONTVERIFY  3
+#define SSL_DONTVERIFY  2
 	"dont",
-#define SSL_DOVERIFY    4
+#define SSL_DOVERIFY    3
 	"do",
-#define SSL_VERIFYDEPTH 5
+#define SSL_VERIFYDEPTH 4
 	"depth",
 	NULL
 };
