@@ -229,7 +229,7 @@ char *const ssl_opts[] = {
 	"depth",
 	NULL
 };
-struct	tls_config *tlsconfig;
+struct	tls_config *tls_config;
 const	char *CAfile = "/etc/ssl/cert.pem"; /* file containing certificates */
 const	char *Ciphers = NULL;	/* list of ciphers that may be used */
 int	Verify = 1;		/* do verify TLS server x509 certificate */
@@ -559,12 +559,12 @@ main(int argc, char *argv[])
 
 	if (tls_init() == -1) {
 		logerror("tls_init");
-	} else if ((tlsconfig = tls_config_new()) == NULL) {
+	} else if ((tls_config = tls_config_new()) == NULL) {
 		logerror("tls_config_new");
 	} else {
 		if (!Verify) {
-			tls_config_insecure_noverifyhost(tlsconfig);
-			tls_config_insecure_noverifycert(tlsconfig);
+			tls_config_insecure_noverifyhost(tls_config);
+			tls_config_insecure_noverifycert(tls_config);
 		} else {
 			struct stat sb;
 
@@ -581,7 +581,7 @@ main(int argc, char *argv[])
 				logerror("calloc CAfile");
 			} else if (read(fd, p, sb.st_size) != sb.st_size) {
 				logerror("read CAfile");
-			} else if (tls_config_set_ca_mem(tlsconfig, p,
+			} else if (tls_config_set_ca_mem(tls_config, p,
 			    sb.st_size) == -1) {
 				logerror("tls_config_set_ca_mem");
 			} else {
@@ -593,12 +593,12 @@ main(int argc, char *argv[])
 
 			errno = 0;
 			if (Ciphers) {
-				if (tls_config_set_ciphers(tlsconfig,
+				if (tls_config_set_ciphers(tls_config,
 				    Ciphers) != 0)
 					logerror("tls_config_set_ciphers");
 			}
 			if (Depth != -1)
-				tls_config_set_verify_depth(tlsconfig, Depth);
+				tls_config_set_verify_depth(tls_config, Depth);
 		}
 	}
 
@@ -953,8 +953,8 @@ tls_socket(struct filed *f)
 		logerror(ebuf);
 		return (NULL);
 	}
-	if (tlsconfig) {
-		if (tls_configure(ctx, tlsconfig) < 0) {
+	if (tls_config) {
+		if (tls_configure(ctx, tls_config) < 0) {
 			snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\": %s",
 			    f->f_un.f_forw.f_loghost, tls_error(ctx));
 			logerror(ebuf);
