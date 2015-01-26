@@ -1029,8 +1029,8 @@ usage(void)
 {
 
 	(void)fprintf(stderr,
-	    "usage: syslogd [-46dhnuV] [-a path] [-C CAfile] [-f config_file]\n"
-	    "               [-m mark_interval] [-p log_socket] [-s reporting_socket]\n");
+	    "usage: syslogd [-46dhnu] [-a path] [-f config_file] [-m mark_interval]\n"
+	    "               [-p log_socket] [-s reporting_socket] [-S ssl_options]\n");
 	exit(1);
 }
 
