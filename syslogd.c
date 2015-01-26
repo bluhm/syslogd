@@ -591,14 +591,15 @@ main(int argc, char *argv[])
 			free(p);
 			close(fd);
 
-			errno = 0;
-			if (Ciphers) {
-				if (tls_config_set_ciphers(tls_config,
-				    Ciphers) != 0)
-					logerror("tls_config_set_ciphers");
-			}
 			if (Depth != -1)
 				tls_config_set_verify_depth(tls_config, Depth);
+		}
+		if (Ciphers) {
+			errno = 0;
+			if (tls_config_set_ciphers(tls_config, Ciphers) != 0)
+				logerror("tls_config_set_ciphers");
+			else
+				dprintf("Ciphers %s\n", Ciphers);
 		}
 	}
 
