@@ -287,7 +287,8 @@ buffertls_connect(struct buffertls *buftls, int fd, const char *hostname)
 	event_del(&bufev->ev_write);
 
 	buftls->bt_hostname = hostname;
-	buffertls_connectcb(fd, 0, buftls);
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_connectcb, buftls);
+	bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 }
 
 /*
