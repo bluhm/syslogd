@@ -53,7 +53,7 @@
  * IPv6, libevent, sending over TCP and TLS by Alexander Bluhm
  */
 
-#define	MAXLINE		1024		/* maximum line length */
+#define	MAXLINE		8192		/* maximum line length */
 #define MIN_MEMBUF	(MAXLINE * 4)	/* Minimum memory buffer size */
 #define MAX_MEMBUF	(256 * 1024)	/* Maximum memory buffer size */
 #define MAX_MEMBUF_NAME	64		/* Max length of membuf log name */
