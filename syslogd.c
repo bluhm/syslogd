@@ -727,7 +727,7 @@ int
 tcp_socket(struct filed *f)
 {
 	int	 s, flags;
-	char	 ebuf[100];
+	char	 ebuf[256];
 
 	if ((s = socket(f->f_un.f_forw.f_addr.ss_family, SOCK_STREAM,
 	    IPPROTO_TCP)) == -1) {
@@ -785,7 +785,7 @@ void
 tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
-	char		 ebuf[100];
+	char		 ebuf[256];
 
 	if (event & EVBUFFER_EOF)
 		snprintf(ebuf, sizeof(ebuf),
@@ -882,7 +882,7 @@ struct tls *
 tls_socket(struct filed *f)
 {
 	struct tls	*ctx;
-	char		 ebuf[100];
+	char		 ebuf[256];
 
 	if ((ctx = tls_client()) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
@@ -1425,7 +1425,7 @@ init_signalcb(int signum, short event, void *arg)
 void
 logerror(const char *type)
 {
-	char ebuf[100];
+	char ebuf[256];
 
 	if (errno)
 		(void)snprintf(ebuf, sizeof(ebuf), "syslogd: %s: %s",
@@ -1445,7 +1445,7 @@ die(int signo)
 {
 	struct filed *f;
 	int was_initialized = Initialized;
-	char ebuf[100];
+	char ebuf[256];
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
@@ -1709,7 +1709,7 @@ cfline(char *line, char *prog)
 	int i, pri;
 	size_t rb_len;
 	char *bp, *p, *q, *proto, *host, *port, *ipproto;
-	char buf[MAXLINE], ebuf[100];
+	char buf[MAXLINE], ebuf[256];
 	struct filed *xf, *f, *d;
 	struct timeval to;
 
