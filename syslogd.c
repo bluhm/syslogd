@@ -920,7 +920,7 @@ void
 printline(char *hname, char *msg)
 {
 	int pri;
-	char *p, *q, line[MAXLINE + 1];
+	char *p, *q, line[MAXLINE + 4 + 1];  /* encoding and NUL */
 
 	/* test for special codes */
 	pri = DEFUPRI;
@@ -943,7 +943,7 @@ printline(char *hname, char *msg)
 	if (LOG_FAC(pri) == LOG_KERN)
 		pri = LOG_USER | LOG_PRI(pri);
 
-	for (q = line; *p && q < &line[sizeof(line) - 4]; p++) {
+	for (q = line; *p && q < &line[MAXLINE]; p++) {
 		if (*p == '\n')
 			*q++ = ' ';
 		else
