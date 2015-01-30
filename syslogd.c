@@ -920,7 +920,7 @@ void
 printline(char *hname, char *msg)
 {
 	int pri;
-	char *p, *q, line[MAXLINE + 4 + 1];  /* encoding and NUL */
+	char *p, *q, line[MAXLINE + 4 + 1];  /* message, encoding, NUL */
 
 	/* test for special codes */
 	pri = DEFUPRI;
