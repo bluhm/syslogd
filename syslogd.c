@@ -949,7 +949,7 @@ printline(char *hname, char *msg)
 		else
 			q = vis(q, *p, 0, 0);
 	}
-	*q = '\0';
+	line[MAXLINE] = *q = '\0';
 
 	logmsg(pri, line, hname, 0);
 }
