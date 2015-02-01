@@ -99,6 +99,7 @@
 #include <vis.h>
 
 #define MAXIMUM(a, b)	(((a) > (b)) ? (a) : (b))
+#define MINIMUM(a, b)	(((a) < (b)) ? (a) : (b))
 
 #define SYSLOG_NAMES
 #include <sys/syslog.h>
@@ -1182,13 +1183,13 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORWUDP:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
-		l = snprintf(line, MAX_UDPMSG + 1, "<%d>%.15s %s%s%s",
-		    f->f_prevpri, (char *)iov[0].iov_base,
+		l = snprintf(line, MINIMUM(MAX_UDPMSG + 1, sizeof(line)),
+		    "<%d>%.15s %s%s%s", f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
-		if (l < 0 || (size_t)l > MAX_UDPMSG)
-			l = MAX_UDPMSG;
+		if (l < 0 || (size_t)l > MINIMUM(MAX_UDPMSG, sizeof(line)))
+			l = MINIMUM(MAX_UDPMSG, sizeof(line));
 		if (sendto(f->f_file, line, l, 0,
 		    (struct sockaddr *)&f->f_un.f_forw.f_addr,
 		    f->f_un.f_forw.f_addr.ss_len) != l) {
