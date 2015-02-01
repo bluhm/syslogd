@@ -2122,7 +2122,7 @@ unix_socket(char *path, int type, mode_t mode)
 {
 	struct sockaddr_un s_un;
 	char ebuf[512];
-	int fd;
+	int fd, optval;
 	mode_t old_umask;
 
 	memset(&s_un, 0, sizeof(s_un));
@@ -2169,6 +2169,11 @@ unix_socket(char *path, int type, mode_t mode)
 		unlink(path);
 		return (-1);
 	}
+
+	optval = MAXLINE + PATH_MAX;
+	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &optval, sizeof(optval))
+	    == -1)
+		logerror("cannot setsockopt unix");
 
 	return (fd);
 }
