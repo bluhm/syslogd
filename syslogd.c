@@ -53,7 +53,8 @@
  * IPv6, libevent, sending over TCP and TLS by Alexander Bluhm
  */
 
-#define	MAXLINE		8192		/* maximum line length */
+#define MAXLINE		8192		/* maximum line length */
+#define MAX_UDPMSG	1180		/* maximum UDP send size */
 #define MIN_MEMBUF	(MAXLINE * 4)	/* Minimum memory buffer size */
 #define MAX_MEMBUF	(256 * 1024)	/* Maximum memory buffer size */
 #define MAX_MEMBUF_NAME	64		/* Max length of membuf log name */
@@ -1181,13 +1182,13 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORWUDP:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
-		l = snprintf(line, sizeof(line), "<%d>%.15s %s%s%s",
+		l = snprintf(line, MAX_UDPMSG + 1, "<%d>%.15s %s%s%s",
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
-		if (l < 0 || (size_t)l >= sizeof(line))
-			l = strlen(line);
+		if (l < 0 || (size_t)l > MAX_UDPMSG)
+			l = MAX_UDPMSG;
 		if (sendto(f->f_file, line, l, 0,
 		    (struct sockaddr *)&f->f_un.f_forw.f_addr,
 		    f->f_un.f_forw.f_addr.ss_len) != l) {
