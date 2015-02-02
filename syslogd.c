@@ -1514,9 +1514,9 @@ init(void)
 			free(f->f_un.f_forw.f_host);
 			/* FALLTHROUGH */
 		case F_FORWTCP:
-			begin = EVBUFFER_DATA(f->f_un.f_forw.f_bufev->input);
+			begin = EVBUFFER_DATA(f->f_un.f_forw.f_bufev->output);
 			end = begin + EVBUFFER_LENGTH(
-			    f->f_un.f_forw.f_bufev->input);
+			    f->f_un.f_forw.f_bufev->output);
 			for (p = begin; p < end; p++) {
 				if (*p == '\n')
 					tcpbuf_dropped++;
