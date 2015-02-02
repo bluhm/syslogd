@@ -1223,9 +1223,10 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORWTCP:
 	case F_FORWTLS:
-		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
+		dprintf(" %s", f->f_un.f_forw.f_loghost);
 		if (EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) >=
 		    MAX_TCPBUF) {
+			dprintf(" (dropped)\n");
 			f->f_un.f_forw.f_dropped++;
 			break;
 		}
@@ -1240,10 +1241,12 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
 		if (l < 0) {
+			dprintf(" (dropped)\n");
 			f->f_un.f_forw.f_dropped++;
 			break;
 		}
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_WRITE);
+		dprintf("\n");
 		break;
 
 	case F_CONSOLE:
