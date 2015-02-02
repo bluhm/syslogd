@@ -777,12 +777,22 @@ void
 tcp_writecb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
+	char		 ebuf[256];
 
 	/*
 	 * Successful write, connection to server is good, reset wait time.
 	 */
 	dprintf("loghost \"%s\" successful write\n", f->f_un.f_forw.f_loghost);
 	f->f_un.f_forw.f_reconnectwait = 0;
+
+	if (f->f_un.f_forw.f_dropped > 0 &&
+	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) < MAX_TCPBUF) {
+		snprintf(ebuf, sizeof(ebuf),
+		    "syslogd: loghost \"%s\" dropped %d messages",
+		    f->f_un.f_forw.f_loghost, f->f_un.f_forw.f_dropped);
+		f->f_un.f_forw.f_dropped = 0;
+		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+	}
 }
 
 void
