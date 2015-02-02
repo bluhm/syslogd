@@ -1430,11 +1430,20 @@ mark_timercb(int unused, short event, void *arg)
 void
 init_signalcb(int signum, short event, void *arg)
 {
+	char	 ebuf[256];
+
 	init();
 
 	logmsg(LOG_SYSLOG|LOG_INFO, "syslogd: restart",
 	    LocalHostName, ADDDATE);
 	dprintf("syslogd: restarted\n");
+
+	if (tcpbuf_dropped > 0) {
+		snprintf(ebuf, sizeof(ebuf),
+		    "syslogd: dropped %d TCP or TLS messages", tcpbuf_dropped);
+		tcpbuf_dropped = 0;
+		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+	}
 }
 
 /*
