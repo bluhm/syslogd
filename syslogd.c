@@ -145,6 +145,7 @@ struct filed {
 			struct tls		*f_ctx;
 			char			*f_host;
 			int			 f_reconnectwait;
+			int			 f_dropped;
 		} f_forw;		/* forwarding address */
 		char	f_fname[PATH_MAX];
 		struct {
@@ -221,6 +222,7 @@ char	*path_ctlsock = NULL;	/* Path to control socket */
 struct	tls_config *tlsconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
+int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
 
 #define CTL_READING_CMD		1
 #define CTL_WRITING_REPLY	2
@@ -1213,8 +1215,10 @@ fprintlog(struct filed *f, int flags, char *msg)
 	case F_FORWTLS:
 		dprintf(" %s\n", f->f_un.f_forw.f_loghost);
 		if (EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) >=
-		    MAX_TCPBUF)
-			break;  /* XXX log error message */
+		    MAX_TCPBUF) {
+			f->f_un.f_forw.f_dropped++;
+			break;
+		}
 		/*
 		 * RFC 6587  3.4.2.  Non-Transparent-Framing
 		 * Use \n to split messages for now.
@@ -1225,8 +1229,10 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
-		if (l < 0)
-			break;  /* XXX log error message */
+		if (l < 0) {
+			f->f_un.f_forw.f_dropped++;
+			break;
+		}
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_WRITE);
 		break;
 
@@ -1473,7 +1479,7 @@ die(int signo)
 void
 init(void)
 {
-	char cline[LINE_MAX], prog[NAME_MAX+1], *p;
+	char cline[LINE_MAX], prog[NAME_MAX+1], *p, *begin, *end;
 	struct filed_list mb;
 	struct filed *f, *m;
 	FILE *cf;
@@ -1508,7 +1514,14 @@ init(void)
 			free(f->f_un.f_forw.f_host);
 			/* FALLTHROUGH */
 		case F_FORWTCP:
-			/* XXX Save messages in output buffer for reconnect. */
+			begin = EVBUFFER_DATA(f->f_un.f_forw.f_bufev->input);
+			end = begin + EVBUFFER_LENGTH(
+			    f->f_un.f_forw.f_bufev->input);
+			for (p = begin; p < end; p++) {
+				if (*p == '\n')
+					tcpbuf_dropped++;
+			}
+			tcpbuf_dropped += f->f_un.f_forw.f_dropped;
 			bufferevent_free(f->f_un.f_forw.f_bufev);
 			/* FALLTHROUGH */
 		case F_FILE:
