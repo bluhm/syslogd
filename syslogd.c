@@ -286,6 +286,7 @@ void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
 struct tls *tls_socket(struct filed *);
+int	 tcpbuf_countmsg(struct bufferevent *bufev);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -916,6 +917,21 @@ tls_socket(struct filed *f)
 	return (ctx);
 }
 
+int
+tcpbuf_countmsg(struct bufferevent *bufev)
+{
+	char	*p, *buf, *end;
+	int	 i = 0;
+
+	buf = EVBUFFER_DATA(bufev->output);
+	end = buf + EVBUFFER_LENGTH(bufev->output);
+	for (p = buf; p < end; p++) {
+		if (*p == '\n')
+			i++;
+	}
+	return (i);
+}
+
 void
 usage(void)
 {
@@ -1483,8 +1499,20 @@ die(int signo)
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
+		if (f->f_type == F_FORWTLS || f->f_type == F_FORWTCP)
+			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
+			    tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
 	}
 	Initialized = was_initialized;
+
+	if (tcpbuf_dropped > 0) {
+		snprintf(ebuf, sizeof(ebuf),
+		    "syslogd: dropped %d messages to remote loghost",
+		    tcpbuf_dropped);
+		tcpbuf_dropped = 0;
+		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+	}
+
 	if (signo) {
 		dprintf("syslogd: exiting on signal %d\n", signo);
 		(void)snprintf(ebuf, sizeof(ebuf), "exiting on signal %d",
@@ -1502,7 +1530,7 @@ die(int signo)
 void
 init(void)
 {
-	char cline[LINE_MAX], prog[NAME_MAX+1], *p, *begin, *end;
+	char cline[LINE_MAX], prog[NAME_MAX+1], *p;
 	struct filed_list mb;
 	struct filed *f, *m;
 	FILE *cf;
@@ -1537,14 +1565,8 @@ init(void)
 			free(f->f_un.f_forw.f_host);
 			/* FALLTHROUGH */
 		case F_FORWTCP:
-			begin = EVBUFFER_DATA(f->f_un.f_forw.f_bufev->output);
-			end = begin + EVBUFFER_LENGTH(
-			    f->f_un.f_forw.f_bufev->output);
-			for (p = begin; p < end; p++) {
-				if (*p == '\n')
-					tcpbuf_dropped++;
-			}
-			tcpbuf_dropped += f->f_un.f_forw.f_dropped;
+			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
+			     tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
 			bufferevent_free(f->f_un.f_forw.f_bufev);
 			/* FALLTHROUGH */
 		case F_FILE:
