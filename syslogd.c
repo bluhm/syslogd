@@ -1499,9 +1499,11 @@ die(int signo)
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
-		if (f->f_type == F_FORWTLS || f->f_type == F_FORWTCP)
+		if (f->f_type == F_FORWTLS || f->f_type == F_FORWTCP) {
 			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
 			    tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
+			f->f_un.f_forw.f_dropped = 0;
+		}
 	}
 	Initialized = was_initialized;
 
