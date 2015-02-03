@@ -788,8 +788,8 @@ tcp_writecb(struct bufferevent *bufev, void *arg)
 	if (f->f_un.f_forw.f_dropped > 0 &&
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) < MAX_TCPBUF) {
 		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: loghost \"%s\" dropped %d messages",
-		    f->f_un.f_forw.f_loghost, f->f_un.f_forw.f_dropped);
+		    "syslogd: dropped %d messages to loghost \"%s\"",
+		    f->f_un.f_forw.f_dropped, f->f_un.f_forw.f_loghost);
 		f->f_un.f_forw.f_dropped = 0;
 		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 	}
@@ -1443,7 +1443,8 @@ init_signalcb(int signum, short event, void *arg)
 
 	if (tcpbuf_dropped > 0) {
 		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: dropped %d TCP or TLS messages", tcpbuf_dropped);
+		    "syslogd: dropped %d messages to remote loghost",
+		    tcpbuf_dropped);
 		tcpbuf_dropped = 0;
 		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 	}
