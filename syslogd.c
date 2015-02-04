@@ -1216,12 +1216,21 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    MAX_TCPBUF)
 			break;  /* XXX log error message */
 		/*
-		 * RFC 6587  3.4.2.  Non-Transparent-Framing
-		 * Use \n to split messages for now.
-		 * 3.4.1.  Octet Counting might be implemented later.
+		 * RFC 6587  3.4.1.  Octet Counting
+		 * Use an additional "\n" to split messages.  This allows
+		 * buffer synchronisation, helps legacy implementations,
+		 * and makes line based testing easier.
 		 */
+		l = snprintf(line, sizeof(line), "<%d>%.15s %s%s\n",
+		    f->f_prevpri, (char *)iov[0].iov_base,
+		    IncludeHostname ? LocalHostName : "",
+		    IncludeHostname ? " " : "");
+		if (l < 0)
+			break;  /* XXX log error message */
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
-		    "<%d>%.15s %s%s%s\n", f->f_prevpri, (char *)iov[0].iov_base,
+		    "%zu<%d>%.15s %s%s%s\n",
+		    (size_t)l + strlen(iov[4].iov_base),
+		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
