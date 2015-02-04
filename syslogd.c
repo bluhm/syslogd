@@ -1264,7 +1264,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (l < 0)
 			break;  /* XXX log error message */
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
-		    "%zu<%d>%.15s %s%s%s\n",
+		    "%zu <%d>%.15s %s%s%s\n",
 		    (size_t)l + strlen(iov[4].iov_base),
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
