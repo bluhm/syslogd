@@ -787,6 +787,8 @@ void
 tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
+	char		*p, *buf, *end;
+	int		 i;
 	char		 ebuf[256];
 
 	if (event & EVBUFFER_EOF)
@@ -810,10 +812,29 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	f->f_file = -1;
 
 	/*
-	 * XXX The messages in the output buffer may be out of sync.
-	 * Here we should clear the buffer or at least remove partial
-	 * messages from the beginning.
+	 * The messages in the output buffer may be out of sync.
+	 * Check that the buffer starts with "1234 <1234 octets>\n".
+	 * Otherwise remove the partial message from the beginning.
 	 */
+	buf = EVBUFFER_DATA(bufev->output);
+	end = buf + EVBUFFER_LENGTH(bufev->output);
+	for (p = buf; p < end && p < buf + 4; p++) {
+		if (!isdigit(*p))
+			break;
+	}
+	if (!(buf + 1 <= p && p < end && *p == ' ' &&
+	    (i = atoi(buf)) > 0 && buf + i < end && buf[i] == '\n')) {
+		for (p = buf; p < end; p++) {
+			if (*p == '\n') {
+				evbuffer_drain(bufev->output, p - buf + 1);
+				break;
+			}
+		}
+		/* Without '\n' discard everything. */
+		if (p == end)
+			evbuffer_drain(bufev->output, p - buf);
+	}
+
 	tcp_connectcb(-1, 0, f);
 
 	/* Log the connection error to the fresh buffer after reconnecting. */
@@ -1217,7 +1238,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			break;  /* XXX log error message */
 		/*
 		 * RFC 6587  3.4.1.  Octet Counting
-		 * Use an additional "\n" to split messages.  This allows
+		 * Use an additional '\n' to split messages.  This allows
 		 * buffer synchronisation, helps legacy implementations,
 		 * and makes line based testing easier.
 		 */
