@@ -801,7 +801,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
 	char		*p, *buf, *end;
-	int		 i;
+	int		 l;
 	char		 ebuf[256];
 
 	if (event & EVBUFFER_EOF)
@@ -836,7 +836,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 			break;
 	}
 	if (buf < end && !(buf + 1 <= p && p < end && *p == ' ' &&
-	    (i = atoi(buf)) > 0 && buf + i < end && buf[i] == '\n')) {
+	    (l = atoi(buf)) > 0 && buf + l < end && buf[l] == '\n')) {
 		for (p = buf; p < end; p++) {
 			if (*p == '\n') {
 				evbuffer_drain(bufev->output, p - buf + 1);
