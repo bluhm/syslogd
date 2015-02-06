@@ -1277,8 +1277,11 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "");
-		if (l < 0)
-			break;  /* XXX log error message */
+		if (l < 0) {
+			dprintf(" (dropped snprintf)\n");
+			f->f_un.f_forw.f_dropped++;
+			break;
+		}
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
 		    "%zu <%d>%.15s %s%s%s\n",
 		    (size_t)l + strlen(iov[4].iov_base),
@@ -1287,7 +1290,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
 		if (l < 0) {
-			dprintf(" (dropped)\n");
+			dprintf(" (dropped evbuffer_add_printf)\n");
 			f->f_un.f_forw.f_dropped++;
 			break;
 		}
