@@ -835,7 +835,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		if (!isdigit(*p))
 			break;
 	}
-	if (!(buf + 1 <= p && p < end && *p == ' ' &&
+	if (buf < end && !(buf + 1 <= p && p < end && *p == ' ' &&
 	    (i = atoi(buf)) > 0 && buf + i < end && buf[i] == '\n')) {
 		for (p = buf; p < end; p++) {
 			if (*p == '\n') {
@@ -846,6 +846,9 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		/* Without '\n' discard everything. */
 		if (p == end)
 			evbuffer_drain(bufev->output, p - buf);
+		dprintf("loghost \"%s\" dropped partial message\n",
+		    f->f_un.f_forw.f_loghost);
+		f->f_un.f_forw.f_dropped++;
 	}
 
 	tcp_connectcb(-1, 0, f);
