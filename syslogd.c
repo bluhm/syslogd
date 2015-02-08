@@ -1276,7 +1276,8 @@ fprintlog(struct filed *f, int flags, char *msg)
 			break;
 		}
 		/*
-		 * RFC 6587  3.4.1.  Octet Counting
+		 * Syslog over TLS  RFC 5425  4.3.  Sending Data
+		 * Syslog over TCP  RFC 6587  3.4.1.  Octet Counting
 		 * Use an additional '\n' to split messages.  This allows
 		 * buffer synchronisation, helps legacy implementations,
 		 * and makes line based testing easier.
