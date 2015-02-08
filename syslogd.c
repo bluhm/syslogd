@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.148 2015/02/06 00:17:58 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.150 2015/02/08 01:30:09 reyk Exp $	*/
 
 /*
  * Copyright (c) 1983, 1988, 1993, 1994
@@ -64,6 +64,7 @@
 #define DEFSPRI		(LOG_KERN|LOG_CRIT)
 #define TIMERINTVL	30		/* interval for checking flush, mark */
 #define TTYMSGTIME	1		/* timeout passed to ttymsg */
+#define ERRBUFSIZE	256
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -322,6 +323,7 @@ main(int argc, char *argv[])
 {
 	struct addrinfo	 hints, *res, *res0;
 	struct timeval	 to;
+	const char	*errstr;
 	char		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
@@ -349,7 +351,10 @@ main(int argc, char *argv[])
 			IncludeHostname = 1;
 			break;
 		case 'm':		/* mark interval */
-			MarkInterval = atoi(optarg) * 60;
+			MarkInterval = strtonum(optarg, 0, 365*24*60, &errstr);
+			if (errstr)
+				errx(1, "mark_interval: %s", errstr, optarg);
+			MarkInterval *= 60;
 			break;
 		case 'n':		/* don't do DNS lookups */
 			NoDNS = 1;
@@ -732,7 +737,7 @@ int
 tcp_socket(struct filed *f)
 {
 	int	 s, flags;
-	char	 ebuf[256];
+	char	 ebuf[ERRBUFSIZE];
 
 	if ((s = socket(f->f_un.f_forw.f_addr.ss_family, SOCK_STREAM,
 	    IPPROTO_TCP)) == -1) {
@@ -778,7 +783,7 @@ void
 tcp_writecb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
-	char		 ebuf[256];
+	char		 ebuf[ERRBUFSIZE];
 
 	/*
 	 * Successful write, connection to server is good, reset wait time.
@@ -800,7 +805,7 @@ void
 tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct filed	*f = arg;
-	char		 ebuf[256];
+	char		 ebuf[ERRBUFSIZE];
 
 	if (event & EVBUFFER_EOF)
 		snprintf(ebuf, sizeof(ebuf),
@@ -897,7 +902,7 @@ struct tls *
 tls_socket(struct filed *f)
 {
 	struct tls	*ctx;
-	char		 ebuf[256];
+	char		 ebuf[ERRBUFSIZE];
 
 	if ((ctx = tls_client()) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
@@ -1449,7 +1454,7 @@ mark_timercb(int unused, short event, void *arg)
 void
 init_signalcb(int signum, short event, void *arg)
 {
-	char	 ebuf[256];
+	char	 ebuf[ERRBUFSIZE];
 
 	init();
 
@@ -1472,7 +1477,7 @@ init_signalcb(int signum, short event, void *arg)
 void
 logerror(const char *type)
 {
-	char ebuf[256];
+	char ebuf[ERRBUFSIZE];
 
 	if (errno)
 		(void)snprintf(ebuf, sizeof(ebuf), "syslogd: %s: %s",
@@ -1492,7 +1497,7 @@ die(int signo)
 {
 	struct filed *f;
 	int was_initialized = Initialized;
-	char ebuf[256];
+	char ebuf[ERRBUFSIZE];
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
@@ -1771,7 +1776,7 @@ cfline(char *line, char *prog)
 	int i, pri;
 	size_t rb_len;
 	char *bp, *p, *q, *proto, *host, *port, *ipproto;
-	char buf[MAXLINE], ebuf[256];
+	char buf[MAXLINE], ebuf[ERRBUFSIZE];
 	struct filed *xf, *f, *d;
 	struct timeval to;
 
