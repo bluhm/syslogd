@@ -353,7 +353,7 @@ main(int argc, char *argv[])
 		case 'm':		/* mark interval */
 			MarkInterval = strtonum(optarg, 0, 365*24*60, &errstr);
 			if (errstr)
-				errx(1, "mark_interval: %s", errstr, optarg);
+				errx(1, "mark_interval %s: %s", errstr, optarg);
 			MarkInterval *= 60;
 			break;
 		case 'n':		/* don't do DNS lookups */
