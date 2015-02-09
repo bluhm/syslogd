@@ -729,7 +729,7 @@ unix_readcb(int fd, short event, void *arg)
 	if (n > 0) {
 		linebuf[n] = '\0';
 		printline(LocalHostName, linebuf);
-	} else if (n == -1 && errno != EINTR)
+	} else if (n < 0 && errno != EINTR)
 		logerror("recvfrom unix");
 }
 
