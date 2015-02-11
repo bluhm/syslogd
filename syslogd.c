@@ -367,11 +367,8 @@ main(int argc, char *argv[])
 			break;
 		case 'a':
 			if (nunix >= MAXUNIX)
-				fprintf(stderr, "syslogd: "
-				    "out of descriptors, ignoring %s\n",
-				    optarg);
-			else
-				path_unix[nunix++] = optarg;
+				errx(1, "out of descriptors: %s", optarg);
+			path_unix[nunix++] = optarg;
 			break;
 		case 's':
 			path_ctlsock = optarg;
