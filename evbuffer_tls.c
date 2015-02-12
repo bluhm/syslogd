@@ -151,6 +151,8 @@ buffertls_writecb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
 	struct bufferevent *bufev = buftls->bt_bufev;
+	struct evbuffer *output = buftls->bt_writebuf ?
+	    buftls->bt_writebuf : bufev->output;
 	struct tls *ctx = buftls->bt_ctx;
 	int res = 0;
 	short what = EVBUFFER_WRITE;
@@ -160,14 +162,24 @@ buffertls_writecb(int fd, short event, void *arg)
 		goto error;
 	}
 
-	if (EVBUFFER_LENGTH(bufev->output) != 0) {
-		res = evtls_write(bufev->output, fd, ctx);
+	if (EVBUFFER_LENGTH(output) != 0) {
+		res = evtls_write(output, fd, ctx);
 		switch (res) {
 		case TLS_READ_AGAIN:
 			event_set(&bufev->ev_write, fd, EV_READ,
 			    buffertls_writecb, buftls);
 			goto reschedule;
 		case TLS_WRITE_AGAIN:
+			/* Preserve output buffer for calls to SSL_write. */
+			if (buftls->bt_writebuf == NULL) {
+				buftls->bt_writebuf = bufev->output;
+				if ((bufev->output = evbuffer_new()) == NULL) {
+					bufev->output = buftls->bt_writebuf;
+					buftls->bt_writebuf = NULL;
+					what |= EVBUFFER_ERROR;
+					goto error;
+				}
+			}
 			event_set(&bufev->ev_write, fd, EV_WRITE,
 			    buffertls_writecb, buftls);
 			goto reschedule;
@@ -186,23 +198,28 @@ buffertls_writecb(int fd, short event, void *arg)
 		if (res <= 0)
 			goto error;
 	}
+	if (buftls->bt_writebuf && EVBUFFER_LENGTH(buftls->bt_writebuf) == 0) {
+		evbuffer_free(buftls->bt_writebuf);
+		buftls->bt_writebuf = NULL;
+		output = bufev->output;
+	}
 
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
-	if (EVBUFFER_LENGTH(bufev->output) != 0)
+	if (EVBUFFER_LENGTH(output) != 0)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 
 	/*
 	 * Invoke the user callback if our buffer is drained or below the
 	 * low watermark.
 	 */
-	if (bufev->writecb != NULL &&
+	if (bufev->writecb != NULL && buftls->bt_writebuf == NULL &&
 	    EVBUFFER_LENGTH(bufev->output) <= bufev->wm_write.low)
 		(*bufev->writecb)(bufev, bufev->cbarg);
 
 	return;
 
  reschedule:
-	if (EVBUFFER_LENGTH(bufev->output) != 0)
+	if (EVBUFFER_LENGTH(output) != 0)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 	return;
 
