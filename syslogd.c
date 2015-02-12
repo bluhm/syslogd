@@ -287,7 +287,7 @@ void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
 struct tls *tls_socket(struct filed *);
-int	 tcpbuf_countmsg(struct bufferevent *bufev);
+int	 tcpbuf_countmsg(struct evbuffer *);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
 void	 init_signalcb(int, short, void *);
@@ -821,6 +821,12 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	dprintf("%s\n", ebuf);
 
 	/* The SIGHUP handler may also close the socket, so invalidate it. */
+	if (f->f_un.f_forw.f_buftls.bt_writebuf) {
+		tcpbuf_dropped += tcpbuf_countmsg(
+		    f->f_un.f_forw.f_buftls.bt_writebuf);
+		evbuffer_free(f->f_un.f_forw.f_buftls.bt_writebuf);
+		f->f_un.f_forw.f_buftls.bt_writebuf = NULL;
+	}
 	if (f->f_un.f_forw.f_ctx) {
 		tls_close(f->f_un.f_forw.f_ctx);
 		tls_free(f->f_un.f_forw.f_ctx);
@@ -947,13 +953,13 @@ tls_socket(struct filed *f)
 }
 
 int
-tcpbuf_countmsg(struct bufferevent *bufev)
+tcpbuf_countmsg(struct evbuffer *buffer)
 {
 	char	*p, *buf, *end;
 	int	 i = 0;
 
-	buf = EVBUFFER_DATA(bufev->output);
-	end = buf + EVBUFFER_LENGTH(bufev->output);
+	buf = EVBUFFER_DATA(buffer);
+	end = buf + EVBUFFER_LENGTH(buffer);
 	for (p = buf; p < end; p++) {
 		if (*p == '\n')
 			i++;
@@ -1541,9 +1547,14 @@ die(int signo)
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
+		if (f->f_type == F_FORWTCP &&
+		    f->f_un.f_forw.f_buftls.bt_writebuf) {
+			tcpbuf_dropped += tcpbuf_countmsg(
+			    f->f_un.f_forw.f_buftls.bt_writebuf);
+		}
 		if (f->f_type == F_FORWTLS || f->f_type == F_FORWTCP) {
 			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
-			    tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
+			    tcpbuf_countmsg(f->f_un.f_forw.f_bufev->output);
 			f->f_un.f_forw.f_dropped = 0;
 		}
 	}
@@ -1602,6 +1613,12 @@ init(void)
 
 		switch (f->f_type) {
 		case F_FORWTLS:
+			if (f->f_un.f_forw.f_buftls.bt_writebuf) {
+				tcpbuf_dropped += tcpbuf_countmsg(
+				    f->f_un.f_forw.f_buftls.bt_writebuf);
+				evbuffer_free(f->f_un.f_forw.f_buftls.
+				    bt_writebuf);
+			}
 			if (f->f_un.f_forw.f_ctx) {
 				tls_close(f->f_un.f_forw.f_ctx);
 				tls_free(f->f_un.f_forw.f_ctx);
@@ -1610,7 +1627,7 @@ init(void)
 			/* FALLTHROUGH */
 		case F_FORWTCP:
 			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
-			     tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
+			     tcpbuf_countmsg(f->f_un.f_forw.f_bufev->output);
 			bufferevent_free(f->f_un.f_forw.f_bufev);
 			/* FALLTHROUGH */
 		case F_FILE:

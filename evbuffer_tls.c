@@ -276,6 +276,7 @@ buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	buftls->bt_bufev = bufev;
 	buftls->bt_ctx = ctx;
+	buftls->bt_writebuf = NULL;
 }
 
 void
