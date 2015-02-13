@@ -1547,7 +1547,7 @@ die(int signo)
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
-		if (f->f_type == F_FORWTCP &&
+		if (f->f_type == F_FORWTLS &&
 		    f->f_un.f_forw.f_buftls.bt_writebuf) {
 			tcpbuf_dropped += tcpbuf_countmsg(
 			    f->f_un.f_forw.f_buftls.bt_writebuf);
