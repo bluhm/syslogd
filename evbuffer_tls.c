@@ -284,16 +284,29 @@ buffertls_connectcb(int fd, short event, void *arg)
 	(*bufev->errorcb)(bufev, what, bufev->cbarg);
 }
 
-void
-buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
-    struct tls *ctx, int fd)
+struct buffertls *
+buffertls_new(struct bufferevent *bufev, struct tls *ctx, int fd)
 {
+	struct buffertls	*buftls;
+
+	if ((buftls = calloc(1, sizeof(struct buffertls))) == NULL)
+		return (NULL);
+
 	bufferevent_setfd(bufev, fd);
 	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	buftls->bt_bufev = bufev;
 	buftls->bt_ctx = ctx;
-	buftls->bt_writebuf = NULL;
+
+	return (buftls);
+}
+
+void
+buffertls_free(struct buffertls *buftls)
+{
+	if (buftls->bt_writebuf)
+		evbuffer_free(buftls->bt_writebuf);
+	free(buftls);
 }
 
 void

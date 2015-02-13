@@ -31,8 +31,8 @@ struct buffertls {
 	struct evbuffer		*bt_writebuf;
 };
 
-void	buffertls_set(struct buffertls *, struct bufferevent *, struct tls *,
-    int);
-void	buffertls_connect(struct buffertls *, int, const char *);
+struct buffertls *buffertls_new(struct bufferevent *, struct tls *, int);
+void buffertls_free(struct buffertls *);
+void buffertls_connect(struct buffertls *, int, const char *);
 
 #endif /* _EVBUFFER_TLS_H_ */

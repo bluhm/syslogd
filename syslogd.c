@@ -141,7 +141,7 @@ struct filed {
 			char	f_loghost[1+4+3+1+NI_MAXHOST+1+NI_MAXSERV];
 				/* @proto46://[hostname]:servname\0 */
 			struct sockaddr_storage	 f_addr;
-			struct buffertls	 f_buftls;
+			struct buffertls	*f_buftls;
 			struct bufferevent	*f_bufev;
 			struct tls		*f_ctx;
 			char			*f_host;
@@ -821,11 +821,12 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	dprintf("%s\n", ebuf);
 
 	/* The SIGHUP handler may also close the socket, so invalidate it. */
-	if (f->f_un.f_forw.f_buftls.bt_writebuf) {
-		tcpbuf_dropped += tcpbuf_countmsg(
-		    f->f_un.f_forw.f_buftls.bt_writebuf);
-		evbuffer_free(f->f_un.f_forw.f_buftls.bt_writebuf);
-		f->f_un.f_forw.f_buftls.bt_writebuf = NULL;
+	if (f->f_un.f_forw.f_buftls) {
+		if (f->f_un.f_forw.f_buftls->bt_writebuf)
+			tcpbuf_dropped += tcpbuf_countmsg(
+			    f->f_un.f_forw.f_buftls->bt_writebuf);
+		buffertls_free(f->f_un.f_forw.f_buftls);
+		f->f_un.f_forw.f_buftls = NULL;
 	}
 	if (f->f_un.f_forw.f_ctx) {
 		tls_close(f->f_un.f_forw.f_ctx);
@@ -872,10 +873,12 @@ void
 tcp_connectcb(int fd, short event, void *arg)
 {
 	struct filed		*f = arg;
+	struct buffertls	*buftls;
 	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
 	struct tls		*ctx;
 	struct timeval		 to;
 	int			 s;
+	char		 	 ebuf[ERRBUFSIZE];
 
 	if ((event & EV_TIMEOUT) == 0 && f->f_un.f_forw.f_reconnectwait > 0)
 		goto retry;
@@ -906,9 +909,18 @@ tcp_connectcb(int fd, short event, void *arg)
 		dprintf("tcp connect callback: TLS context success\n");
 		f->f_un.f_forw.f_ctx = ctx;
 
-		buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
-		buffertls_connect(&f->f_un.f_forw.f_buftls, s,
-		    f->f_un.f_forw.f_host);
+		if ((buftls = buffertls_new(bufev, ctx, s)) == NULL) {
+			snprintf(ebuf, sizeof(ebuf), "buffertls_new \"%s\": %s",
+			    f->f_un.f_forw.f_loghost, strerror(errno));
+			logerror(ebuf);
+			tls_free(f->f_un.f_forw.f_ctx);
+			f->f_un.f_forw.f_ctx = NULL;
+			close(f->f_file);
+			f->f_file = -1;
+			goto retry;
+		}
+		f->f_un.f_forw.f_buftls = buftls;
+		buffertls_connect(buftls, s, f->f_un.f_forw.f_host);
 	}
 
 	return;
@@ -1547,12 +1559,12 @@ die(int signo)
 		/* flush any pending output */
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
-		if (f->f_type == F_FORWTLS &&
-		    f->f_un.f_forw.f_buftls.bt_writebuf) {
+		if (f->f_un.f_forw.f_buftls &&
+		    f->f_un.f_forw.f_buftls->bt_writebuf) {
 			tcpbuf_dropped += tcpbuf_countmsg(
-			    f->f_un.f_forw.f_buftls.bt_writebuf);
+			    f->f_un.f_forw.f_buftls->bt_writebuf);
 		}
-		if (f->f_type == F_FORWTLS || f->f_type == F_FORWTCP) {
+		if (f->f_un.f_forw.f_bufev) {
 			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
 			    tcpbuf_countmsg(f->f_un.f_forw.f_bufev->output);
 			f->f_un.f_forw.f_dropped = 0;
@@ -1613,11 +1625,12 @@ init(void)
 
 		switch (f->f_type) {
 		case F_FORWTLS:
-			if (f->f_un.f_forw.f_buftls.bt_writebuf) {
-				tcpbuf_dropped += tcpbuf_countmsg(
-				    f->f_un.f_forw.f_buftls.bt_writebuf);
-				evbuffer_free(f->f_un.f_forw.f_buftls.
-				    bt_writebuf);
+			if (f->f_un.f_forw.f_buftls) {
+				if (f->f_un.f_forw.f_buftls->bt_writebuf)
+					tcpbuf_dropped += tcpbuf_countmsg(
+					    f->f_un.f_forw.f_buftls->
+					    bt_writebuf);
+				buffertls_free(f->f_un.f_forw.f_buftls);
 			}
 			if (f->f_un.f_forw.f_ctx) {
 				tls_close(f->f_un.f_forw.f_ctx);
