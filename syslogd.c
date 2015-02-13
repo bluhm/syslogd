@@ -523,8 +523,6 @@ main(int argc, char *argv[])
 	} else {
 		struct stat sb;
 
-		tls_config_set_protocols(tlsconfig, TLS_PROTOCOLS_ALL);
-
 		fd = -1;
 		p = NULL;
 		errno = 0;
@@ -547,6 +545,8 @@ main(int argc, char *argv[])
 		free(p);
 		close(fd);
 	}
+	if (tlsconfig)
+		tls_config_set_protocols(tlsconfig, TLS_PROTOCOLS_ALL);
 
 	dprintf("off & running....\n");
 
