@@ -878,7 +878,7 @@ tcp_connectcb(int fd, short event, void *arg)
 	struct tls		*ctx;
 	struct timeval		 to;
 	int			 s;
-	char		 	 ebuf[ERRBUFSIZE];
+	char			 ebuf[ERRBUFSIZE];
 
 	if ((event & EV_TIMEOUT) == 0 && f->f_un.f_forw.f_reconnectwait > 0)
 		goto retry;
