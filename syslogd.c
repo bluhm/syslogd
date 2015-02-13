@@ -220,7 +220,7 @@ int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
-struct	tls_config *tlsconfig;
+struct	tls_config *tlsconfig = NULL;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
