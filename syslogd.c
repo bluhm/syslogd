@@ -107,6 +107,8 @@
 
 #include "syslogd.h"
 #include "evbuffer_tls.h"
+#include <openssl/ssl.h>
+#include "/usr/src/lib/libtls/tls_internal.h"
 
 char *ConfFile = _PATH_LOGCONF;
 const char ctty[] = _PATH_CONSOLE;
@@ -933,6 +935,8 @@ tls_socket(struct filed *f)
 		logerror(ebuf);
 		return (NULL);
 	}
+	SSL_CTX_set_mode(ctx->ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
+	SSL_CTX_set_mode(ctx->ssl_ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 	if (tlsconfig) {
 		if (tls_configure(ctx, tlsconfig) < 0) {
 			snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\": %s",
