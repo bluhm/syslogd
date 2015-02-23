@@ -842,6 +842,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		if (!isdigit(*p))
 			break;
 	}
+	/* Using atoi() is safe as buf starts with 1 to 4 digits and a space. */
 	if (buf < end && !(buf + 1 <= p && p < end && *p == ' ' &&
 	    (l = atoi(buf)) > 0 && buf + l < end && buf[l] == '\n')) {
 		for (p = buf; p < end; p++) {
