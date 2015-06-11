@@ -561,7 +561,7 @@ main(int argc, char *argv[])
 
 	tzset();
 
-	if (!Debug) {
+	if (!Debug && !Foreground) {
 		char c;
 
 		pipe(lockpipe);
