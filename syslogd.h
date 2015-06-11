@@ -48,6 +48,7 @@ extern int fd_udp, fd_udp6, fd_unix[MAXUNIX];
 
 #define dprintf(_f...)	do { if (Debug) printf(_f); } while (0)
 extern int Debug;
+extern int Foreground;
 extern int Startup;
 
 struct ringbuf {
