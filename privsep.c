@@ -151,10 +151,11 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	}
 
 	if (!Debug) {
-		close(lockfd);
 		dup2(nullfd, STDIN_FILENO);
 		dup2(nullfd, STDOUT_FILENO);
 		dup2(nullfd, STDERR_FILENO);
+		if (!Foreground)
+			close(lockfd);
 	}
 	if (nullfd > 2)
 		close(nullfd);
