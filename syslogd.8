@@ -39,7 +39,7 @@
 .Sh SYNOPSIS
 .Nm syslogd
 .Bk -words
-.Op Fl 46dhnuV
+.Op Fl 46dFhnuV
 .Op Fl a Ar path
 .Op Fl C Ar CAfile
 .Op Fl f Ar config_file
@@ -85,6 +85,8 @@ and do not disassociate from the controlling terminal.
 Specify the pathname of an alternate configuration file;
 the default is
 .Pa /etc/syslog.conf .
+.It Fl F
+Do not daemonize and stay in foreground.
 .It Fl h
 Include the hostname when forwarding messages to a remote host.
 .It Fl m Ar mark_interval
