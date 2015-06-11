@@ -561,7 +561,7 @@ main(int argc, char *argv[])
 
 	tzset();
 
-	if (!Debug) {
+	if (!Debug && !Foreground) {
 		char c;
 
 		pipe(lockpipe);
@@ -636,8 +636,7 @@ main(int argc, char *argv[])
 		dup2(nullfd, STDIN_FILENO);
 		dup2(nullfd, STDOUT_FILENO);
 		dup2(nullfd, STDERR_FILENO);
-		if (!Foreground)
-			close(lockpipe[1]);
+		close(lockpipe[1]);
 	}
 	if (nullfd > 2)
 		close(nullfd);
