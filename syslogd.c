@@ -564,7 +564,7 @@ main(int argc, char *argv[])
 
 		switch(fork()) {
 		case -1:
-			exit(1);
+			err(1, "fork");
 		case 0:
 			setsid();
 			close(lockpipe[0]);
