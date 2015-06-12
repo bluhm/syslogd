@@ -219,6 +219,7 @@ int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
 int	IPv4Only = 0;		/* when true, disable IPv6 */
 int	IPv6Only = 0;		/* when true, disable IPv4 */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
+char	*bind_udp = NULL;
 
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
@@ -275,9 +276,9 @@ char	*linebuf;
 int	 linesize;
 
 int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
-		 fd_udp, fd_udp6, fd_unix[MAXUNIX];
+		 fd_udp, fd_udp6, fd_bind, fd_unix[MAXUNIX];
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
-		 ev_udp, ev_udp6, ev_unix[MAXUNIX],
+		 ev_udp, ev_udp6, ev_bind, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
 void	 klog_readcb(int, short, void *);
@@ -331,6 +332,7 @@ main(int argc, char *argv[])
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
 	while ((ch = getopt(argc, argv, "46C:dhnuf:Fm:p:a:s:V")) != -1)
+	while ((ch = getopt(argc, argv, "46C:dhnuf:Fm:p:a:s:U:V")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			IPv4Only = 1;
@@ -366,6 +368,9 @@ main(int argc, char *argv[])
 			break;
 		case 'p':		/* path */
 			path_unix[0] = optarg;
+			break;
+		case 'U':		/* allow udp only from address */
+			bind_udp = optarg;
 			break;
 		case 'u':		/* allow udp input port */
 			SecureMode = 0;
@@ -475,6 +480,35 @@ main(int argc, char *argv[])
 	}
 
 	freeaddrinfo(res0);
+
+	fd_bind = -1;
+	if (bind_udp) {
+		i = getaddrinfo(bind_udp, "syslog", &hints, &res0);
+		if (i) {
+			errno = 0;
+			logerror("syslog/udp: unknown bind address");
+			die(0);
+		}
+
+		for (res = res0; res; res = res->ai_next) {
+			fd_bind = socket(res->ai_family, res->ai_socktype,
+			    res->ai_protocol);
+			if (fd_bind == -1)
+				continue;
+
+			if (bind(fd_bind, res->ai_addr, res->ai_addrlen) < 0) {
+				logerror("bind");
+				close(fd_bind);
+				fd_bind = -1;
+				if (!Debug)
+					die(0);
+				continue;
+			}
+			double_rbuf(fd_bind);
+		}
+
+		freeaddrinfo(res0);
+	}
 
 #ifndef SUN_LEN
 #define SUN_LEN(unp) (strlen((unp)->sun_path) + 2)
@@ -610,6 +644,7 @@ main(int argc, char *argv[])
 	    &ev_sendsys);
 	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
 	event_set(&ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
+	event_set(&ev_bind, fd_bind, EV_READ|EV_PERSIST, udp_readcb, &ev_bind);
 	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
 		    unix_readcb, &ev_unix[i]);
@@ -660,6 +695,8 @@ main(int argc, char *argv[])
 		if (fd_udp6 != -1)
 			event_add(&ev_udp6, NULL);
 	}
+	if (fd_bind != -1)
+		event_add(&ev_bind, NULL);
 	for (i = 0; i < nunix; i++)
 		if (fd_unix[i] != -1)
 			event_add(&ev_unix[i], NULL);
@@ -975,7 +1012,8 @@ usage(void)
 
 	(void)fprintf(stderr,
 	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-f config_file]\n"
-	    "               [-m mark_interval] [-p log_socket] [-s reporting_socket]\n");
+	    "               [-m mark_interval] [-p log_socket] [-s reporting_socket]\n"
+	    "               [-U bind_udp]\n");
 	exit(1);
 }
 
