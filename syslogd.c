@@ -629,11 +629,10 @@ main(int argc, char *argv[])
 	reply_text = ctl_reply + CTL_HDR_LEN;
 
 	if (!Debug) {
+		close(lockpipe[1]);
 		dup2(nullfd, STDIN_FILENO);
 		dup2(nullfd, STDOUT_FILENO);
 		dup2(nullfd, STDERR_FILENO);
-		if (lockpipe[1] > 2)
-			close(lockpipe[1]);
 	}
 	if (nullfd > 2)
 		close(nullfd);
