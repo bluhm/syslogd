@@ -505,6 +505,7 @@ main(int argc, char *argv[])
 				continue;
 			}
 			double_rbuf(fd_bind);
+			break;
 		}
 
 		freeaddrinfo(res0);
