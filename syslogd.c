@@ -1023,7 +1023,7 @@ usage(void)
 	(void)fprintf(stderr,
 	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-f config_file]\n"
 	    "               [-m mark_interval] [-p log_socket] [-s reporting_socket]\n"
-	    "               [-U bind_udp]\n");
+	    "               [-U bind_address]\n");
 	exit(1);
 }
 
