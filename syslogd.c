@@ -490,8 +490,18 @@ main(int argc, char *argv[])
 			if (fd_bind == -1)
 				continue;
 
+			i = 1;
+			if (setsockopt(fd_bind, SOL_SOCKET, SO_REUSEADDR,
+			    &i, sizeof(i)) == -1) {
+				logerror("setsockopt udp");
+				close(fd_bind);
+				fd_bind = -1;
+				if (!Debug)
+					die(0);
+				continue;
+			}
 			if (bind(fd_bind, res->ai_addr, res->ai_addrlen) < 0) {
-				logerror("bind");
+				logerror("bind udp");
 				close(fd_bind);
 				fd_bind = -1;
 				if (!Debug)
