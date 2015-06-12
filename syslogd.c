@@ -632,7 +632,8 @@ main(int argc, char *argv[])
 		dup2(nullfd, STDIN_FILENO);
 		dup2(nullfd, STDOUT_FILENO);
 		dup2(nullfd, STDERR_FILENO);
-		close(lockpipe[1]);
+		if (lockpipe[1] > 2)
+			close(lockpipe[1]);
 	}
 	if (nullfd > 2)
 		close(nullfd);
