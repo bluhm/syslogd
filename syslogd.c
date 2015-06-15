@@ -491,6 +491,19 @@ main(int argc, char *argv[])
 		}
 
 		for (res = res0; res; res = res->ai_next) {
+			switch (res->ai_family) {
+			case AF_INET:
+				if (IPv6Only)
+					continue;
+				break;
+			case AF_INET6:
+				if (IPv4Only)
+					continue;
+				break;
+			default:
+				continue;
+			}
+
 			fd_bind = socket(res->ai_family, res->ai_socktype,
 			    res->ai_protocol);
 			if (fd_bind == -1)
