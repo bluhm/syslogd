@@ -528,6 +528,10 @@ main(int argc, char *argv[])
 			double_rbuf(fd_bind);
 			break;
 		}
+		if (fd_bind == -1) {
+			logerror("socket udp");
+			die(0);
+		}
 
 		freeaddrinfo(res0);
 	}
