@@ -315,7 +315,7 @@ void	printsys(char *);
 char   *ttymsg(struct iovec *, int, char *, int);
 void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
-int	loghost(char *, char **, char **, char **);
+int	loghost_parse(char *, char **, char **, char **);
 int	getmsgbufsize(void);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
@@ -2046,7 +2046,7 @@ cfline(char *line, char *progblock, char *hostblock)
 			logerror(ebuf);
 			break;
 		}
-		if (loghost(++p, &proto, &host, &port) == -1) {
+		if (loghost_parse(++p, &proto, &host, &port) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
@@ -2260,7 +2260,7 @@ cfline(char *line, char *progblock, char *hostblock)
  * Parse the host and port parts from a loghost string.
  */
 int
-loghost(char *str, char **proto, char **host, char **port)
+loghost_parse(char *str, char **proto, char **host, char **port)
 {
 	char *prefix = NULL;
 
