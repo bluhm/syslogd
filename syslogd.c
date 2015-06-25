@@ -219,7 +219,8 @@ int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
 int	IPv4Only = 0;		/* when true, disable IPv6 */
 int	IPv6Only = 0;		/* when true, disable IPv4 */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
-char	*bind_udp = NULL;
+char	*bind_host = NULL;
+char	*bind_port = NULL;
 
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
@@ -369,7 +370,9 @@ main(int argc, char *argv[])
 			path_unix[0] = optarg;
 			break;
 		case 'U':		/* allow udp only from address */
-			bind_udp = optarg;
+			if (loghost_parse(optarg, NULL, &bind_host, &bind_port)
+			    == -1)
+				errx(1, "bad bind address: %s", optarg);
 			break;
 		case 'u':		/* allow udp input port */
 			SecureMode = 0;
@@ -481,8 +484,10 @@ main(int argc, char *argv[])
 	freeaddrinfo(res0);
 
 	fd_bind = -1;
-	if (bind_udp) {
-		i = getaddrinfo(bind_udp, "syslog", &hints, &res0);
+	if (bind_host) {
+		if (bind_port == NULL)
+			bind_port = "syslog";
+		i = getaddrinfo(bind_host, bind_port, &hints, &res0);
 		if (i) {
 			errno = 0;
 			logerror("syslog/udp: unknown bind address");
