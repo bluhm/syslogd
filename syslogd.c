@@ -432,8 +432,7 @@ main(int argc, char *argv[])
 	hints.ai_protocol = IPPROTO_UDP;
 	hints.ai_flags = AI_PASSIVE;
 
-	i = getaddrinfo(NULL, "syslog", &hints, &res0);
-	if (i) {
+	if (getaddrinfo(NULL, "syslog", &hints, &res0)) {
 		errno = 0;
 		logerror("syslog/udp: unknown service");
 		die(0);
@@ -487,8 +486,7 @@ main(int argc, char *argv[])
 	if (bind_host) {
 		if (bind_port == NULL)
 			bind_port = "syslog";
-		i = getaddrinfo(bind_host, bind_port, &hints, &res0);
-		if (i) {
+		if (getaddrinfo(bind_host, bind_port, &hints, &res0)) {
 			errno = 0;
 			logerror("syslog/udp: unknown bind address");
 			die(0);
