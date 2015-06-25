@@ -2262,13 +2262,19 @@ cfline(char *line, char *progblock, char *hostblock)
 int
 loghost(char *str, char **proto, char **host, char **port)
 {
-	*proto = NULL;
+	char *prefix = NULL;
+
 	if ((*host = strchr(str, ':')) &&
 	    (*host)[1] == '/' && (*host)[2] == '/') {
-		*proto = str;
+		prefix = str;
 		**host = '\0';
 		str = *host + 3;
 	}
+	if (proto)
+		*proto = prefix;
+	else if (prefix)
+		return (-1);
+
 	*host = str;
 	if (**host == '[') {
 		(*host)++;
