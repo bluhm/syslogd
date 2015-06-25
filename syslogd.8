@@ -114,6 +114,16 @@ socket for use in reporting logs stored in memory buffers using
 .It Fl U Ar bind_address
 Create an UDP socket for receiving messages and bind it to the
 specified address.
+A port number may be specified using the
+.Ar host:port
+syntax.
+IPv6 addresses can be used by surrounding the address portion with
+square brackets
+.Po
+.Ql [\&
+and
+.Ql ]\&
+.Pc .
 .It Fl u
 Select the historical
 .Dq insecure
