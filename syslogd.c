@@ -1599,7 +1599,7 @@ die(int signo)
 void
 init(void)
 {
-	char prog[NAME_MAX+1], hostname[NAME_MAX+1], *cline, *p;
+	char progblock[NAME_MAX+1], hostblock[NAME_MAX+1], *cline, *p;
 	struct filed_list mb;
 	struct filed *f, *m;
 	FILE *cf;
@@ -1676,8 +1676,8 @@ init(void)
 	 */
 	cline = NULL;
 	s = 0;
-	strlcpy(prog, "*", sizeof(prog));
-	strlcpy(hostname, "*", sizeof(hostname));
+	strlcpy(progblock, "*", sizeof(progblock));
+	strlcpy(hostblock, "*", sizeof(hostblock));
 	while (getline(&cline, &s, cf) != -1) {
 		/*
 		 * check for end-of-section, comments, strip off trailing
@@ -1694,16 +1694,16 @@ init(void)
 				p++;
 			if (!*p || (*p == '*' && (!p[1] ||
 			    isspace((unsigned char)p[1])))) {
-				strlcpy(prog, "*", sizeof(prog));
+				strlcpy(progblock, "*", sizeof(progblock));
 				continue;
 			}
 			for (i = 0; i < NAME_MAX; i++) {
 				if (!isalnum((unsigned char)p[i]) &&
 				    p[i] != '-' && p[i] != '!')
 					break;
-				prog[i] = p[i];
+				progblock[i] = p[i];
 			}
-			prog[i] = 0;
+			progblock[i] = 0;
 			continue;
 		}
 		if (*p == '+') {
@@ -1712,16 +1712,16 @@ init(void)
 				p++;
 			if (!*p || (*p == '*' && (!p[1] ||
 			    isspace((unsigned char)p[1])))) {
-				strlcpy(hostname, "*", sizeof(hostname));
+				strlcpy(hostblock, "*", sizeof(hostblock));
 				continue;
 			}
 			for (i = 0; i < NAME_MAX; i++) {
 				if (!isalnum((unsigned char)p[i]) &&
 				    p[i] != '-' && p[i] != '!')
 					break;
-				hostname[i] = p[i];
+				hostblock[i] = p[i];
 			}
-			hostname[i] = 0;
+			hostblock[i] = 0;
 			continue;
 		}
 
@@ -1732,7 +1732,7 @@ init(void)
 				break;
 			}
 		*p = '\0';
-		f = cfline(cline, prog, hostname);
+		f = cfline(cline, progblock, hostblock);
 		if (f != NULL)
 			SIMPLEQ_INSERT_TAIL(&Files, f, f_next);
 	}
