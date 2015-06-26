@@ -2260,7 +2260,7 @@ loghost_parse(char *str, char **proto, char **host, char **port,
 			*(*facility)++ = '\0';
 	} else if (suffix)
 		return (-1);
-	
+
 	*host = str;
 	if (**host == '[') {
 		(*host)++;
