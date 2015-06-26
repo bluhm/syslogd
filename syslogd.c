@@ -1646,10 +1646,8 @@ init(void)
 			(void)close(f->f_file);
 			break;
 		}
-		if (f->f_program)
-			free(f->f_program);
-		if (f->f_hostname)
-			free(f->f_hostname);
+		free(f->f_program);
+		free(f->f_hostname);
 
 		if (f->f_type == F_MEMBUF) {
 			f->f_program = NULL;
