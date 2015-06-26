@@ -146,6 +146,7 @@ struct filed {
 			struct bufferevent	*f_bufev;
 			struct tls		*f_ctx;
 			char			*f_host;
+			int			 f_facility;
 			int			 f_reconnectwait;
 			int			 f_dropped;
 		} f_forw;		/* forwarding address */
@@ -1941,7 +1942,7 @@ cfline(char *line, char *progblock, char *hostblock)
 {
 	int i, pri;
 	size_t rb_len;
-	char *bp, *p, *q, *proto, *host, *port, *ipproto;
+	char *bp, *p, *q, *proto, *host, *port, *fac, *ipproto;
 	char buf[MAXLINE], ebuf[ERRBUFSIZE];
 	struct filed *xf, *f, *d;
 	struct timeval to;
@@ -2049,7 +2050,7 @@ cfline(char *line, char *progblock, char *hostblock)
 			logerror(ebuf);
 			break;
 		}
-		if (loghost_parse(++p, &proto, &host, &port, NULL) == -1) {
+		if (loghost_parse(++p, &proto, &host, &port, &fac) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
@@ -2115,6 +2116,17 @@ cfline(char *line, char *progblock, char *hostblock)
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
 			break;
+		}
+		f->f_un.f_forw.f_facility = -1;
+		if (fac) {
+			f->f_un.f_forw.f_facility = decode(fac, facilitynames);
+			if (f->f_un.f_forw.f_facility == -1) {
+				snprintf(ebuf, sizeof(ebuf),
+				    "bad facility \"%s\"",
+				    f->f_un.f_forw.f_loghost);
+				logerror(ebuf);
+				break;
+			}
 		}
 		f->f_file = -1;
 		if (strncmp(proto, "udp", 3) == 0) {
