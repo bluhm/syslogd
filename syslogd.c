@@ -316,7 +316,7 @@ void	printsys(char *);
 char   *ttymsg(struct iovec *, int, char *, int);
 void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
-int	loghost_parse(char *, char **, char **, char **);
+int	loghost_parse(char *, char **, char **, char **, char**);
 int	getmsgbufsize(void);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
@@ -370,8 +370,8 @@ main(int argc, char *argv[])
 			path_unix[0] = optarg;
 			break;
 		case 'U':		/* allow udp only from address */
-			if (loghost_parse(optarg, NULL, &bind_host, &bind_port)
-			    == -1)
+			if (loghost_parse(optarg, NULL, &bind_host, &bind_port,
+			    NULL) == -1)
 				errx(1, "bad bind address: %s", optarg);
 			break;
 		case 'u':		/* allow udp input port */
@@ -2049,7 +2049,7 @@ cfline(char *line, char *progblock, char *hostblock)
 			logerror(ebuf);
 			break;
 		}
-		if (loghost_parse(++p, &proto, &host, &port) == -1) {
+		if (loghost_parse(++p, &proto, &host, &port, NULL) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
@@ -2263,9 +2263,10 @@ cfline(char *line, char *progblock, char *hostblock)
  * Parse the host and port parts from a loghost string.
  */
 int
-loghost_parse(char *str, char **proto, char **host, char **port)
+loghost_parse(char *str, char **proto, char **host, char **port,
+    char **facility)
 {
-	char *prefix = NULL;
+	char *prefix = NULL, *suffix = NULL;
 
 	if ((*host = strchr(str, ':')) &&
 	    (*host)[1] == '/' && (*host)[2] == '/') {
@@ -2278,6 +2279,14 @@ loghost_parse(char *str, char **proto, char **host, char **port)
 	else if (prefix)
 		return (-1);
 
+	suffix = strchr(str, '/');
+	if (facility) {
+		*facility = suffix;
+		if (*facility)
+			*(*facility)++ = '\0';
+	} else if (suffix)
+		return (-1);
+	
 	*host = str;
 	if (**host == '[') {
 		(*host)++;
