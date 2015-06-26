@@ -1866,7 +1866,7 @@ find_dup(struct filed *f)
  * Crack a configuration file line
  */
 struct filed *
-cfline(char *line, char *prog, char *hostname)
+cfline(char *line, char *progblock, char *hostblock)
 {
 	int i, pri;
 	size_t rb_len;
@@ -1875,7 +1875,8 @@ cfline(char *line, char *prog, char *hostname)
 	struct filed *xf, *f, *d;
 	struct timeval to;
 
-	dprintf("cfline(\"%s\", f, \"%s\",\"%s\")\n", line, prog, hostname);
+	dprintf("cfline(\"%s\", f, \"%s\",\"%s\")\n",
+	    line, progblock, hostblock);
 
 	errno = 0;	/* keep strerror() stuff out of logerror messages */
 
@@ -1887,19 +1888,19 @@ cfline(char *line, char *prog, char *hostname)
 		f->f_pmask[i] = INTERNAL_NOPRI;
 
 	/* save program name if any */
-	if (*prog == '!' || *hostname == '!') {
+	if (*progblock == '!' || *hostblock == '!') {
 		f->f_quick = 1;
-		prog++;
+		progblock++;
 	} else
 		f->f_quick = 0;
-	if (!strcmp(prog, "*"))
-		prog = NULL;
+	if (strcmp(progblock, "*") == 0)
+		progblock = NULL;
 	else
-		f->f_program = strdup(prog);
-	if (!strcmp(hostname, "*"))
-		hostname = NULL;
+		f->f_program = strdup(progblock);
+	if (strcmp(hostblock, "*") == 0)
+		hostblock = NULL;
 	else
-		f->f_hostname = strdup(hostname);
+		f->f_hostname = strdup(hostblock);
 
 	/* scan through the list of selectors */
 	for (p = line; *p && *p != '\t';) {
