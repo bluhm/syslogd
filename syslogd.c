@@ -1888,18 +1888,18 @@ cfline(char *line, char *progblock, char *hostblock)
 		f->f_pmask[i] = INTERNAL_NOPRI;
 
 	/* save program name if any */
-	if (*progblock == '!' || *hostblock == '!') {
-		f->f_quick = 1;
+	f->f_quick = 0;
+	if (*progblock == '!') {
 		progblock++;
-	} else
-		f->f_quick = 0;
-	if (strcmp(progblock, "*") == 0)
-		progblock = NULL;
-	else
+		f->f_quick = 1;
+	}
+	if (*hostblock == '+') {
+		hostblock++;
+		f->f_quick = 1;
+	}
+	if (strcmp(progblock, "*") != 0)
 		f->f_program = strdup(progblock);
-	if (strcmp(hostblock, "*") == 0)
-		hostblock = NULL;
-	else
+	if (strcmp(hostblock, "*") != 0)
 		f->f_hostname = strdup(hostblock);
 
 	/* scan through the list of selectors */
