@@ -1699,7 +1699,8 @@ logmsg(int pri, char *msg, char *from, int flags)
 			if (f->f_prevcount)
 				fprintlog(f, 0, (char *)NULL);
 			f->f_repeatcount = 0;
-			f->f_prevpri = pri;
+			f->f_prevpri = f->f_un.f_forw.f_facility < 0 ?
+			    pri : f->f_un.f_forw.f_facility | LOG_PRI(pri),
 			strlcpy(f->f_lasttime, timestamp, 16);
 			strlcpy(f->f_prevhost, from,
 			    sizeof(f->f_prevhost));
