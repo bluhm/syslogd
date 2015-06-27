@@ -121,6 +121,17 @@ can be used to ensure that any ensuing blocks are further evaluated
 or
 .Em !!prog ) .
 .Pp
+Blocks starting with
+.Em +host
+or
+.Em ++host
+or
+.Em +*
+work the same way as their
+.Em prog
+counterparts, but they match on the hostname instead of the program
+name.
+.Pp
 See
 .Xr syslog 3
 for further descriptions of both the
