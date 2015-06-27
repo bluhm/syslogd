@@ -1648,7 +1648,6 @@ init(void)
 		}
 		free(f->f_program);
 		free(f->f_hostname);
-
 		if (f->f_type == F_MEMBUF) {
 			f->f_program = NULL;
 			dprintf("add %p to mb\n", f);
