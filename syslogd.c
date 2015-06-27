@@ -1818,8 +1818,10 @@ init(void)
 				break;
 
 			}
-			if (f->f_program)
-				printf(" (%s)", f->f_program);
+			if (f->f_program || f->f_hostname)
+				printf(" (%s, %s)",
+				    f->f_program ? f->f_program : "*",
+				    f->f_hostname ? f->f_hostname : "*");
 			printf("\n");
 		}
 	}
@@ -1874,7 +1876,7 @@ cfline(char *line, char *progblock, char *hostblock)
 	struct filed *xf, *f, *d;
 	struct timeval to;
 
-	dprintf("cfline(\"%s\", f, \"%s\",\"%s\")\n",
+	dprintf("cfline(\"%s\", f, \"%s\", \"%s\")\n",
 	    line, progblock, hostblock);
 
 	errno = 0;	/* keep strerror() stuff out of logerror messages */
