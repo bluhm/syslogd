@@ -1679,8 +1679,9 @@ init(void)
 	while (getline(&cline, &s, cf) != -1) {
 		/*
 		 * check for end-of-section, comments, strip off trailing
-		 * spaces and newline character. !prog is treated
-		 * specially: the following lines apply only to that program.
+		 * spaces and newline character. !progblock and +hostblock
+		 * are treated specially: the following lines apply only to
+		 * that program.
 		 */
 		for (p = cline; isspace((unsigned char)*p); ++p)
 			continue;
