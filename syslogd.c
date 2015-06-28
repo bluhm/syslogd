@@ -1846,8 +1846,8 @@ find_dup(struct filed *f)
 		case F_CONSOLE:
 		case F_PIPE:
 			if (strcmp(list->f_un.f_fname, f->f_un.f_fname) == 0 &&
-			    (progmatches(list->f_program, f->f_program) ||
-			     progmatches(list->f_hostname, f->f_hostname))) {
+			    progmatches(list->f_program, f->f_program) &&
+			    progmatches(list->f_hostname, f->f_hostname)) {
 				dprintf("duplicate %s\n", f->f_un.f_fname);
 				return (list);
 			}
@@ -1855,8 +1855,8 @@ find_dup(struct filed *f)
 		case F_MEMBUF:
 			if (strcmp(list->f_un.f_mb.f_mname,
 			    f->f_un.f_mb.f_mname) == 0 &&
-			    (progmatches(list->f_program, f->f_program) ||
-			     progmatches(list->f_hostname, f->f_hostname))) {
+			    progmatches(list->f_program, f->f_program) &&
+			    progmatches(list->f_hostname, f->f_hostname)) {
 				dprintf("duplicate membuf %s\n",
 				    f->f_un.f_mb.f_mname);
 				return (list);
