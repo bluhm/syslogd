@@ -1128,11 +1128,11 @@ logmsg(int pri, char *msg, char *from, int flags)
 		    f->f_pmask[fac] == INTERNAL_NOPRI)
 			continue;
 
-		/* skip messages with the incorrect program name */
+		/* skip messages with the incorrect program or hostname */
 		if (f->f_program && strcmp(prog, f->f_program) != 0)
-				continue;
+			continue;
 		if (f->f_hostname && strcmp(from, f->f_hostname) != 0)
-				continue;
+			continue;
 
 		if (f->f_type == F_CONSOLE && (flags & IGN_CONS))
 			continue;
