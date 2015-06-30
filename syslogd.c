@@ -745,7 +745,8 @@ socket_bind(int family, const char *proto, const char *host, const char *port,
 			*fdp = -1;
 			continue;
 		}
-		double_rbuf(*fdp);
+		if (!shutread && res->ai_protocol == IPPROTO_UDP)
+			double_rbuf(*fdp);
 	}
 
 	freeaddrinfo(res0);
