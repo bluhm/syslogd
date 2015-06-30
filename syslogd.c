@@ -424,15 +424,16 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
-	if (socket_bind(family, "udp", NULL, "syslog", 0, SecureMode, &fd_udp,
-	    &fd_udp6) == -1) {
+	if (socket_bind(family, "udp", NULL, "syslog", 0, SecureMode,
+	    &fd_udp, &fd_udp6) == -1) {
 		errno = 0;
 		logerror("socket bind *");
 		if (!Debug)
 			die(0);
 	}
-	if (socket_bind(family, "udp", bind_host, bind_port, 1, 0, &fd_bind,
-	    &fd_bind6) == -1) {
+	fd_bind = fd_bind6 = -1;
+	if (bind_host && socket_bind(family, "udp", bind_host, bind_port, 1, 0,
+	    &fd_bind, &fd_bind6) == -1) {
 		errno = 0;
 		logerror("socket bind udp");
 		if (!Debug)
