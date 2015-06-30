@@ -44,7 +44,7 @@ extern int nunix;
 extern char *path_unix[MAXUNIX];
 extern char *path_ctlsock;
 extern int fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys;
-extern int fd_udp, fd_udp6, fd_bind, fd_unix[MAXUNIX];
+extern int fd_udp, fd_udp6, fd_bind, fd_bind6, fd_unix[MAXUNIX];
 
 #define dprintf(_f...)	do { if (Debug) printf(_f); } while (0)
 extern int Debug;
