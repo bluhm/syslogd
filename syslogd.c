@@ -216,8 +216,6 @@ int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
 int	MarkSeq = 0;		/* mark sequence number */
 int	SecureMode = 1;		/* when true, speak only unix domain socks */
 int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
-int	IPv4Only = 0;		/* when true, disable IPv6 */
-int	IPv6Only = 0;		/* when true, disable IPv4 */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 char	*bind_host = NULL;
 char	*bind_port = NULL;
@@ -277,9 +275,9 @@ char	*linebuf;
 int	 linesize;
 
 int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
-		 fd_udp, fd_udp6, fd_bind, fd_unix[MAXUNIX];
+		 fd_udp, fd_udp6, fd_bind, fd_bind6, fd_unix[MAXUNIX];
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
-		 ev_udp, ev_udp6, ev_bind, ev_unix[MAXUNIX],
+		 ev_udp, ev_udp6, ev_bind, ev_bind6, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
 void	 klog_readcb(int, short, void *);
@@ -325,22 +323,20 @@ void	tailify_replytext(char *, int);
 int
 main(int argc, char *argv[])
 {
-	struct addrinfo	 hints, *res, *res0;
 	struct timeval	 to;
 	const char	*errstr;
 	char		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
+	int		 family = PF_UNSPEC;
 
 	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:s:U:uV")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
-			IPv4Only = 1;
-			IPv6Only = 0;
+			family = PF_INET;
 			break;
 		case '6':		/* disable IPv4 */
-			IPv6Only = 1;
-			IPv4Only = 0;
+			family = PF_INET6;
 			break;
 		case 'a':
 			if (nunix >= MAXUNIX)
@@ -426,118 +422,19 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_DGRAM;
-	hints.ai_protocol = IPPROTO_UDP;
-	hints.ai_flags = AI_PASSIVE;
-
-	if (getaddrinfo(NULL, "syslog", &hints, &res0)) {
+	if (socket_bind(family, "udp", NULL, "syslog", 0, SecureMode, &fd_udp,
+	    &fd_udp6) == -1) {
 		errno = 0;
-		logerror("syslog/udp: unknown service");
-		die(0);
-	}
-
-	fd_udp = fd_udp6 = -1;
-	for (res = res0; res; res = res->ai_next) {
-		int *fdp;
-
-		switch (res->ai_family) {
-		case AF_INET:
-			if (IPv6Only)
-				continue;
-			fdp = &fd_udp;
-			break;
-		case AF_INET6:
-			if (IPv4Only)
-				continue;
-			fdp = &fd_udp6;
-			break;
-		default:
-			continue;
-		}
-
-		if (*fdp >= 0)
-			continue;
-
-		*fdp = socket(res->ai_family, res->ai_socktype,
-		    res->ai_protocol);
-		if (*fdp == -1)
-			continue;
-
-		if (bind(*fdp, res->ai_addr, res->ai_addrlen) < 0) {
-			logerror("bind");
-			close(*fdp);
-			*fdp = -1;
-			if (!Debug)
-				die(0);
-			continue;
-		}
-
-		if (SecureMode)
-			shutdown(*fdp, SHUT_RD);
-		else
-			double_rbuf(*fdp);
-	}
-
-	freeaddrinfo(res0);
-
-	fd_bind = -1;
-	if (bind_host) {
-		if (bind_port == NULL)
-			bind_port = "syslog";
-		if (getaddrinfo(bind_host, bind_port, &hints, &res0)) {
-			errno = 0;
-			logerror("syslog/udp: unknown bind address");
+		logerror("socket bind *");
+		if (!Debug)
 			die(0);
-		}
-
-		for (res = res0; res; res = res->ai_next) {
-			switch (res->ai_family) {
-			case AF_INET:
-				if (IPv6Only)
-					continue;
-				break;
-			case AF_INET6:
-				if (IPv4Only)
-					continue;
-				break;
-			default:
-				continue;
-			}
-
-			fd_bind = socket(res->ai_family, res->ai_socktype,
-			    res->ai_protocol);
-			if (fd_bind == -1)
-				continue;
-
-			i = 1;
-			if (setsockopt(fd_bind, SOL_SOCKET, SO_REUSEADDR,
-			    &i, sizeof(i)) == -1) {
-				logerror("setsockopt udp");
-				close(fd_bind);
-				fd_bind = -1;
-				if (!Debug)
-					die(0);
-				continue;
-			}
-			if (bind(fd_bind, res->ai_addr, res->ai_addrlen) < 0) {
-				logerror("bind udp");
-				close(fd_bind);
-				fd_bind = -1;
-				if (!Debug)
-					die(0);
-				continue;
-			}
-			double_rbuf(fd_bind);
-			break;
-		}
-		if (fd_bind == -1) {
-			logerror("socket udp");
+	}
+	if (socket_bind(family, "udp", bind_host, bind_port, 1, 0, &fd_bind,
+	    &fd_bind6) == -1) {
+		errno = 0;
+		logerror("socket bind udp");
+		if (!Debug)
 			die(0);
-		}
-
-		freeaddrinfo(res0);
 	}
 
 #ifndef SUN_LEN
@@ -675,6 +572,8 @@ main(int argc, char *argv[])
 	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
 	event_set(&ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
 	event_set(&ev_bind, fd_bind, EV_READ|EV_PERSIST, udp_readcb, &ev_bind);
+	event_set(&ev_bind, fd_bind6, EV_READ|EV_PERSIST, udp_readcb,
+	    &ev_bind6);
 	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
 		    unix_readcb, &ev_unix[i]);
@@ -727,6 +626,8 @@ main(int argc, char *argv[])
 	}
 	if (fd_bind != -1)
 		event_add(&ev_bind, NULL);
+	if (fd_bind6 != -1)
+		event_add(&ev_bind6, NULL);
 	for (i = 0; i < nunix; i++)
 		if (fd_unix[i] != -1)
 			event_add(&ev_unix[i], NULL);
@@ -752,6 +653,102 @@ main(int argc, char *argv[])
 
 	event_dispatch();
 	/* NOTREACHED */
+	return (0);
+}
+
+int
+socket_bind(int family, const char *proto, const char *host, const char *port,
+    int reuseaddr, int shutread, int *fd, int *fd6)
+{
+	struct addrinfo	 hints, *res, *res0;
+	char		 hostname[NI_MAXHOST], servname[NI_MAXSERV];
+	char		 ebuf[ERRBUFSIZE];;
+	int		*fdp, error;
+
+	*fd = *fd6 = -1;
+	if (proto == NULL)
+		proto = "udp";
+	if (port == NULL)
+		port = "syslog";
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = family;
+	if (strcmp(proto, "udp") == 0) {
+		hints.ai_socktype = SOCK_DGRAM;
+		hints.ai_protocol = IPPROTO_UDP;
+	} else {
+		hints.ai_socktype = SOCK_STREAM;
+		hints.ai_protocol = IPPROTO_TCP;
+	}
+	hints.ai_flags = AI_PASSIVE;
+
+	if ((error = getaddrinfo(host, port, &hints, &res0))) {
+		snprintf(ebuf, sizeof(ebuf), "getaddrinfo "
+		    "proto %d, host %s, port %s: %s",
+		    proto, host ? host : "*", port, gai_strerror(error));
+		logerror(ebuf);
+		die(0);
+	}
+
+	for (res = res0; res; res = res->ai_next) {
+		switch (res->ai_family) {
+		case AF_INET:
+			fdp = fd;
+			break;
+		case AF_INET6:
+			fdp = fd6;
+			break;
+		default:
+			continue;
+		}
+		if (*fdp >= 0)
+			continue;
+
+		if ((*fdp = socket(res->ai_family, res->ai_socktype,
+		    res->ai_protocol)) == -1)
+			continue;
+
+		if (getnameinfo(res->ai_addr, res->ai_addrlen, hostname,
+		    sizeof(hostname), servname, sizeof(servname),
+		    NI_NUMERICHOST | NI_NUMERICSERV |
+		    (res->ai_socktype == SOCK_DGRAM ? NI_DGRAM : 0)) != 0) {
+			hostname[0] = servname[0] = '\0';
+		}
+		if (shutread && shutdown(*fdp, SHUT_RD) == -1) {
+			snprintf(ebuf, sizeof(ebuf), "shutdown SHUT_RD "
+			    "protocol %d, address %s, portnum %s",
+			    res->ai_protocol, hostname, servname);
+			logerror(ebuf);
+			close(*fdp);
+			*fdp = -1;
+			continue;
+		}
+		if (setsockopt(*fdp, SOL_SOCKET, SO_REUSEADDR, &reuseaddr,
+		    sizeof(reuseaddr)) == -1) {
+			snprintf(ebuf, sizeof(ebuf), "setsockopt SO_REUSEADDR "
+			    "protocol %d, address %s, portnum %s",
+			    res->ai_protocol, hostname, servname);
+			logerror(ebuf);
+			close(*fdp);
+			*fdp = -1;
+			continue;
+		}
+		if (bind(*fdp, res->ai_addr, res->ai_addrlen) < 0) {
+			snprintf(ebuf, sizeof(ebuf), "bind "
+			    "protocol %d, address %s, portnum %s",
+			    res->ai_protocol, hostname, servname);
+			logerror(ebuf);
+			close(*fdp);
+			*fdp = -1;
+			continue;
+		}
+		double_rbuf(*fdp);
+	}
+
+	freeaddrinfo(res0);
+
+	if (*fd == -1 && *fd6 == -1)
+		return (-1);
 	return (0);
 }
 
