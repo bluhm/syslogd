@@ -217,7 +217,8 @@ int	MarkSeq = 0;		/* mark sequence number */
 int	SecureMode = 1;		/* when true, speak only unix domain socks */
 int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
-char	*bind_host = NULL;
+int	Family = PF_UNSPEC;	/* protocol family, may disable IPv4 or IPv6 */
+char	*bind_host = NULL;	/* bind UDP receive socket */
 char	*bind_port = NULL;
 
 char	*path_ctlsock = NULL;	/* Path to control socket */
@@ -316,8 +317,8 @@ void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
 int	loghost_parse(char *, char **, char **, char **);
 int	getmsgbufsize(void);
-int	socket_bind(int, const char *, const char *, const char *,
-    int, int, int *, int *);
+int	socket_bind(const char *, const char *, const char *, int, int,
+    int *, int *);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
 void	tailify_replytext(char *, int);
@@ -330,15 +331,14 @@ main(int argc, char *argv[])
 	char		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
-	int		 family = PF_UNSPEC;
 
 	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:s:U:uV")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
-			family = PF_INET;
+			Family = PF_INET;
 			break;
 		case '6':		/* disable IPv4 */
-			family = PF_INET6;
+			Family = PF_INET6;
 			break;
 		case 'a':
 			if (nunix >= MAXUNIX)
@@ -424,7 +424,7 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
-	if (socket_bind(family, "udp", NULL, "syslog", 0, SecureMode,
+	if (socket_bind("udp", NULL, "syslog", 0, SecureMode,
 	    &fd_udp, &fd_udp6) == -1) {
 		errno = 0;
 		logerror("socket bind *");
@@ -432,7 +432,7 @@ main(int argc, char *argv[])
 			die(0);
 	}
 	fd_bind = fd_bind6 = -1;
-	if (bind_host && socket_bind(family, "udp", bind_host, bind_port, 1, 0,
+	if (bind_host && socket_bind("udp", bind_host, bind_port, 1, 0,
 	    &fd_bind, &fd_bind6) == -1) {
 		errno = 0;
 		logerror("socket bind udp");
@@ -660,7 +660,7 @@ main(int argc, char *argv[])
 }
 
 int
-socket_bind(int family, const char *proto, const char *host, const char *port,
+socket_bind(const char *proto, const char *host, const char *port,
     int reuseaddr, int shutread, int *fd, int *fd6)
 {
 	struct addrinfo	 hints, *res, *res0;
@@ -675,7 +675,7 @@ socket_bind(int family, const char *proto, const char *host, const char *port,
 		port = "syslog";
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = family;
+	hints.ai_family = Family;
 	if (strcmp(proto, "udp") == 0) {
 		hints.ai_socktype = SOCK_DGRAM;
 		hints.ai_protocol = IPPROTO_UDP;
