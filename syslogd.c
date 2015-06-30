@@ -736,7 +736,7 @@ socket_bind(const char *proto, const char *host, const char *port,
 			*fdp = -1;
 			continue;
 		}
-		if (bind(*fdp, res->ai_addr, res->ai_addrlen) < 0) {
+		if (bind(*fdp, res->ai_addr, res->ai_addrlen) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "bind "
 			    "protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
