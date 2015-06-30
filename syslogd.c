@@ -316,6 +316,8 @@ void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
 int	loghost_parse(char *, char **, char **, char **);
 int	getmsgbufsize(void);
+int	socket_bind(int, const char *, const char *, const char *,
+    int, int, int *, int *);
 int	unix_socket(char *, int, mode_t);
 void	double_rbuf(int);
 void	tailify_replytext(char *, int);
@@ -662,7 +664,7 @@ socket_bind(int family, const char *proto, const char *host, const char *port,
 {
 	struct addrinfo	 hints, *res, *res0;
 	char		 hostname[NI_MAXHOST], servname[NI_MAXSERV];
-	char		 ebuf[ERRBUFSIZE];;
+	char		 ebuf[ERRBUFSIZE];
 	int		*fdp, error;
 
 	*fd = *fd6 = -1;
@@ -684,7 +686,7 @@ socket_bind(int family, const char *proto, const char *host, const char *port,
 
 	if ((error = getaddrinfo(host, port, &hints, &res0))) {
 		snprintf(ebuf, sizeof(ebuf), "getaddrinfo "
-		    "proto %d, host %s, port %s: %s",
+		    "proto %s, host %s, port %s: %s",
 		    proto, host ? host : "*", port, gai_strerror(error));
 		logerror(ebuf);
 		die(0);
