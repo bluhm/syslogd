@@ -216,7 +216,8 @@ int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 int	Family = PF_UNSPEC;	/* protocol family, may disable IPv4 or IPv6 */
 char	*bind_host = NULL;	/* bind UDP receive socket */
 char	*bind_port = NULL;
-
+char	*listen_host = NULL;	/* listen on TCP receive socket */
+char	*listen_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls_config *tlsconfig = NULL;
@@ -328,7 +329,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:s:U:uV")) != -1)
+	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:s:T:U:uV")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			Family = PF_INET;
@@ -370,6 +371,11 @@ main(int argc, char *argv[])
 			break;
 		case 's':
 			path_ctlsock = optarg;
+			break;
+		case 'T':		/* allow tcp and listen on address */
+			if (loghost_parse(optarg, NULL, &listen_host,
+			    &listen_port) == -1)
+				errx(1, "bad listen address: %s", optarg);
 			break;
 		case 'U':		/* allow udp only from address */
 			if (loghost_parse(optarg, NULL, &bind_host, &bind_port)
@@ -1027,7 +1033,7 @@ usage(void)
 	(void)fprintf(stderr,
 	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-f config_file]\n"
 	    "               [-m mark_interval] [-p log_socket] [-s reporting_socket]\n"
-	    "               [-U bind_address]\n");
+	    "               [-T listen_address] [-U bind_address]\n");
 	exit(1);
 }
 
