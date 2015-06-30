@@ -332,7 +332,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46C:dhnuf:Fm:p:a:s:U:V")) != -1)
+	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:s:U:uV")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			IPv4Only = 1;
