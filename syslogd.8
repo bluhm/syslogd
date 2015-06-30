@@ -115,6 +115,8 @@ socket for use in reporting logs stored in memory buffers using
 .It Fl U Ar bind_address
 Create a UDP socket for receiving messages and bind it to the
 specified address.
+This can be used, for example, with a pf divert-to rule to receive
+packets when syslogd is bound to localhost.
 A port number may be specified using the
 .Ar host:port
 syntax.
