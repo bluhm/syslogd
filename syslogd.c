@@ -575,7 +575,7 @@ main(int argc, char *argv[])
 	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
 	event_set(&ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
 	event_set(&ev_bind, fd_bind, EV_READ|EV_PERSIST, udp_readcb, &ev_bind);
-	event_set(&ev_bind, fd_bind6, EV_READ|EV_PERSIST, udp_readcb,
+	event_set(&ev_bind6, fd_bind6, EV_READ|EV_PERSIST, udp_readcb,
 	    &ev_bind6);
 	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
