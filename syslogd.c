@@ -276,7 +276,7 @@ char	*linebuf;
 int	 linesize;
 
 int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
-		 fd_udp, fd_udp6, fd_bind, fd_bind6, fd_unix[MAXUNIX];
+		 fd_udp, fd_udp6, fd_bind, fd_unix[MAXUNIX];
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
 		 ev_udp, ev_udp6, ev_bind, ev_bind6, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
@@ -431,9 +431,9 @@ main(int argc, char *argv[])
 		if (!Debug)
 			die(0);
 	}
-	fd_bind = fd_bind6 = -1;
+	fd_bind = -1;
 	if (bind_host && socket_bind("udp", bind_host, bind_port, 1, 0,
-	    &fd_bind, &fd_bind6) == -1) {
+	    &fd_bind, &fd_bind) == -1) {
 		errno = 0;
 		logerror("socket bind udp");
 		if (!Debug)
@@ -575,8 +575,6 @@ main(int argc, char *argv[])
 	event_set(&ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, &ev_udp);
 	event_set(&ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, &ev_udp6);
 	event_set(&ev_bind, fd_bind, EV_READ|EV_PERSIST, udp_readcb, &ev_bind);
-	event_set(&ev_bind6, fd_bind6, EV_READ|EV_PERSIST, udp_readcb,
-	    &ev_bind6);
 	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
 		    unix_readcb, &ev_unix[i]);
@@ -629,8 +627,6 @@ main(int argc, char *argv[])
 	}
 	if (fd_bind != -1)
 		event_add(&ev_bind, NULL);
-	if (fd_bind6 != -1)
-		event_add(&ev_bind6, NULL);
 	for (i = 0; i < nunix; i++)
 		if (fd_unix[i] != -1)
 			event_add(&ev_unix[i], NULL);
