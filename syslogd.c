@@ -703,8 +703,8 @@ socket_bind(const char *proto, const char *host, const char *port,
 		if (*fdp >= 0)
 			continue;
 
-		if ((*fdp = socket(res->ai_family, res->ai_socktype,
-		    res->ai_protocol)) == -1)
+		if ((*fdp = socket(res->ai_family,
+		    res->ai_socktype | SOCK_NONBLOCK, res->ai_protocol)) == -1)
 			continue;
 
 		if (getnameinfo(res->ai_addr, res->ai_addrlen, hostname,
