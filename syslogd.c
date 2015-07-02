@@ -769,7 +769,7 @@ socket_bind(const char *proto, const char *host, const char *port,
 			continue;
 		}
 		if (!shutread && res->ai_protocol == IPPROTO_TCP &&
-		    listen(*fdp, 5) == -1) {
+		    listen(*fdp, MAXTCP) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "listen "
 			    "protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
