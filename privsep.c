@@ -188,6 +188,8 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 		close(fd_udp6);
 	if (fd_bind != -1)
 		close(fd_bind);
+	if (fd_listen != -1)
+		close(fd_listen);
 	for (i = 0; i < nunix; i++)
 		if (fd_unix[i] != -1)
 			close(fd_unix[i]);
