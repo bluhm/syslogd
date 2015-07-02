@@ -871,25 +871,20 @@ tcp_acceptcb(int fd, short event, void *arg)
 		peername = "unknown";
 	}
 	if (tcpnum >= MAXTCP) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: denied incomming tcp "
-		    "connection from logger %s: maximum %d reached",
-		    peername, MAXTCP);
-		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
+		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
+		    "denied: maximum %d reached", peername, MAXTCP);
+		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 		return;
 	}
 	if ((be = malloc(sizeof(*be))) == NULL) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: incomming tcp "
-		    "connection from logger %s failed: %s",
-		    peername, strerror(errno));
-		logmsg(LOG_SYSLOG|LOG_ERR, ebuf, LocalHostName, ADDDATE);
+		snprintf(ebuf, sizeof(ebuf), "malloc \"%s\"", peername);
+		logerror(ebuf);
 		return;
 	}
 	if ((be->be_bufev = bufferevent_new(fd, tcp_recvcb, NULL, tcp_closecb,
 	    be)) == NULL) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: incomming tcp "
-		    "connection from logger %s failed: %s",
-		    peername, strerror(errno));
-		logmsg(LOG_SYSLOG|LOG_ERR, ebuf, LocalHostName, ADDDATE);
+		snprintf(ebuf, sizeof(ebuf), "bufferevent \"%s\"", peername);
+		logerror(ebuf);
 		free(be);
 		return;
 	}
@@ -898,8 +893,8 @@ tcp_acceptcb(int fd, short event, void *arg)
 	tcpnum++;
 	bufferevent_enable(be->be_bufev, EV_READ);
 
-	snprintf(ebuf, sizeof(ebuf), "syslogd: accepted incomming tcp "
-	    "connection from logger %s", peername);
+	snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" accepted",
+	    peername);
 	logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 }
 
@@ -911,7 +906,7 @@ tcp_recvcb(struct bufferevent *bufev, void *arg)
 	/*
 	 * Drop data received from the log server.
 	 */
-	dprintf("tcp logger %s did send %zu bytes\n",
+	dprintf("tcp logger \"%s\" did send %zu bytes\n",
 	    be->be_peername, EVBUFFER_LENGTH(bufev->input));
 	evbuffer_drain(bufev->input, -1);
 }
@@ -923,11 +918,11 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 	char			 ebuf[ERRBUFSIZE];
 
 	if (event & EVBUFFER_EOF) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger %s "
+		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
 		    "connection close", be->be_peername);
 		logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 	} else {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger %s "
+		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
 		    "connection error: %s", be->be_peername, strerror(errno));
 		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
 	}
