@@ -278,7 +278,7 @@ int	 linesize;
 int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
 		 fd_udp, fd_udp6, fd_bind, fd_unix[MAXUNIX];
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
-		 ev_udp, ev_udp6, ev_bind, ev_bind6, ev_unix[MAXUNIX],
+		 ev_udp, ev_udp6, ev_bind, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
 void	 klog_readcb(int, short, void *);
