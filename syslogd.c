@@ -784,7 +784,7 @@ udp_readcb(int fd, short event, void *arg)
 		cvthname((struct sockaddr *)&sa, resolve, sizeof(resolve));
 		dprintf("cvthname res: %s\n", resolve);
 		printline(resolve, linebuf);
-	} else if (n < 0 && errno != EINTR)
+	} else if (n < 0 && errno != EINTR && errno != EWOULDBLOCK)
 		logerror("recvfrom udp");
 }
 
@@ -800,7 +800,7 @@ unix_readcb(int fd, short event, void *arg)
 	if (n > 0) {
 		linebuf[n] = '\0';
 		printline(LocalHostName, linebuf);
-	} else if (n < 0 && errno != EINTR)
+	} else if (n < 0 && errno != EINTR && errno != EWOULDBLOCK)
 		logerror("recvfrom unix");
 }
 
@@ -2506,6 +2506,8 @@ ctlconn_readcb(int fd, short event, void *arg)
 	case -1:
 		if (errno == EINTR)
 			goto retry;
+		if (errno == EWOULDBLOCK)
+			return;
 		logerror("ctlconn read");
 		/* FALLTHROUGH */
 	case 0:
@@ -2635,6 +2637,8 @@ ctlconn_writecb(int fd, short event, void *arg)
 	case -1:
 		if (errno == EINTR)
 			goto retry;
+		if (errno == EWOULDBLOCK)
+			return;
 		if (errno != EPIPE)
 			logerror("ctlconn write");
 		/* FALLTHROUGH */
