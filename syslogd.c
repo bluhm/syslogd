@@ -283,6 +283,7 @@ LIST_HEAD(bufev_list, bufev_elm) bl_tcp;
 struct bufev_elm {
 	LIST_ENTRY(bufev_elm)	 be_entry;
 	struct bufferevent	*be_bufev;
+	char			*be_peername;
 };
 int tcpnum = 0;
 
@@ -290,6 +291,8 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 void	 tcp_acceptcb(int, short, void *);
+void	 tcp_recvcb(struct bufferevent *, void *);
+void	 tcp_closecb(struct bufferevent *, short, void *);
 int	 tcp_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
@@ -844,7 +847,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 	struct sockaddr_storage	 ss;
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
-	char			 ebuf[ERRBUFSIZE];
+	char			*peername, ebuf[ERRBUFSIZE];
 
 	dprintf("Accepting tcp connection\n");
 	sslen = sizeof(ss);
@@ -858,39 +861,77 @@ tcp_acceptcb(int fd, short event, void *arg)
 
 	if (getnameinfo((struct sockaddr *)&ss, sslen, hostname,
 	    sizeof(hostname), servname, sizeof(servname),
-	    NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
-		hostname[0] = servname[0] = '\0';
+	    NI_NUMERICHOST | NI_NUMERICSERV) != 0 ||
+	    asprintf(&peername, ss.ss_family == AF_INET6 ?
+	    "[%s]:%s" : "%s:%s", hostname, servname) == -1) {
+		peername = "unknown";
 	}
 	if (tcpnum >= MAXTCP) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: denied incomming tcp "
-		    "connection from address %s, port %s: maximum %d reached",
-		    hostname, servname, MAXTCP);
+		    "connection from logger %s: maximum %d reached",
+		    peername, MAXTCP);
 		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
 		return;
 	}
 	if ((be = malloc(sizeof(*be))) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: incomming tcp "
-		    "connection from address %s, port %s failed: %s",
-		    hostname, servname, strerror(errno));
+		    "connection from logger %s failed: %s",
+		    peername, strerror(errno));
 		logmsg(LOG_SYSLOG|LOG_ERR, ebuf, LocalHostName, ADDDATE);
 		return;
 	}
-	be->be_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_errorcb, be);
-	if (be->be_bufev == NULL) {
+	if ((be->be_bufev = bufferevent_new(fd, tcp_recvcb, NULL, tcp_closecb,
+	    be)) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: incomming tcp "
-		    "connection from address %s, port %s failed: %s",
-		    hostname, servname, strerror(errno));
+		    "connection from logger %s failed: %s",
+		    peername, strerror(errno));
 		logmsg(LOG_SYSLOG|LOG_ERR, ebuf, LocalHostName, ADDDATE);
 		free(be);
 		return;
 	}
+	be->be_peername = peername;
 	LIST_INSERT_HEAD(&bl_tcp, be, be_entry);
 	tcpnum++;
 	bufferevent_enable(be->be_bufev, EV_READ);
 
 	snprintf(ebuf, sizeof(ebuf), "syslogd: accepted incomming tcp "
-	    "connection from address %s, port %s", hostname, servname);
+	    "connection from logger %s", peername);
 	logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
+}
+
+void
+tcp_recvcb(struct bufferevent *bufev, void *arg)
+{
+	struct bufev_elm	*be = arg;
+
+	/*
+	 * Drop data received from the log server.
+	 */
+	dprintf("tcp logger %s did send %zu bytes\n",
+	    be->be_peername, EVBUFFER_LENGTH(bufev->input));
+	evbuffer_drain(bufev->input, -1);
+}
+
+void
+tcp_closecb(struct bufferevent *bufev, short event, void *arg)
+{
+	struct bufev_elm	*be = arg;
+	char			 ebuf[ERRBUFSIZE];
+
+	if (event & EVBUFFER_EOF) {
+		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger %s "
+		    "connection close", be->be_peername);
+		logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
+	} else {
+		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger %s "
+		    "connection error: %s", be->be_peername, strerror(errno));
+		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
+	}
+
+	bufferevent_free(be->be_bufev);
+	free(be->be_peername);
+	LIST_REMOVE(be, be_entry);
+	free(be);
 }
 
 int
