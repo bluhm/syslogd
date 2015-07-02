@@ -273,7 +273,7 @@ char	*linebuf;
 int	 linesize;
 
 int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
-		 fd_udp, fd_udp6, fd_bind, fd_unix[MAXUNIX];
+		 fd_udp, fd_udp6, fd_bind, fd_listen, fd_unix[MAXUNIX];
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
 		 ev_udp, ev_udp6, ev_bind, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
@@ -438,6 +438,14 @@ main(int argc, char *argv[])
 	    &fd_bind, &fd_bind) == -1) {
 		errno = 0;
 		logerror("socket bind udp");
+		if (!Debug)
+			die(0);
+	}
+	fd_listen = -1;
+	if (listen_host && socket_bind("tcp", listen_host, listen_port, 1, 0,
+	    &fd_listen, &fd_listen) == -1) {
+		errno = 0;
+		logerror("socket listen tcp");
 		if (!Debug)
 			die(0);
 	}
