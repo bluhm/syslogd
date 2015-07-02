@@ -60,6 +60,7 @@
 #define MAX_MEMBUF_NAME	64		/* Max length of membuf log name */
 #define MAX_TCPBUF	(256 * 1024)	/* Maximum tcp event buffer size */
 #define	MAXSVLINE	120		/* maximum saved line length */
+#define MAXTCP		20		/* maximum incomming connections */
 #define DEFUPRI		(LOG_USER|LOG_NOTICE)
 #define DEFSPRI		(LOG_KERN|LOG_CRIT)
 #define TIMERINTVL	30		/* interval for checking flush, mark */
@@ -275,12 +276,20 @@ int	 linesize;
 int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
 		 fd_udp, fd_udp6, fd_bind, fd_listen, fd_unix[MAXUNIX];
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
-		 ev_udp, ev_udp6, ev_bind, ev_unix[MAXUNIX],
+		 ev_udp, ev_udp6, ev_bind, ev_listen, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
+
+LIST_HEAD(bufev_list, bufev_elm) bl_tcp;
+struct bufev_elm {
+	LIST_ENTRY(bufev_elm)	 be_entry;
+	struct bufferevent	*be_bufev;
+};
+int tcpnum = 0;
 
 void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
+void	 tcp_acceptcb(int, short, void *);
 int	 tcp_socket(struct filed *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
@@ -822,6 +831,62 @@ unix_readcb(int fd, short event, void *arg)
 		printline(LocalHostName, linebuf);
 	} else if (n < 0 && errno != EINTR && errno != EWOULDBLOCK)
 		logerror("recvfrom unix");
+}
+
+void
+tcp_acceptcb(int fd, short event, void *arg)
+{
+	struct bufev_elm	*be;
+	struct sockaddr_storage	 ss;
+	socklen_t		 sslen;
+	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
+	char			 ebuf[ERRBUFSIZE];
+
+	dprintf("Accepting tcp connection\n");
+	sslen = sizeof(ss);
+	fd = accept4(fd, (struct sockaddr *)&ss, &sslen, SOCK_NONBLOCK);
+	if (fd == -1) {
+		if (errno != EINTR && errno != EWOULDBLOCK &&
+		    errno != ECONNABORTED)
+			logerror("accept tcp socket");
+		return;
+	}
+
+	if (getnameinfo((struct sockaddr *)&ss, sslen, hostname,
+	    sizeof(hostname), servname, sizeof(servname),
+	    NI_NUMERICHOST | NI_NUMERICSERV) != 0) {
+		hostname[0] = servname[0] = '\0';
+	}
+	if (tcpnum >= MAXTCP) {
+		snprintf(ebuf, sizeof(ebuf), "syslogd: denied incomming tcp "
+		    "connection from address %s, port %s: maximum %d reached",
+		    hostname, servname, MAXTCP);
+		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
+		return;
+	}
+	if ((be = malloc(sizeof(*be))) == NULL) {
+		snprintf(ebuf, sizeof(ebuf), "syslogd: incomming tcp "
+		    "connection from address %s, port %s failed: %s",
+		    hostname, servname, strerror(errno));
+		logmsg(LOG_SYSLOG|LOG_ERR, ebuf, LocalHostName, ADDDATE);
+		return;
+	}
+	be->be_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_errorcb, be);
+	if (be->be_bufev == NULL) {
+		snprintf(ebuf, sizeof(ebuf), "syslogd: incomming tcp "
+		    "connection from address %s, port %s failed: %s",
+		    hostname, servname, strerror(errno));
+		logmsg(LOG_SYSLOG|LOG_ERR, ebuf, LocalHostName, ADDDATE);
+		free(be);
+		return;
+	}
+	LIST_INSERT_HEAD(&bl_tcp, be, be_entry);
+	tcpnum++;
+	bufferevent_enable(be->be_bufev, EV_READ);
+
+	snprintf(ebuf, sizeof(ebuf), "syslogd: accepted incomming tcp "
+	    "connection from address %s, port %s", hostname, servname);
+	logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 }
 
 int
