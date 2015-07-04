@@ -925,7 +925,10 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		    p->p_peername);
 		return;
 	}
-	printline(p->p_hostname, linebuf);
+	if (Debug)
+		dprintf("tcp logger \"%s\" did send %zu bytes\n",
+                    p->p_peername, strlen(line));
+	printline(p->p_hostname, line);
 	free(line);
 }
 
