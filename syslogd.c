@@ -286,6 +286,7 @@ struct bufev_elm {
 	char			*be_peername;
 };
 int tcpnum = 0;
+char host_unknown[] = "???";
 
 void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
@@ -866,7 +867,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 	    asprintf(&peername, ss.ss_family == AF_INET6 ?
 	    "[%s]:%s" : "%s:%s", hostname, servname) == -1) {
 		dprintf("Malformed accept address\n");
-		peername = "???";
+		peername = host_unknown;
 	}
 	if (tcpnum >= MAXTCP) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
@@ -926,7 +927,8 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 	}
 
 	bufferevent_free(be->be_bufev);
-	free(be->be_peername);
+	if (be->be_peername != host_unknown)
+		free(be->be_peername);
 	LIST_REMOVE(be, be_entry);
 	free(be);
 }
@@ -1672,7 +1674,7 @@ cvthname(struct sockaddr *f, char *result, size_t res_len)
 	if (getnameinfo(f, f->sa_len, result, res_len, NULL, 0,
 	    NI_NUMERICHOST|NI_NUMERICSERV|NI_DGRAM) != 0) {
 		dprintf("Malformed from address\n");
-		strlcpy(result, "???", res_len);
+		strlcpy(result, host_unknown, res_len);
 		return;
 	}
 	dprintf("cvthname(%s)\n", result);
