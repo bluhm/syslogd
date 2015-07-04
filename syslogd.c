@@ -911,13 +911,20 @@ void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
 	struct peer		*p = arg;
+	char			*line;
 
 	/*
-	 * Drop data received from the log server.
+	 * Syslog over TCP  RFC 6587  3.4.2.  Non-Transparent-Framing
+	 * XXX Incompatible to ourself, should do:  3.4.1.  Octet Counting
+	 * XXX No line length limitation, DoS possible.
 	 */
-	dprintf("tcp logger \"%s\" did send %zu bytes\n",
-	    p->p_peername, EVBUFFER_LENGTH(bufev->input));
-	evbuffer_drain(bufev->input, -1);
+	if ((line = evbuffer_readline(bufev->input)) == NULL) {
+		dprintf("tcp logger \"%s\" did send not send complete line\n",
+		    p->p_peername);
+		return;
+	}
+	printline(p->p_hostname, linebuf);
+	free(line);
 }
 
 void
