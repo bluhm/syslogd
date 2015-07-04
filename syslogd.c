@@ -737,6 +737,7 @@ socket_bind(const char *proto, const char *host, const char *port,
 		    sizeof(hostname), servname, sizeof(servname),
 		    NI_NUMERICHOST | NI_NUMERICSERV |
 		    (res->ai_socktype == SOCK_DGRAM ? NI_DGRAM : 0)) != 0) {
+			dprintf("Malformed bind address\n");
 			hostname[0] = servname[0] = '\0';
 		}
 		if (shutread && shutdown(*fdp, SHUT_RD) == -1) {
@@ -864,7 +865,8 @@ tcp_acceptcb(int fd, short event, void *arg)
 	    NI_NUMERICHOST | NI_NUMERICSERV) != 0 ||
 	    asprintf(&peername, ss.ss_family == AF_INET6 ?
 	    "[%s]:%s" : "%s:%s", hostname, servname) == -1) {
-		peername = "unknown";
+		dprintf("Malformed accept address\n");
+		peername = "???";
 	}
 	if (tcpnum >= MAXTCP) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
