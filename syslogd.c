@@ -294,7 +294,7 @@ void	 tcp_acceptcb(int, short, void *);
 void	 tcp_recvcb(struct bufferevent *, void *);
 void	 tcp_closecb(struct bufferevent *, short, void *);
 int	 tcp_socket(struct filed *);
-void	 tcp_readcb(struct bufferevent *, void *);
+void	 tcp_dropcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
@@ -954,7 +954,7 @@ tcp_socket(struct filed *f)
 }
 
 void
-tcp_readcb(struct bufferevent *bufev, void *arg)
+tcp_dropcb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
 
@@ -1072,7 +1072,7 @@ tcp_connectcb(int fd, short event, void *arg)
 	f->f_file = s;
 
 	bufferevent_setfd(bufev, s);
-	bufferevent_setcb(bufev, tcp_readcb, tcp_writecb, tcp_errorcb, f);
+	bufferevent_setcb(bufev, tcp_dropcb, tcp_writecb, tcp_errorcb, f);
 	/*
 	 * Although syslog is a write only protocol, enable reading from
 	 * the socket to detect connection close and errors.
@@ -2243,7 +2243,7 @@ cfline(char *line, char *progblock, char *hostblock)
 			f->f_type = F_FORWUDP;
 		} else if (strncmp(ipproto, "tcp", 3) == 0) {
 			if ((f->f_un.f_forw.f_bufev = bufferevent_new(-1,
-			    tcp_readcb, tcp_writecb, tcp_errorcb, f)) == NULL) {
+			    tcp_dropcb, tcp_writecb, tcp_errorcb, f)) == NULL) {
 				snprintf(ebuf, sizeof(ebuf),
 				    "bufferevent \"%s\"",
 				    f->f_un.f_forw.f_loghost);
