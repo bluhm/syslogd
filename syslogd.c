@@ -279,12 +279,12 @@ struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
 		 ev_udp, ev_udp6, ev_bind, ev_listen, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
-LIST_HEAD(bufev_list, bufev_elm) bl_tcp;
-struct bufev_elm {
-	LIST_ENTRY(bufev_elm)	 be_entry;
-	struct bufferevent	*be_bufev;
-	char			*be_peername;
-	char			*be_hostname;
+LIST_HEAD(peer_list, peer) peers;
+struct peer {
+	LIST_ENTRY(peer)	 p_entry;
+	struct bufferevent	*p_bufev;
+	char			*p_peername;
+	char			*p_hostname;
 };
 int tcpnum = 0;
 char hostname_unknown[] = "???";
@@ -846,7 +846,7 @@ unix_readcb(int fd, short event, void *arg)
 void
 tcp_acceptcb(int fd, short event, void *arg)
 {
-	struct bufev_elm	*be;
+	struct peer		*p;
 	struct sockaddr_storage	 ss;
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
@@ -876,16 +876,16 @@ tcp_acceptcb(int fd, short event, void *arg)
 		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 		return;
 	}
-	if ((be = malloc(sizeof(*be))) == NULL) {
+	if ((p = malloc(sizeof(*p))) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "malloc \"%s\"", peername);
 		logerror(ebuf);
 		return;
 	}
-	if ((be->be_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_closecb,
-	    be)) == NULL) {
+	if ((p->p_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_closecb,
+	    p)) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "bufferevent \"%s\"", peername);
 		logerror(ebuf);
-		free(be);
+		free(p);
 		return;
 	}
 	if (!NoDNS && peername != hostname_unknown &&
@@ -895,12 +895,12 @@ tcp_acceptcb(int fd, short event, void *arg)
 		    hostname);
 	}
 	if (peername == hostname_unknown ||
-	    (be->be_hostname = strdup(hostname)) == NULL)
-		be->be_hostname = hostname_unknown;
-	be->be_peername = peername;
-	LIST_INSERT_HEAD(&bl_tcp, be, be_entry);
+	    (p->p_hostname = strdup(hostname)) == NULL)
+		p->p_hostname = hostname_unknown;
+	p->p_peername = peername;
+	LIST_INSERT_HEAD(&peers, p, p_entry);
 	tcpnum++;
-	bufferevent_enable(be->be_bufev, EV_READ);
+	bufferevent_enable(p->p_bufev, EV_READ);
 
 	snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" accepted",
 	    peername);
@@ -910,39 +910,39 @@ tcp_acceptcb(int fd, short event, void *arg)
 void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
-	struct bufev_elm	*be = arg;
+	struct peer		*p = arg;
 
 	/*
 	 * Drop data received from the log server.
 	 */
 	dprintf("tcp logger \"%s\" did send %zu bytes\n",
-	    be->be_peername, EVBUFFER_LENGTH(bufev->input));
+	    p->p_peername, EVBUFFER_LENGTH(bufev->input));
 	evbuffer_drain(bufev->input, -1);
 }
 
 void
 tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 {
-	struct bufev_elm	*be = arg;
+	struct peer		*p = arg;
 	char			 ebuf[ERRBUFSIZE];
 
 	if (event & EVBUFFER_EOF) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
-		    "connection close", be->be_peername);
+		    "connection close", p->p_peername);
 		logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 	} else {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
-		    "connection error: %s", be->be_peername, strerror(errno));
+		    "connection error: %s", p->p_peername, strerror(errno));
 		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
 	}
 
-	bufferevent_free(be->be_bufev);
-	if (be->be_peername != hostname_unknown)
-		free(be->be_peername);
-	if (be->be_hostname != hostname_unknown)
-		free(be->be_hostname);
-	LIST_REMOVE(be, be_entry);
-	free(be);
+	bufferevent_free(p->p_bufev);
+	if (p->p_peername != hostname_unknown)
+		free(p->p_peername);
+	if (p->p_hostname != hostname_unknown)
+		free(p->p_hostname);
+	LIST_REMOVE(p, p_entry);
+	free(p);
 }
 
 int
