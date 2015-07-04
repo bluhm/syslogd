@@ -870,6 +870,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 		dprintf("Malformed accept address\n");
 		peername = hostname_unknown;
 	}
+	dprintf("Peer addresss and port %s\n", peername);
 	if (tcpnum >= MAXTCP) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
 		    "denied: maximum %d reached", peername, MAXTCP);
@@ -897,6 +898,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 	if (peername == hostname_unknown ||
 	    (p->p_hostname = strdup(hostname)) == NULL)
 		p->p_hostname = hostname_unknown;
+	dprintf("Peer hostname %s\n", hostname);
 	p->p_peername = peername;
 	LIST_INSERT_HEAD(&peers, p, p_entry);
 	tcpnum++;
