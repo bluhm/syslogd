@@ -295,7 +295,7 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 void	 tcp_acceptcb(int, short, void *);
-void	 tcp_recvcb(struct bufferevent *, void *);
+void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_closecb(struct bufferevent *, short, void *);
 int	 tcp_socket(struct filed *);
 void	 tcp_dropcb(struct bufferevent *, void *);
@@ -881,7 +881,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 		logerror(ebuf);
 		return;
 	}
-	if ((be->be_bufev = bufferevent_new(fd, tcp_recvcb, NULL, tcp_closecb,
+	if ((be->be_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_closecb,
 	    be)) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "bufferevent \"%s\"", peername);
 		logerror(ebuf);
@@ -899,7 +899,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 }
 
 void
-tcp_recvcb(struct bufferevent *bufev, void *arg)
+tcp_readcb(struct bufferevent *bufev, void *arg)
 {
 	struct bufev_elm	*be = arg;
 
