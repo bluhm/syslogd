@@ -1321,6 +1321,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			case ENETDOWN:
 			case ENETUNREACH:
 			case ENOBUFS:
+			case EWOULDBLOCK:
 				/* silently dropped */
 				break;
 			default:
