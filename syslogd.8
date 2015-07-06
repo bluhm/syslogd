@@ -46,6 +46,7 @@
 .Op Fl m Ar mark_interval
 .Op Fl p Ar log_socket
 .Op Fl s Ar reporting_socket
+.Op Fl T Ar listen_address
 .Op Fl U Ar bind_address
 .Ek
 .Sh DESCRIPTION
@@ -112,6 +113,20 @@ Specify path to an
 .Dv AF_LOCAL
 socket for use in reporting logs stored in memory buffers using
 .Xr syslogc 8 .
+.It Fl T Ar listen_address
+Create a TCP listen socket for receiving messages and bind it to
+the specified address.
+There is no well-known port for syslog over TCP, so a port number
+must be specified using the
+.Ar host:port
+syntax.
+IPv6 addresses can be used by surrounding the address portion with
+square brackets
+.Po
+.Ql [\&
+and
+.Ql ]\&
+.Pc .
 .It Fl U Ar bind_address
 Create a UDP socket for receiving messages and bind it to the
 specified address.
