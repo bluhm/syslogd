@@ -935,6 +935,10 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		printline(p->p_hostname, EVBUFFER_DATA(bufev->input));
 		evbuffer_drain(bufev->input, -1);
 	}
+	if (EVBUFFER_LENGTH(bufev->input) > 0) {
+		dprintf("tcp logger \"%s\" buffer %zu bytes\n",
+		    p->p_peername, EVBUFFER_LENGTH(bufev->input));
+	}
 }
 
 void
