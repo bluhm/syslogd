@@ -285,6 +285,7 @@ struct peer {
 	struct bufferevent	*p_bufev;
 	char			*p_peername;
 	char			*p_hostname;
+	int			 p_fd;
 };
 int peernum = 0;
 char hostname_unknown[] = "???";
@@ -884,6 +885,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 		close(fd);
 		return;
 	}
+	p->p_fd = fd;
 	if ((p->p_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_closecb,
 	    p)) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "bufferevent \"%s\"", peername);
@@ -951,13 +953,14 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
 	}
 
-	bufferevent_free(p->p_bufev);
+	peernum--;
+	LIST_REMOVE(p, p_entry);
 	if (p->p_peername != hostname_unknown)
 		free(p->p_peername);
 	if (p->p_hostname != hostname_unknown)
 		free(p->p_hostname);
-	LIST_REMOVE(p, p_entry);
-	peernum--;
+	bufferevent_free(p->p_bufev);
+	close(p->p_fd);
 	free(p);
 }
 
