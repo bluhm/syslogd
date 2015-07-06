@@ -875,11 +875,13 @@ tcp_acceptcb(int fd, short event, void *arg)
 		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
 		    "denied: maximum %d reached", peername, MAXTCP);
 		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+		close(fd);
 		return;
 	}
 	if ((p = malloc(sizeof(*p))) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "malloc \"%s\"", peername);
 		logerror(ebuf);
+		close(fd);
 		return;
 	}
 	if ((p->p_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_closecb,
@@ -887,6 +889,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 		snprintf(ebuf, sizeof(ebuf), "bufferevent \"%s\"", peername);
 		logerror(ebuf);
 		free(p);
+		close(fd);
 		return;
 	}
 	if (!NoDNS && peername != hostname_unknown &&
