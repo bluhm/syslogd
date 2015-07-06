@@ -286,7 +286,7 @@ struct peer {
 	char			*p_peername;
 	char			*p_hostname;
 };
-int tcpnum = 0;
+int peernum = 0;
 char hostname_unknown[] = "???";
 
 void	 klog_readcb(int, short, void *);
@@ -871,7 +871,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 		peername = hostname_unknown;
 	}
 	dprintf("Peer addresss and port %s\n", peername);
-	if (tcpnum >= MAXTCP) {
+	if (peernum >= MAXTCP) {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
 		    "denied: maximum %d reached", peername, MAXTCP);
 		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
@@ -901,7 +901,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 	dprintf("Peer hostname %s\n", hostname);
 	p->p_peername = peername;
 	LIST_INSERT_HEAD(&peers, p, p_entry);
-	tcpnum++;
+	peernum++;
 	bufferevent_enable(p->p_bufev, EV_READ);
 
 	snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" accepted",
@@ -954,6 +954,7 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 	if (p->p_hostname != hostname_unknown)
 		free(p->p_hostname);
 	LIST_REMOVE(p, p_entry);
+	peernum--;
 	free(p);
 }
 
