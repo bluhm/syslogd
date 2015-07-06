@@ -918,18 +918,18 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	/*
 	 * Syslog over TCP  RFC 6587  3.4.2.  Non-Transparent-Framing
 	 * XXX Incompatible to ourself, should do:  3.4.1.  Octet Counting
-	 * XXX No line length limitation, DoS possible.
 	 */
-	if ((line = evbuffer_readline(bufev->input)) == NULL) {
-		dprintf("tcp logger \"%s\" did send not send complete line\n",
-		    p->p_peername);
-		return;
+	while ((line = evbuffer_readline(bufev->input))) {
+		dprintf("tcp logger \"%s\" complete line\n", p->p_peername);
+		printline(p->p_hostname, line);
+		free(line);
 	}
-	if (Debug)
-		dprintf("tcp logger \"%s\" did send %zu bytes\n",
-                    p->p_peername, strlen(line));
-	printline(p->p_hostname, line);
-	free(line);
+	if (EVBUFFER_LENGTH(bufev->input) >= MAXLINE) {
+		dprintf("tcp logger \"%s\" incomplete line, use %zu bytes\n",
+		    p->p_peername, EVBUFFER_LENGTH(bufev->input));
+		printline(p->p_hostname, EVBUFFER_DATA(bufev->input));
+		evbuffer_drain(bufev->input, -1);
+	}
 }
 
 void
