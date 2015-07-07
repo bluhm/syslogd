@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.170 2015/07/06 16:12:16 millert Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.171 2015/07/07 17:53:04 bluhm Exp $	*/
 
 /*
  * Copyright (c) 1983, 1988, 1993, 1994
