@@ -1869,6 +1869,7 @@ init(void)
 		free(f->f_hostname);
 		if (f->f_type == F_MEMBUF) {
 			f->f_program = NULL;
+			f->f_hostname = NULL;
 			dprintf("add %p to mb\n", f);
 			SIMPLEQ_INSERT_HEAD(&mb, f, f_next);
 		} else
