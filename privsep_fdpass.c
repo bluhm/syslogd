@@ -106,7 +106,7 @@ receive_fd(int sock)
 		warn("%s: recvmsg", "receive_fd");
 		/* receive message failed, but the result is in the socket */
 		if (errno == EMSGSIZE)
-			readv(sock, &vec, 1);
+			recv(sock, &result, sizeof(int), MSG_DONTWAIT);
 		return -1;
 	}
 	if (n != sizeof(int))
