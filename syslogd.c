@@ -933,7 +933,6 @@ octet_counting(struct evbuffer *evbuf, char **msg)
 	 */
 	if (buf >= end || !isdigit(*buf))
 		return (-1);
-
 	/*
 	 * SYSLOG-FRAME = MSG-LEN SP SYSLOG-MSG
 	 * MSG-LEN is the octet count of the SYSLOG-MSG in the SYSLOG-FRAME.
@@ -948,10 +947,11 @@ octet_counting(struct evbuffer *evbuf, char **msg)
 	p++;
 	if (msg)
 		*msg = p;
+	dprintf(" octet counting");
 	/* Using atoi() is safe as buf starts with 1 to 5 digits and a space. */
 	len = atoi(buf);
 	if (p + len > end)
-		return (-1);  // XXX
+		return (0);
 	evbuffer_drain(evbuf, p - buf);
 	return (len);
 }
@@ -985,6 +985,7 @@ non_transparent_framing(struct evbuffer *evbuf, char **msg)
 		p[-1] = '\0';
 	if (msg)
 		*msg = buf;
+	dprintf(" non transparent framing");
 	return (p + 1 - buf);
 }
 
@@ -995,43 +996,32 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	char			*msg, line[MAXLINE + 1];
 	int			 len;
 
-	
 	while (EVBUFFER_LENGTH(bufev->input) > 0) {
+		dprintf("tcp logger \"%s\"", p->p_peername);
 		len = octet_counting(bufev->input, &msg);
-		if (len >= 0) {
-			dprintf("tcp logger \"%s\" octet counting, len %d\n",
-			    p->p_peername, len);
-		} else {
+		if (len < 0)
 			len = non_transparent_framing(bufev->input, &msg);
-			if (len >= 0) {
-				dprintf("tcp logger \"%s\" non transparent "
-				    "framing, len %d\n", p->p_peername, len);
-			}
-		}
-		if (len < 0) {
-			dprintf("tcp logger \"%s\" incomplete frame, ",
-			    p->p_peername);
+		if (len <= 0) {
+			dprintf(", incomplete frame");
 			break;
 		}
-		if (len > 0) {
-			if (isspace(msg[len]))
-				msg[len] = '\0';
-			if (msg[len] != '\0') {
-				strlcpy(line, msg,
-				    MINIMUM((size_t)len + 1, sizeof(line)));
-				msg = line;
-			}
-			printline(p->p_hostname, msg);
-			evbuffer_drain(bufev->input, len);
+		dprintf(", use %d bytes\n", len);
+		if (isspace(msg[len]))
+			msg[len] = '\0';
+		if (msg[len] != '\0') {
+			strlcpy(line, msg,
+			    MINIMUM((size_t)len + 1, sizeof(line)));
+			msg = line;
 		}
+		printline(p->p_hostname, msg);
+		evbuffer_drain(bufev->input, len);
 	}
 	if (EVBUFFER_LENGTH(bufev->input) >= MAXLINE) {
-		dprintf("use %zu bytes\n", EVBUFFER_LENGTH(bufev->input));
+		dprintf(", use %zu bytes\n", EVBUFFER_LENGTH(bufev->input));
 		printline(p->p_hostname, EVBUFFER_DATA(bufev->input));
 		evbuffer_drain(bufev->input, -1);
-	}
-	if (EVBUFFER_LENGTH(bufev->input) > 0)
-		dprintf("buffer %zu bytes\n", EVBUFFER_LENGTH(bufev->input));
+	} else if (EVBUFFER_LENGTH(bufev->input) > 0)
+		dprintf(", buffer %zu bytes\n", EVBUFFER_LENGTH(bufev->input));
 }
 
 void
