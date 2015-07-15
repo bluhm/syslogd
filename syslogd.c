@@ -914,20 +914,103 @@ tcp_acceptcb(int fd, short event, void *arg)
 	logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 }
 
+int	octet_counting(struct evbuffer *, char **);
+int	non_transparent_framing(struct evbuffer *, char **);
+/*
+ * Syslog over TCP  RFC 6587  3.4.1. Octet Counting
+ */
+int
+octet_counting(struct evbuffer *evbuf, char **msg)
+{
+	char	*p, *buf, *end;
+	int	 len;
+
+	buf = EVBUFFER_DATA(evbuf);
+	end = buf + EVBUFFER_LENGTH(evbuf);
+	/*
+	 * It can be assumed that octet-counting framing is used if a syslog
+	 * frame starts with a digit.
+	 */
+	if (buf >= end || !isdigit(*buf))
+		return (-1);
+
+	/*
+	 * SYSLOG-FRAME = MSG-LEN SP SYSLOG-MSG
+	 * MSG-LEN is the octet count of the SYSLOG-MSG in the SYSLOG-FRAME.
+	 * We support up to 5 digits in MSG-LEN, so the maximum is 99999.
+	 */
+	for (p = buf; p < end && p < buf + 5; p++) {
+		if (!isdigit(*p))
+			break;
+	}
+	if (buf >= p || p >= end || *p != ' ')
+		return (-1);
+	p++;
+	if (msg)
+		*msg = p;
+	/* Using atoi() is safe as buf starts with 1 to 5 digits and a space. */
+	len = atoi(buf);
+	if (p + len > end)
+		return (-1);  // XXX
+	evbuffer_drain(evbuf, p - buf);
+	return (len);
+}
+
+/*
+ * Syslog over TCP  RFC 6587  3.4.2. Non-Transparent-Framing
+ */
+int
+non_transparent_framing(struct evbuffer *evbuf, char **msg)
+{
+	char	*p, *buf, *end;
+
+	buf = EVBUFFER_DATA(evbuf);
+	end = buf + EVBUFFER_LENGTH(evbuf);
+	/*
+	 * The TRAILER has usually been a single character and most often
+	 * is ASCII LF (%d10).  However, other characters have also been
+	 * seen, with ASCII NUL (%d00) being a prominent example.
+	 */
+	for (p = buf; p < end; p++) {
+		if (*p == '\0' || *p == '\n')
+			break;
+	}
+	if (p >= end || p + 1 - buf >= INT_MAX)
+		return (-1);
+	/*
+	 * Some devices have also been seen to emit a two-character
+	 * TRAILER, which is usually CR and LF.
+	 */
+	if (buf < p && p[0] == '\n' && p[-1] == '\r')
+		p[-1] = '\0';
+	if (msg)
+		*msg = buf;
+	return (p + 1 - buf);
+}
+
 void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
 	struct peer		*p = arg;
-	char			*line;
+	char			*msg, line[MAXLINE + 1];
+	int			 len;
 
-	/*
-	 * Syslog over TCP  RFC 6587  3.4.2.  Non-Transparent-Framing
-	 * XXX Incompatible to ourself, should do:  3.4.1.  Octet Counting
-	 */
-	while ((line = evbuffer_readline(bufev->input))) {
-		dprintf("tcp logger \"%s\" complete line\n", p->p_peername);
-		printline(p->p_hostname, line);
-		free(line);
+	
+	while (EVBUFFER_LENGTH(bufev->input) > 0) {
+		len = octet_counting(bufev->input, &msg);
+		if (len < 0)
+			len = non_transparent_framing(bufev->input, &msg);
+		if (len > 0) {
+			if (isspace(msg[len]))
+				msg[len] = '\0';
+			if (msg[len] != '\0') {
+				strlcpy(line, msg,
+				    MINIMUM((size_t)len + 1, sizeof(line)));
+				msg = line;
+			}
+			printline(p->p_hostname, msg);
+			evbuffer_drain(bufev->input, len);
+		}
 	}
 	if (EVBUFFER_LENGTH(bufev->input) >= MAXLINE) {
 		dprintf("tcp logger \"%s\" incomplete line, use %zu bytes\n",
