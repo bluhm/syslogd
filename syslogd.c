@@ -998,8 +998,21 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	
 	while (EVBUFFER_LENGTH(bufev->input) > 0) {
 		len = octet_counting(bufev->input, &msg);
-		if (len < 0)
+		if (len >= 0) {
+			dprintf("tcp logger \"%s\" octet counting, len %d\n",
+			    p->p_peername, len);
+		} else {
 			len = non_transparent_framing(bufev->input, &msg);
+			if (len >= 0) {
+				dprintf("tcp logger \"%s\" non transparent "
+				    "framing, len %d\n", p->p_peername, len);
+			}
+		}
+		if (len < 0) {
+			dprintf("tcp logger \"%s\" incomplete frame, ",
+			    p->p_peername);
+			break;
+		}
 		if (len > 0) {
 			if (isspace(msg[len]))
 				msg[len] = '\0';
@@ -1013,15 +1026,12 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		}
 	}
 	if (EVBUFFER_LENGTH(bufev->input) >= MAXLINE) {
-		dprintf("tcp logger \"%s\" incomplete line, use %zu bytes\n",
-		    p->p_peername, EVBUFFER_LENGTH(bufev->input));
+		dprintf("use %zu bytes\n", EVBUFFER_LENGTH(bufev->input));
 		printline(p->p_hostname, EVBUFFER_DATA(bufev->input));
 		evbuffer_drain(bufev->input, -1);
 	}
-	if (EVBUFFER_LENGTH(bufev->input) > 0) {
-		dprintf("tcp logger \"%s\" buffer %zu bytes\n",
-		    p->p_peername, EVBUFFER_LENGTH(bufev->input));
-	}
+	if (EVBUFFER_LENGTH(bufev->input) > 0)
+		dprintf("buffer %zu bytes\n", EVBUFFER_LENGTH(bufev->input));
 }
 
 void
