@@ -947,9 +947,9 @@ octet_counting(struct evbuffer *evbuf, char **msg)
 	p++;
 	if (msg)
 		*msg = p;
-	dprintf(" octet counting");
 	/* Using atoi() is safe as buf starts with 1 to 5 digits and a space. */
 	len = atoi(buf);
+	dprintf(" octet counting %d", len);
 	if (p + len > end)
 		return (0);
 	evbuffer_drain(evbuf, p - buf);
@@ -1006,11 +1006,10 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 			break;
 		}
 		dprintf(", use %d bytes\n", len);
-		if (isspace(msg[len]))
-			msg[len] = '\0';
-		if (msg[len] != '\0') {
-			strlcpy(line, msg,
-			    MINIMUM((size_t)len + 1, sizeof(line)));
+		if (isspace(msg[len-1]))
+			msg[len-1] = '\0';
+		if (msg[len-1] != '\0') {
+			strlcpy(line, msg, MINIMUM((size_t)len, sizeof(line)));
 			msg = line;
 		}
 		printline(p->p_hostname, msg);
