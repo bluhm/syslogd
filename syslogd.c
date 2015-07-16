@@ -1009,7 +1009,8 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		if (isspace(msg[len-1]))
 			msg[len-1] = '\0';
 		if (msg[len-1] != '\0') {
-			strlcpy(line, msg, MINIMUM((size_t)len, sizeof(line)));
+			strlcpy(line, msg,
+			    MINIMUM((size_t)len+1, sizeof(line)));
 			msg = line;
 		}
 		printline(p->p_hostname, msg);
