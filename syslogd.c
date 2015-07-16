@@ -1001,14 +1001,14 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		len = octet_counting(bufev->input, &msg);
 		if (len < 0)
 			len = non_transparent_framing(bufev->input, &msg);
-		if (len <= 0) {
+		if (len < 0) {
 			dprintf(", incomplete frame");
 			break;
 		}
 		dprintf(", use %d bytes\n", len);
-		if (isspace(msg[len-1]))
+		if (len > 0 && isspace(msg[len-1]))
 			msg[len-1] = '\0';
-		if (msg[len-1] != '\0') {
+		if (len == 0 || msg[len-1] != '\0') {
 			strlcpy(line, msg,
 			    MINIMUM((size_t)len+1, sizeof(line)));
 			msg = line;
