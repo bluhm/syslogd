@@ -945,13 +945,13 @@ octet_counting(struct evbuffer *evbuf, char **msg)
 	if (buf >= p || p >= end || *p != ' ')
 		return (-1);
 	p++;
-	if (msg)
-		*msg = p;
 	/* Using atoi() is safe as buf starts with 1 to 5 digits and a space. */
 	len = atoi(buf);
 	dprintf(" octet counting %d", len);
 	if (p + len > end)
 		return (0);
+	if (msg)
+		*msg = p;
 	evbuffer_drain(evbuf, p - buf);
 	return (len);
 }
@@ -977,6 +977,7 @@ non_transparent_framing(struct evbuffer *evbuf, char **msg)
 	}
 	if (p >= end || p + 1 - buf >= INT_MAX)
 		return (-1);
+	dprintf(" non transparent framing");
 	/*
 	 * Some devices have also been seen to emit a two-character
 	 * TRAILER, which is usually CR and LF.
@@ -985,7 +986,6 @@ non_transparent_framing(struct evbuffer *evbuf, char **msg)
 		p[-1] = '\0';
 	if (msg)
 		*msg = buf;
-	dprintf(" non transparent framing");
 	return (p + 1 - buf);
 }
 
@@ -998,10 +998,11 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 
 	while (EVBUFFER_LENGTH(bufev->input) > 0) {
 		dprintf("tcp logger \"%s\"", p->p_peername);
+		msg = NULL;
 		len = octet_counting(bufev->input, &msg);
 		if (len < 0)
 			len = non_transparent_framing(bufev->input, &msg);
-		if (len < 0) {
+		if (msg == NULL) {
 			dprintf(", incomplete frame");
 			break;
 		}
