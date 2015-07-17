@@ -1006,7 +1006,7 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 			break;
 		}
 		dprintf(", use %d bytes\n", len);
-		if (len > 0 && isspace(msg[len-1]))
+		if (len > 0 && msg[len-1] == '\n')
 			msg[len-1] = '\0';
 		if (len == 0 || msg[len-1] != '\0') {
 			strlcpy(line, msg,
