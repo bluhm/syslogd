@@ -294,6 +294,8 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 void	 tcp_acceptcb(int, short, void *);
+int	 octet_counting(struct evbuffer *, char **);
+int	 non_transparent_framing(struct evbuffer *, char **);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_closecb(struct bufferevent *, short, void *);
 int	 tcp_socket(struct filed *);
@@ -914,8 +916,6 @@ tcp_acceptcb(int fd, short event, void *arg)
 	logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 }
 
-int	octet_counting(struct evbuffer *, char **);
-int	non_transparent_framing(struct evbuffer *, char **);
 /*
  * Syslog over TCP  RFC 6587  3.4.1. Octet Counting
  */
