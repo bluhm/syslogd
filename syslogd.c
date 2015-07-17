@@ -1021,7 +1021,8 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		printline(p->p_hostname, msg);
 		evbuffer_drain(bufev->input, len);
 	}
-	if (EVBUFFER_LENGTH(bufev->input) >= MAXLINE) {
+	/* Maximum frame has 5 digits, 1 space, MAXLINE chars, 1 new line. */
+	if (EVBUFFER_LENGTH(bufev->input) >= 5 + 1 + MAXLINE + 1) {
 		dprintf(", use %zu bytes\n", EVBUFFER_LENGTH(bufev->input));
 		printline(p->p_hostname, EVBUFFER_DATA(bufev->input));
 		evbuffer_drain(bufev->input, -1);
