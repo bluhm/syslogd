@@ -950,9 +950,9 @@ octet_counting(struct evbuffer *evbuf, char **msg)
 	dprintf(" octet counting %d", len);
 	if (p + len > end)
 		return (0);
+	evbuffer_drain(evbuf, p - buf);
 	if (msg)
 		*msg = p;
-	evbuffer_drain(evbuf, p - buf);
 	return (len);
 }
 
@@ -975,9 +975,11 @@ non_transparent_framing(struct evbuffer *evbuf, char **msg)
 		if (*p == '\0' || *p == '\n')
 			break;
 	}
-	if (p >= end || p + 1 - buf >= INT_MAX)
+	if (p + 1 - buf >= INT_MAX)
 		return (-1);
 	dprintf(" non transparent framing");
+	if (p >= end)
+		return (0);
 	/*
 	 * Some devices have also been seen to emit a two-character
 	 * TRAILER, which is usually CR and LF.
@@ -1002,6 +1004,8 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		len = octet_counting(bufev->input, &msg);
 		if (len < 0)
 			len = non_transparent_framing(bufev->input, &msg);
+		if (len < 0)
+			dprintf("unknown method");
 		if (msg == NULL) {
 			dprintf(", incomplete frame");
 			break;
