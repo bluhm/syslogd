@@ -294,7 +294,7 @@ void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 void	 tcp_acceptcb(int, short, void *);
-int	 octet_counting(struct evbuffer *, char **);
+int	 octet_counting(struct evbuffer *, char **, int);
 int	 non_transparent_framing(struct evbuffer *, char **);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_closecb(struct bufferevent *, short, void *);
@@ -920,7 +920,7 @@ tcp_acceptcb(int fd, short event, void *arg)
  * Syslog over TCP  RFC 6587  3.4.1. Octet Counting
  */
 int
-octet_counting(struct evbuffer *evbuf, char **msg)
+octet_counting(struct evbuffer *evbuf, char **msg, int drain)
 {
 	char	*p, *buf, *end;
 	int	 len;
@@ -950,7 +950,8 @@ octet_counting(struct evbuffer *evbuf, char **msg)
 	dprintf(" octet counting %d", len);
 	if (p + len > end)
 		return (0);
-	evbuffer_drain(evbuf, p - buf);
+	if (drain)
+		evbuffer_drain(evbuf, p - buf);
 	if (msg)
 		*msg = p;
 	return (len);
@@ -1001,7 +1002,7 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	while (EVBUFFER_LENGTH(bufev->input) > 0) {
 		dprintf("tcp logger \"%s\"", p->p_peername);
 		msg = NULL;
-		len = octet_counting(bufev->input, &msg);
+		len = octet_counting(bufev->input, &msg, 1);
 		if (len < 0)
 			len = non_transparent_framing(bufev->input, &msg);
 		if (len < 0)
@@ -1151,13 +1152,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	 */
 	buf = EVBUFFER_DATA(bufev->output);
 	end = buf + EVBUFFER_LENGTH(bufev->output);
-	for (p = buf; p < end && p < buf + 4; p++) {
-		if (!isdigit(*p))
-			break;
-	}
-	/* Using atoi() is safe as buf starts with 1 to 4 digits and a space. */
-	if (buf < end && !(buf + 1 <= p && p < end && *p == ' ' &&
-	    (l = atoi(buf)) > 0 && buf + l < end && buf[l] == '\n')) {
+	if ((l = octet_counting(bufev->output, &p, 0)) <= 0 || p[l-1] != '\n') {
 		for (p = buf; p < end; p++) {
 			if (*p == '\n') {
 				evbuffer_drain(bufev->output, p - buf + 1);
