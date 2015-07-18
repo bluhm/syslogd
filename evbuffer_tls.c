@@ -167,7 +167,6 @@ buffertls_writecb(int fd, short event, void *arg)
 			    buffertls_writecb, buftls);
 			goto reschedule;
 		case TLS_WRITE_AGAIN:
-			buftls->bt_flags |= BT_WRITE_AGAIN;
 			event_set(&bufev->ev_write, fd, EV_WRITE,
 			    buffertls_writecb, buftls);
 			goto reschedule;
@@ -186,7 +185,6 @@ buffertls_writecb(int fd, short event, void *arg)
 		if (res <= 0)
 			goto error;
 	}
-	buftls->bt_flags &= ~BT_WRITE_AGAIN;
 
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	if (EVBUFFER_LENGTH(bufev->output) != 0)
@@ -277,7 +275,6 @@ buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	buftls->bt_bufev = bufev;
 	buftls->bt_ctx = ctx;
-	buftls->bt_flags = 0;
 }
 
 void

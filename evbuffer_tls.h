@@ -28,8 +28,6 @@ struct buffertls {
 	struct bufferevent	*bt_bufev;
 	struct tls		*bt_ctx;
 	const char		*bt_hostname;
-	int			 bt_flags;
-#define BT_WRITE_AGAIN		0x1
 };
 
 void	buffertls_set(struct buffertls *, struct bufferevent *, struct tls *,
