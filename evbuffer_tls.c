@@ -167,6 +167,7 @@ buffertls_writecb(int fd, short event, void *arg)
 			    buffertls_writecb, buftls);
 			goto reschedule;
 		case TLS_WRITE_AGAIN:
+			buftls->bt_flags |= BT_WRITE_AGAIN;
 			event_set(&bufev->ev_write, fd, EV_WRITE,
 			    buffertls_writecb, buftls);
 			goto reschedule;
@@ -202,7 +203,6 @@ buffertls_writecb(int fd, short event, void *arg)
 	return;
 
  reschedule:
-	buftls->bt_flags |= BT_WRITE_AGAIN;
 	if (EVBUFFER_LENGTH(bufev->output) != 0)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 	return;
