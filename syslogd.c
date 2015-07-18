@@ -1152,7 +1152,8 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	 */
 	buf = EVBUFFER_DATA(bufev->output);
 	end = buf + EVBUFFER_LENGTH(bufev->output);
-	if ((l = octet_counting(bufev->output, &p, 0)) <= 0 || p[l-1] != '\n') {
+	if (buf < end && !((l = octet_counting(bufev->output, &p, 0)) > 0 &&
+	    p[l-1] == '\n')) {
 		for (p = buf; p < end; p++) {
 			if (*p == '\n') {
 				evbuffer_drain(bufev->output, p - buf + 1);
@@ -1161,7 +1162,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		}
 		/* Without '\n' discard everything. */
 		if (p == end)
-			evbuffer_drain(bufev->output, p - buf);
+			evbuffer_drain(bufev->output, -1);
 		dprintf("loghost \"%s\" dropped partial message\n",
 		    f->f_un.f_forw.f_loghost);
 		f->f_un.f_forw.f_dropped++;
