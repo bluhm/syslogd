@@ -947,7 +947,8 @@ octet_counting(struct evbuffer *evbuf, char **msg, int drain)
 	p++;
 	/* Using atoi() is safe as buf starts with 1 to 5 digits and a space. */
 	len = atoi(buf);
-	dprintf(" octet counting %d", len);
+	if (drain)
+		dprintf(" octet counting %d", len);
 	if (p + len > end)
 		return (0);
 	if (drain)
