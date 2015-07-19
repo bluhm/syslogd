@@ -60,7 +60,7 @@
 #define MAX_MEMBUF_NAME	64		/* Max length of membuf log name */
 #define MAX_TCPBUF	(256 * 1024)	/* Maximum tcp event buffer size */
 #define	MAXSVLINE	120		/* maximum saved line length */
-#define MAXTCP		20		/* maximum incomming connections */
+#define FD_RESERVE	5		/* file descriptors not accepted */
 #define DEFUPRI		(LOG_USER|LOG_NOTICE)
 #define DEFSPRI		(LOG_KERN|LOG_CRIT)
 #define TIMERINTVL	30		/* interval for checking flush, mark */
@@ -293,6 +293,7 @@ char hostname_unknown[] = "???";
 void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
+int	 accept4_reserve(int, struct sockaddr *sa, socklen_t *salen, int);
 void	 tcp_acceptcb(int, short, void *);
 int	 octet_counting(struct evbuffer *, char **, int);
 int	 non_transparent_framing(struct evbuffer *, char **);
@@ -774,7 +775,7 @@ socket_bind(const char *proto, const char *host, const char *port,
 			continue;
 		}
 		if (!shutread && res->ai_protocol == IPPROTO_TCP &&
-		    listen(*fdp, MAXTCP) == -1) {
+		    listen(*fdp, 10) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "listen "
 			    "protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
@@ -846,19 +847,50 @@ unix_readcb(int fd, short event, void *arg)
 		logerror("recvfrom unix");
 }
 
-void
-tcp_acceptcb(int fd, short event, void *arg)
+int
+accept4_reserve(int fd, struct sockaddr *sa, socklen_t *salen, int flags)
 {
+	if (getdtablecount() + FD_RESERVE >= getdtablesize()) {
+		errno = EMFILE;
+		return (-1);
+	}
+
+	return accept4(fd, sa, salen, flags);
+}
+
+void
+tcp_acceptcb(int lfd, short event, void *arg)
+{
+	struct event		*ev = arg;
+	struct timeval		 to = { 1, 0 };
 	struct peer		*p;
 	struct sockaddr_storage	 ss;
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
 	char			*peername, ebuf[ERRBUFSIZE];
+	int			 fd;
+
+	if (event & EV_TIMEOUT) {
+		dprintf("Listen for tcp again\n");
+		event_set(ev, lfd, EV_READ|EV_PERSIST, tcp_acceptcb, ev);
+		event_add(ev, NULL);
+		return;
+	}
 
 	dprintf("Accepting tcp connection\n");
 	sslen = sizeof(ss);
-	fd = accept4(fd, (struct sockaddr *)&ss, &sslen, SOCK_NONBLOCK);
-	if (fd == -1) {
+	if ((fd = accept4_reserve(lfd, (struct sockaddr *)&ss, &sslen,
+	    SOCK_NONBLOCK)) == -1) {
+		if (errno == ENFILE || errno == EMFILE) {
+			snprintf(ebuf, sizeof(ebuf), "syslogd: tcp accept "
+			    "deferred: %s", strerror(errno));
+			logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName,
+			    ADDDATE);
+			event_del(ev);
+			event_set(ev, lfd, 0, tcp_acceptcb, ev);
+			event_add(ev, &to);
+			return;
+		}
 		if (errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
 			logerror("accept tcp socket");
@@ -874,13 +906,6 @@ tcp_acceptcb(int fd, short event, void *arg)
 		peername = hostname_unknown;
 	}
 	dprintf("Peer addresss and port %s\n", peername);
-	if (peernum >= MAXTCP) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
-		    "denied: maximum %d reached", peername, MAXTCP);
-		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
-		close(fd);
-		return;
-	}
 	if ((p = malloc(sizeof(*p))) == NULL) {
 		snprintf(ebuf, sizeof(ebuf), "malloc \"%s\"", peername);
 		logerror(ebuf);
