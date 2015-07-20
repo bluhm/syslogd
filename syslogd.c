@@ -495,7 +495,7 @@ main(int argc, char *argv[])
 			if (!Debug)
 				die(0);
 		} else {
-			if (listen(fd_ctlsock, 16) == -1) {
+			if (listen(fd_ctlsock, 5) == -1) {
 				logerror("ctlsock listen");
 				die(0);
 			}
