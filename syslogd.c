@@ -859,6 +859,7 @@ reserve_accept4(int lfd, int event, struct event *ev,
 
 	if (event & EV_TIMEOUT) {
 		dprintf("Listen again\n");
+		/* Enable the listen event, there is no timeout anymore. */
 		event_set(ev, lfd, EV_READ|EV_PERSIST, cb, ev);
 		event_add(ev, NULL);
 		errno = EWOULDBLOCK;
@@ -875,6 +876,10 @@ reserve_accept4(int lfd, int event, struct event *ev,
 		snprintf(ebuf, sizeof(ebuf), "syslogd: accept deferred: %s",
 		    strerror(errno));
 		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+		/*
+		 * Disable the listen event and convert it to a timeout.
+		 * Pass the listen file descriptor to the callback.
+		 */
 		event_del(ev);
 		event_set(ev, lfd, 0, cb, ev);
 		event_add(ev, &to);
