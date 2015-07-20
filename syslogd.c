@@ -293,7 +293,8 @@ char hostname_unknown[] = "???";
 void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
-int	 accept4_reserve(int, struct sockaddr *sa, socklen_t *salen, int);
+int	 reserve_accept4(int, int, struct event *,
+    void (*)(int, short, void *), struct sockaddr *, socklen_t *, int);
 void	 tcp_acceptcb(int, short, void *);
 int	 octet_counting(struct evbuffer *, char **, int);
 int	 non_transparent_framing(struct evbuffer *, char **);
@@ -848,50 +849,57 @@ unix_readcb(int fd, short event, void *arg)
 }
 
 int
-accept4_reserve(int fd, struct sockaddr *sa, socklen_t *salen, int flags)
+reserve_accept4(int lfd, int event, struct event *ev,
+    void (*cb)(int, short, void *),
+    struct sockaddr *sa, socklen_t *salen, int flags)
 {
-	if (getdtablecount() + FD_RESERVE >= getdtablesize()) {
-		errno = EMFILE;
+	struct timeval	 to = { 1, 0 };
+	char		 ebuf[ERRBUFSIZE];
+	int		 afd;
+
+	if (event & EV_TIMEOUT) {
+		dprintf("Listen again\n");
+		event_set(ev, lfd, EV_READ|EV_PERSIST, cb, ev);
+		event_add(ev, NULL);
+		errno = EWOULDBLOCK;
 		return (-1);
 	}
 
-	return accept4(fd, sa, salen, flags);
+	if (getdtablecount() + FD_RESERVE >= getdtablesize()) {
+		afd = -1;
+		errno = EMFILE;
+	} else
+		afd = accept4(lfd, sa, salen, flags);
+
+	if (afd == -1 && (errno == ENFILE || errno == EMFILE)) {
+		snprintf(ebuf, sizeof(ebuf), "syslogd: accept deferred: %s",
+		    strerror(errno));
+		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+		event_del(ev);
+		event_set(ev, lfd, 0, cb, ev);
+		event_add(ev, &to);
+		return (-1);
+	}
+
+	return (afd);
 }
 
 void
-tcp_acceptcb(int lfd, short event, void *arg)
+tcp_acceptcb(int fd, short event, void *arg)
 {
 	struct event		*ev = arg;
-	struct timeval		 to = { 1, 0 };
 	struct peer		*p;
 	struct sockaddr_storage	 ss;
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
 	char			*peername, ebuf[ERRBUFSIZE];
-	int			 fd;
-
-	if (event & EV_TIMEOUT) {
-		dprintf("Listen for tcp again\n");
-		event_set(ev, lfd, EV_READ|EV_PERSIST, tcp_acceptcb, ev);
-		event_add(ev, NULL);
-		return;
-	}
 
 	dprintf("Accepting tcp connection\n");
 	sslen = sizeof(ss);
-	if ((fd = accept4_reserve(lfd, (struct sockaddr *)&ss, &sslen,
-	    SOCK_NONBLOCK)) == -1) {
-		if (errno == ENFILE || errno == EMFILE) {
-			snprintf(ebuf, sizeof(ebuf), "syslogd: tcp accept "
-			    "deferred: %s", strerror(errno));
-			logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName,
-			    ADDDATE);
-			event_del(ev);
-			event_set(ev, lfd, 0, tcp_acceptcb, ev);
-			event_add(ev, &to);
-			return;
-		}
-		if (errno != EINTR && errno != EWOULDBLOCK &&
+	if ((fd = reserve_accept4(fd, event, ev, tcp_acceptcb,
+	    (struct sockaddr *)&ss, &sslen, SOCK_NONBLOCK)) == -1) {
+		if (errno != ENFILE && errno != EMFILE &&
+		    errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
 			logerror("accept tcp socket");
 		return;
@@ -2711,9 +2719,10 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 	struct event		*ev = arg;
 
 	dprintf("Accepting control connection\n");
-	fd = accept4(fd, NULL, NULL, SOCK_NONBLOCK);
-	if (fd == -1) {
-		if (errno != EINTR && errno != EWOULDBLOCK &&
+	if ((fd = reserve_accept4(fd, event, ev, ctlsock_acceptcb,
+	    NULL, NULL, SOCK_NONBLOCK)) == -1) {
+		if (errno != ENFILE && errno != EMFILE &&
+		    errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
 			logerror("accept ctlsock");
 		return;
