@@ -305,7 +305,7 @@ void	 tcp_dropcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
-void	 tcp_connectretry(struct bufferevent *, int, struct filed *);
+void	 tcp_connect_retry(struct bufferevent *, struct filed *);
 struct tls *tls_socket(struct filed *);
 int	 tcpbuf_countmsg(struct bufferevent *bufev);
 void	 die_signalcb(int, short, void *);
@@ -1208,7 +1208,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		f->f_un.f_forw.f_dropped++;
 	}
 
-	tcp_connectretry(bufev, event, f);
+	tcp_connect_retry(bufev, f);
 
 	/* Log the connection error to the fresh buffer after reconnecting. */
 	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
@@ -1222,12 +1222,8 @@ tcp_connectcb(int fd, short event, void *arg)
 	struct tls		*ctx;
 	int			 s;
 
-	if ((event & EV_TIMEOUT) == 0 && f->f_un.f_forw.f_reconnectwait > 0) {
-		tcp_connectretry(bufev, event, f);
-		return;
-	}
 	if ((s = tcp_socket(f)) == -1) {
-		tcp_connectretry(bufev, event, f);
+		tcp_connect_retry(bufev, f);
 		return;
 	}
 	dprintf("tcp connect callback: socket success, event %#x\n", event);
@@ -1245,7 +1241,7 @@ tcp_connectcb(int fd, short event, void *arg)
 		if ((ctx = tls_socket(f)) == NULL) {
 			close(f->f_file);
 			f->f_file = -1;
-			tcp_connectretry(bufev, event, f);
+			tcp_connect_retry(bufev, f);
 			return;
 		}
 		dprintf("tcp connect callback: TLS context success\n");
@@ -1258,7 +1254,7 @@ tcp_connectcb(int fd, short event, void *arg)
 }
 
 void
-tcp_connectretry(struct bufferevent *bufev, int event, struct filed *f)
+tcp_connect_retry(struct bufferevent *bufev, struct filed *f)
 {
 	struct timeval		 to;
 
@@ -1271,8 +1267,7 @@ tcp_connectretry(struct bufferevent *bufev, int event, struct filed *f)
 	to.tv_sec = f->f_un.f_forw.f_reconnectwait;
 	to.tv_usec = 0;
 
-	dprintf("tcp connect callback: retry, event %#x, wait %d\n",
-	    event, f->f_un.f_forw.f_reconnectwait);
+	dprintf("tcp connect retry: wait %d\n", f->f_un.f_forw.f_reconnectwait);
 	bufferevent_setfd(bufev, -1);
 	/* We can reuse the write event as bufferevent is disabled. */
 	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
