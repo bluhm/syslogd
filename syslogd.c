@@ -894,7 +894,6 @@ tcp_acceptcb(int fd, short event, void *arg)
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
 	char			*peername, ebuf[ERRBUFSIZE];
 
-	dprintf("Accepting tcp connection\n");
 	sslen = sizeof(ss);
 	if ((fd = reserve_accept4(fd, event, ev, tcp_acceptcb,
 	    (struct sockaddr *)&ss, &sslen, SOCK_NONBLOCK)) == -1) {
@@ -904,6 +903,7 @@ tcp_acceptcb(int fd, short event, void *arg)
 			logerror("accept tcp socket");
 		return;
 	}
+	dprintf("Accepting tcp connection\n");
 
 	if (getnameinfo((struct sockaddr *)&ss, sslen, hostname,
 	    sizeof(hostname), servname, sizeof(servname),
@@ -2718,7 +2718,6 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 {
 	struct event		*ev = arg;
 
-	dprintf("Accepting control connection\n");
 	if ((fd = reserve_accept4(fd, event, ev, ctlsock_acceptcb,
 	    NULL, NULL, SOCK_NONBLOCK)) == -1) {
 		if (errno != ENFILE && errno != EMFILE &&
@@ -2727,6 +2726,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 			logerror("accept ctlsock");
 		return;
 	}
+	dprintf("Accepting control connection\n");
 
 	if (fd_ctlconn != -1)
 		ctlconn_cleanup();
