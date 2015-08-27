@@ -2053,10 +2053,11 @@ init(void)
 				continue;
 			}
 			for (i = 0; i < NAME_MAX; i++) {
-				if (!isalnum((unsigned char)p[i]) &&
-				    p[i] != '-' && p[i] != '+')
+				if (!isalnum((unsigned char)*p) &&
+				    *p != '-' && *p != '+' && *p != '.' &&
+				    *p != ',' && *p != ':' && *p != '%')
 					break;
-				hostblock[i] = p[i];
+				hostblock[i] = *p++;
 			}
 			hostblock[i] = 0;
 			continue;
