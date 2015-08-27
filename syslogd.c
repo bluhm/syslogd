@@ -346,6 +346,8 @@ main(int argc, char *argv[])
 	struct timeval	 to;
 	const char	*errstr;
 	char		*p;
+	char		 udparg[NI_MAXHOST+2+NI_MAXSERV];
+	char		 tcparg[NI_MAXHOST+2+NI_MAXSERV];
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
@@ -393,12 +395,14 @@ main(int argc, char *argv[])
 			path_ctlsock = optarg;
 			break;
 		case 'T':		/* allow tcp and listen on address */
-			if (loghost_parse(optarg, NULL, &listen_host,
+			strlcpy(tcparg, optarg, sizeof(tcparg));
+			if (loghost_parse(tcparg, NULL, &listen_host,
 			    &listen_port) == -1)
 				errx(1, "bad listen address: %s", optarg);
 			break;
 		case 'U':		/* allow udp only from address */
-			if (loghost_parse(optarg, NULL, &bind_host, &bind_port)
+			strlcpy(udparg, optarg, sizeof(udparg));
+			if (loghost_parse(udparg, NULL, &bind_host, &bind_port)
 			    == -1)
 				errx(1, "bad bind address: %s", optarg);
 			break;
