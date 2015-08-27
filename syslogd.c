@@ -394,14 +394,14 @@ main(int argc, char *argv[])
 			break;
 		case 'T':		/* allow tcp and listen on address */
 			if ((p = strdup(optarg)) == NULL)
-				err(1, "strdup");
+				err(1, "strdup listen address");
 			if (loghost_parse(p, NULL, &listen_host, &listen_port)
 			    == -1)
 				errx(1, "bad listen address: %s", optarg);
 			break;
 		case 'U':		/* allow udp only from address */
 			if ((p = strdup(optarg)) == NULL)
-				err(1, "strdup");
+				err(1, "strdup bind address");
 			if (loghost_parse(p, NULL, &bind_host, &bind_port)
 			    == -1)
 				errx(1, "bad bind address: %s", optarg);
