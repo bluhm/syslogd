@@ -393,12 +393,16 @@ main(int argc, char *argv[])
 			path_ctlsock = optarg;
 			break;
 		case 'T':		/* allow tcp and listen on address */
-			if (loghost_parse(optarg, NULL, &listen_host,
-			    &listen_port) == -1)
+			if ((p = strdup(optarg)) == NULL)
+				err(1, "strdup");
+			if (loghost_parse(p, NULL, &listen_host, &listen_port)
+			    == -1)
 				errx(1, "bad listen address: %s", optarg);
 			break;
 		case 'U':		/* allow udp only from address */
-			if (loghost_parse(optarg, NULL, &bind_host, &bind_port)
+			if ((p = strdup(optarg)) == NULL)
+				err(1, "strdup");
+			if (loghost_parse(p, NULL, &bind_host, &bind_port)
 			    == -1)
 				errx(1, "bad bind address: %s", optarg);
 			break;
