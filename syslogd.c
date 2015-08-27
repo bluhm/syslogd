@@ -395,13 +395,17 @@ main(int argc, char *argv[])
 			path_ctlsock = optarg;
 			break;
 		case 'T':		/* allow tcp and listen on address */
-			strlcpy(tcparg, optarg, sizeof(tcparg));
+			if (strlcpy(tcparg, optarg, sizeof(tcparg)) >=
+			    sizeof(tcparg))
+				errx(1, "listen address too long: %s", optarg);
 			if (loghost_parse(tcparg, NULL, &listen_host,
 			    &listen_port) == -1)
 				errx(1, "bad listen address: %s", optarg);
 			break;
 		case 'U':		/* allow udp only from address */
-			strlcpy(udparg, optarg, sizeof(udparg));
+			if (strlcpy(udparg, optarg, sizeof(udparg)) >=
+			    sizeof(udparg))
+				errx(1, "bind address too long: %s", optarg);
 			if (loghost_parse(udparg, NULL, &bind_host, &bind_port)
 			    == -1)
 				errx(1, "bad bind address: %s", optarg);
