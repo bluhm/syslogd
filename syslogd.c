@@ -2059,7 +2059,7 @@ init(void)
 					break;
 				hostblock[i] = *p++;
 			}
-			hostblock[i] = 0;
+			hostblock[i] = '\0';
 			continue;
 		}
 
