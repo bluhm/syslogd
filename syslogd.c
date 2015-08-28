@@ -2055,7 +2055,8 @@ init(void)
 			for (i = 0; i < NAME_MAX; i++) {
 				if (!isalnum((unsigned char)*p) &&
 				    *p != '-' && *p != '+' && *p != '.' &&
-				    *p != ',' && *p != ':' && *p != '%')
+				    *p != ',' && *p != ':' && *p != '%' &&
+				    *p != '_')
 					break;
 				hostblock[i] = *p++;
 			}
