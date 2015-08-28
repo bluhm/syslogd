@@ -2322,7 +2322,9 @@ cfline(char *line, char *progblock, char *hostblock)
 			logerror(ebuf);
 			break;
 		}
-		if (loghost_parse(++p, &proto, &host, &port) == -1) {
+		/* loghost_parse() modifies buf, line is needed for SIGHUP */
+		strlcpy(buf, ++p, sizeof(buf));
+		if (loghost_parse(buf, &proto, &host, &port) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerror(ebuf);
