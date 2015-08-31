@@ -317,7 +317,7 @@ void	 ctlconn_writecb(int, short, void *);
 void	 ctlconn_logto(char *);
 void	 ctlconn_cleanup(void);
 
-struct filed *cfline(char *, char *, char *);
+struct filed *cfline(const char *, char *, char *);
 void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
 void	die(int);
@@ -2210,11 +2210,12 @@ find_dup(struct filed *f)
  * Crack a configuration file line
  */
 struct filed *
-cfline(char *line, char *progblock, char *hostblock)
+cfline(const char *line, char *progblock, char *hostblock)
 {
 	int i, pri;
 	size_t rb_len;
-	char *bp, *p, *q, *proto, *host, *port, *ipproto;
+	char *bp, *proto, *host, *port, *ipproto;
+	const char *p, *q;
 	char buf[MAXLINE], ebuf[ERRBUFSIZE];
 	struct filed *xf, *f, *d;
 	struct timeval to;
@@ -2481,7 +2482,7 @@ cfline(char *line, char *progblock, char *hostblock)
 
 		/* Parse buffer size (in kb) */
 		errno = 0;
-		rb_len = strtoul(++p, &q, 0);
+		rb_len = strtoul(++p, (char **)&q, 0);
 		if (*p == '\0' || (errno == ERANGE && rb_len == ULONG_MAX) ||
 		    *q != ':' || rb_len == 0) {
 			f->f_type = F_UNUSED;
