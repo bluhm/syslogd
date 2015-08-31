@@ -450,7 +450,7 @@ main(int argc, char *argv[])
 		die(0);
 	}
 
-	if (socket_bind("udp", NULL, "syslog", 0, SecureMode,
+	if (socket_bind("udp", NULL, "syslog", 1, SecureMode,
 	    &fd_udp, &fd_udp6) == -1) {
 		errno = 0;
 		logerror("socket bind *");
