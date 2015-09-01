@@ -1041,8 +1041,7 @@ void
 tcp_readcb(struct bufferevent *bufev, void *arg)
 {
 	struct peer		*p = arg;
-	char			*msg, line[MAXLINE + 1];
-	size_t			 linelen;
+	char			*msg;
 	int			 len;
 
 	while (EVBUFFER_LENGTH(bufev->input) > 0) {
@@ -1061,10 +1060,9 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 		if (len > 0 && msg[len-1] == '\n')
 			msg[len-1] = '\0';
 		if (len == 0 || msg[len-1] != '\0') {
-			linelen = MINIMUM((size_t)len, sizeof(line)-1);
-			memcpy(line, msg, linelen);
-			line[linelen] = '\0';
-			msg = line;
+			memcpy(linebuf, msg, MINIMUM(len, MAXLINE));
+			linebuf[MINIMUM(len, MAXLINE)] = '\0';
+			msg = linebuf;
 		}
 		printline(p->p_hostname, msg);
 		evbuffer_drain(bufev->input, len);
