@@ -489,8 +489,9 @@ main(int argc, char *argv[])
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
 		die(0);
+	double_sockbuf(pair[0], SO_RCVBUF);
+	double_sockbuf(pair[1], SO_SNDBUF);
 	fd_sendsys = pair[0];
-	double_sockbuf(fd_sendsys, SO_RCVBUF);
 
 	fd_ctlsock = fd_ctlconn = -1;
 	if (path_ctlsock != NULL) {
