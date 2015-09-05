@@ -337,7 +337,7 @@ int	getmsgbufsize(void);
 int	socket_bind(const char *, const char *, const char *, int,
     int *, int *);
 int	unix_socket(char *, int, mode_t);
-void	double_rbuf(int);
+void	double_sockbuf(int, int);
 void	tailify_replytext(char *, int);
 
 int
@@ -484,13 +484,13 @@ main(int argc, char *argv[])
 				die(0);
 			continue;
 		}
-		double_rbuf(fd_unix[i]);
+		double_sockbuf(fd_unix[i], SO_RCVBUF);
 	}
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
 		die(0);
 	fd_sendsys = pair[0];
-	double_rbuf(fd_sendsys);
+	double_sockbuf(fd_sendsys, SO_RCVBUF);
 
 	fd_ctlsock = fd_ctlconn = -1;
 	if (path_ctlsock != NULL) {
@@ -792,7 +792,7 @@ socket_bind(const char *proto, const char *host, const char *port,
 			continue;
 		}
 		if (!shutread && res->ai_protocol == IPPROTO_UDP)
-			double_rbuf(*fdp);
+			double_sockbuf(*fdp, SO_RCVBUF);
 	}
 
 	freeaddrinfo(res0);
@@ -2677,14 +2677,14 @@ unix_socket(char *path, int type, mode_t mode)
 }
 
 void
-double_rbuf(int fd)
+double_sockbuf(int fd, int optname)
 {
 	socklen_t slen, len;
 
 	slen = sizeof(len);
-	if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &len, &slen) == 0) {
+	if (getsockopt(fd, SOL_SOCKET, optname, &len, &slen) == 0) {
 		len *= 2;
-		setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &len, slen);
+		setsockopt(fd, SOL_SOCKET, optname, &len, slen);
 	}
 }
 
