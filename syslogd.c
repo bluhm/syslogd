@@ -2680,12 +2680,20 @@ unix_socket(char *path, int type, mode_t mode)
 void
 double_sockbuf(int fd, int optname)
 {
-	socklen_t slen, len;
+	socklen_t len;
+	int i, newsize, oldsize = 0;
 
-	slen = sizeof(len);
-	if (getsockopt(fd, SOL_SOCKET, optname, &len, &slen) == 0) {
-		len *= 2;
-		setsockopt(fd, SOL_SOCKET, optname, &len, slen);
+	len = sizeof(oldsize);
+	if (getsockopt(fd, SOL_SOCKET, optname, &oldsize, &len) == 1)
+		dprintf("getsockopt bufsize: %s", strerror(errno));
+	len = sizeof(newsize);
+	newsize =  MAXLINE + 128;  /* data + control */
+	/* allow 8 full length messages */
+	for (i = 0; i < 4; i++, newsize *= 2) {
+		if (newsize <= oldsize)
+			continue;
+		if (setsockopt(fd, SOL_SOCKET, optname, &newsize, len) == -1)
+			dprintf("setsockopt bufsize: %s", strerror(errno));
 	}
 }
 
