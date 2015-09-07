@@ -2687,7 +2687,7 @@ double_sockbuf(int fd, int optname)
 
 	len = sizeof(oldsize);
 	if (getsockopt(fd, SOL_SOCKET, optname, &oldsize, &len) == 1)
-		dprintf("getsockopt bufsize: %s", strerror(errno));
+		logerror("getsockopt bufsize");
 	len = sizeof(newsize);
 	newsize =  MAXLINE + 128;  /* data + control */
 	/* allow 8 full length messages */
@@ -2695,7 +2695,7 @@ double_sockbuf(int fd, int optname)
 		if (newsize <= oldsize)
 			continue;
 		if (setsockopt(fd, SOL_SOCKET, optname, &newsize, len) == -1)
-			dprintf("setsockopt bufsize: %s", strerror(errno));
+			logerror("setsockopt bufsize");
 	}
 }
 
