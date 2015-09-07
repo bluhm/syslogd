@@ -487,8 +487,10 @@ main(int argc, char *argv[])
 		double_sockbuf(fd_unix[i], SO_RCVBUF);
 	}
 
-	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1)
+	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1) {
+		logerror("socketpair");
 		die(0);
+	}
 	double_sockbuf(pair[0], SO_RCVBUF);
 	double_sockbuf(pair[1], SO_SNDBUF);
 	fd_sendsys = pair[0];
