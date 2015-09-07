@@ -2674,7 +2674,7 @@ unix_socket(char *path, int type, mode_t mode)
 	optval = MAXLINE + PATH_MAX;
 	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &optval, sizeof(optval))
 	    == -1)
-		logerror("cannot setsockopt unix");
+		logerror("setsockopt unix");
 
 	return (fd);
 }
