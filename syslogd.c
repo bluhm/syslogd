@@ -279,9 +279,7 @@ struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
 		 ev_udp, ev_udp6, ev_bind, ev_listen, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
-LIST_HEAD(peer_list, peer) peers;
 struct peer {
-	LIST_ENTRY(peer)	 p_entry;
 	struct bufferevent	*p_bufev;
 	char			*p_peername;
 	char			*p_hostname;
@@ -954,7 +952,6 @@ tcp_acceptcb(int fd, short event, void *arg)
 		p->p_hostname = hostname_unknown;
 	dprintf("Peer hostname %s\n", hostname);
 	p->p_peername = peername;
-	LIST_INSERT_HEAD(&peers, p, p_entry);
 	peernum++;
 	bufferevent_enable(p->p_bufev, EV_READ);
 
@@ -1096,7 +1093,6 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 	}
 
 	peernum--;
-	LIST_REMOVE(p, p_entry);
 	if (p->p_peername != hostname_unknown)
 		free(p->p_peername);
 	if (p->p_hostname != hostname_unknown)
