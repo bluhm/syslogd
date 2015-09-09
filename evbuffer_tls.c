@@ -223,7 +223,6 @@ buffertls_acceptcb(int fd, short event, void *arg)
 		goto error;
 	}
 
-	buftls->bt_ctx = NULL;
 	res = tls_accept_socket(sctx, &buftls->bt_ctx, fd);
 	switch (res) {
 	case TLS_READ_AGAIN:
