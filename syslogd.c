@@ -991,7 +991,7 @@ tcp_acceptcb(int lfd, short event, void *arg)
 	if (lfd == fd_tls) {
 		buffertls_set(&p->p_buftls, p->p_bufev, NULL, fd);
 		buffertls_accept(&p->p_buftls, fd, tlsserver);
-		dprintf("tcp accept callback: TLS context success\n");
+		dprintf("tcp accept callback: tls context success\n");
 	}
 	if (!NoDNS && peername != hostname_unknown &&
 	    priv_getnameinfo((struct sockaddr *)&ss, ss.ss_len, hostname,
@@ -1306,7 +1306,7 @@ tcp_connectcb(int fd, short event, void *arg)
 			tcp_connect_retry(bufev, f);
 			return;
 		}
-		dprintf("tcp connect callback: TLS context success\n");
+		dprintf("tcp connect callback: tls context success\n");
 
 		buffertls_set(&f->f_un.f_forw.f_buftls, bufev,
 		    f->f_un.f_forw.f_ctx, s);
