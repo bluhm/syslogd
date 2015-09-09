@@ -219,6 +219,8 @@ char	*bind_host = NULL;	/* bind UDP receive socket */
 char	*bind_port = NULL;
 char	*listen_host = NULL;	/* listen on TCP receive socket */
 char	*listen_port = NULL;
+char	*tls_host = NULL;	/* listen on TLS receive socket */
+char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls_config *tlsconfig = NULL;
@@ -274,9 +276,9 @@ char	*linebuf;
 int	 linesize;
 
 int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys,
-		 fd_udp, fd_udp6, fd_bind, fd_listen, fd_unix[MAXUNIX];
+		 fd_udp, fd_udp6, fd_bind, fd_listen, fd_tls, fd_unix[MAXUNIX];
 struct event	 ev_ctlaccept, ev_ctlread, ev_ctlwrite, ev_klog, ev_sendsys,
-		 ev_udp, ev_udp6, ev_bind, ev_listen, ev_unix[MAXUNIX],
+		 ev_udp, ev_udp6, ev_bind, ev_listen, ev_tls, ev_unix[MAXUNIX],
 		 ev_hup, ev_int, ev_quit, ev_term, ev_mark;
 
 LIST_HEAD(peer_list, peer) peers;
@@ -349,7 +351,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:s:T:U:uV")) != -1)
+	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:S:s:T:U:uV")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			Family = PF_INET;
@@ -388,6 +390,12 @@ main(int argc, char *argv[])
 			break;
 		case 'p':		/* path */
 			path_unix[0] = optarg;
+			break;
+		case 'S':		/* allow tls and listen on address */
+			if ((p = strdup(optarg)) == NULL)
+				err(1, "strdup tls address");
+			if (loghost_parse(p, NULL, &tls_host, &tls_port) == -1)
+				errx(1, "bad tls address: %s", optarg);
 			break;
 		case 's':
 			path_ctlsock = optarg;
@@ -470,6 +478,14 @@ main(int argc, char *argv[])
 	    &fd_listen, &fd_listen) == -1) {
 		errno = 0;
 		logerror("socket listen tcp");
+		if (!Debug)
+			die(0);
+	}
+	fd_tls = -1;
+	if (tls_host && socket_bind("tls", tls_host, tls_port, 0,
+	    &fd_tls, &fd_tls) == -1) {
+		errno = 0;
+		logerror("socket listen tls");
 		if (!Debug)
 			die(0);
 	}
@@ -614,6 +630,7 @@ main(int argc, char *argv[])
 	event_set(&ev_bind, fd_bind, EV_READ|EV_PERSIST, udp_readcb, &ev_bind);
 	event_set(&ev_listen, fd_listen, EV_READ|EV_PERSIST, tcp_acceptcb,
 	    &ev_listen);
+	event_set(&ev_tls, fd_tls, EV_READ|EV_PERSIST, NULL, &ev_tls);
 	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
 		    unix_readcb, &ev_unix[i]);
@@ -668,6 +685,8 @@ main(int argc, char *argv[])
 		event_add(&ev_bind, NULL);
 	if (fd_listen != -1)
 		event_add(&ev_listen, NULL);
+	if (fd_tls != -1)
+		event_add(&ev_tls, NULL);
 	for (i = 0; i < nunix; i++)
 		if (fd_unix[i] != -1)
 			event_add(&ev_unix[i], NULL);
