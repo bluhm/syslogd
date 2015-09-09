@@ -223,7 +223,8 @@ char	*tls_host = NULL;	/* listen on TLS receive socket */
 char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
-struct	tls_config *tlsconfig = NULL;
+struct	tls *tlsserver;
+struct	tls_config *tlsconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
@@ -539,40 +540,61 @@ main(int argc, char *argv[])
 
 	if (tls_init() == -1) {
 		logerror("tls_init");
-	} else if ((tlsconfig = tls_config_new()) == NULL) {
-		logerror("tls_config_new");
-	} else if (NoVerify) {
-		tls_config_insecure_noverifycert(tlsconfig);
-		tls_config_insecure_noverifyname(tlsconfig);
 	} else {
-		struct stat sb;
-
-		fd = -1;
-		p = NULL;
-		errno = 0;
-		if ((fd = open(CAfile, O_RDONLY)) == -1) {
-			logerror("open CAfile");
-		} else if (fstat(fd, &sb) == -1) {
-			logerror("fstat CAfile");
-		} else if (sb.st_size > 1024*1024*1024) {
-			logerror("CAfile larger than 1GB");
-		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
-			logerror("calloc CAfile");
-		} else if (read(fd, p, sb.st_size) != sb.st_size) {
-			logerror("read CAfile");
-		} else if (tls_config_set_ca_mem(tlsconfig, p, sb.st_size)
-		    == -1) {
-			logerror("tls_config_set_ca_mem");
-		} else {
-			dprintf("CAfile %s, size %lld\n", CAfile, sb.st_size);
+		if ((tlsconfig = tls_config_new()) == NULL)
+			logerror("tls_config_new");
+		if (tls_host) {
+			if ((tlsserver = tls_server()) == NULL) {
+				logerror("tls_server");
+				close(fd_tls);
+				fd_tls = -1;
+			}
 		}
-		free(p);
-		close(fd);
 	}
 	if (tlsconfig) {
+		if (NoVerify) {
+			tls_config_insecure_noverifycert(tlsconfig);
+			tls_config_insecure_noverifyname(tlsconfig);
+		} else {
+			struct stat sb;
+
+			fd = -1;
+			p = NULL;
+			errno = 0;
+			if ((fd = open(CAfile, O_RDONLY)) == -1) {
+				logerror("open CAfile");
+			} else if (fstat(fd, &sb) == -1) {
+				logerror("fstat CAfile");
+			} else if (sb.st_size > 1024*1024*1024) {
+				logerror("CAfile larger than 1GB");
+			} else if ((p = calloc(sb.st_size, 1)) == NULL) {
+				logerror("calloc CAfile");
+			} else if (read(fd, p, sb.st_size) != sb.st_size) {
+				logerror("read CAfile");
+			} else if (tls_config_set_ca_mem(tlsconfig, p,
+			    sb.st_size) == -1) {
+				logerror("tls_config_set_ca_mem");
+			} else {
+				dprintf("CAfile %s, size %lld\n",
+				    CAfile, sb.st_size);
+			}
+			free(p);
+			close(fd);
+		}
 		tls_config_set_protocols(tlsconfig, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(tlsconfig, "compat") != 0)
 			logerror("tls set ciphers");
+#if 0
+		if (tlsserver) {
+			if (tls_configure(tlsserver, tlsconfig) != 0) {
+				logerror("tls_configure server");
+				tls_free(tlsserver);
+				tlsserver = NULL;
+				close(fd_tls);
+				fd_tls = -1;
+			}
+		}
+#endif
 	}
 
 	dprintf("off & running....\n");
@@ -985,19 +1007,9 @@ tcp_acceptcb(int lfd, short event, void *arg)
 	}
 	p->p_ctx = NULL;
 	if (lfd == fd_tls) {
-		if ((p->p_ctx = tls_server()) == NULL) {
-			snprintf(ebuf, sizeof(ebuf), "tls_server \"%s\"",
-			    peername);
-			logerror(ebuf);
-			bufferevent_free(p->p_bufev);
-			free(p);
-			close(fd);
-			return;
-		}
+		buffertls_set(&p->p_buftls, p->p_bufev, NULL, fd);
+		buffertls_accept(&p->p_buftls, fd, tlsserver);
 		dprintf("tcp accept callback: TLS context success\n");
-
-		buffertls_set(&p->p_buftls, p->p_bufev, p->p_ctx, fd);
-		buffertls_accept(&p->p_buftls, fd, p->p_ctx);
 	}
 	if (!NoDNS && peername != hostname_unknown &&
 	    priv_getnameinfo((struct sockaddr *)&ss, ss.ss_len, hostname,
