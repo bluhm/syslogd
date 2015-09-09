@@ -210,6 +210,62 @@ buffertls_writecb(int fd, short event, void *arg)
 }
 
 static void
+buffertls_acceptcb(int fd, short event, void *arg)
+{
+	struct buffertls *buftls = arg;
+	struct bufferevent *bufev = buftls->bt_bufev;
+	struct tls *sctx = buftls->bt_sctx;
+	int res = 0;
+	short what = EVBUFFER_ACCEPT;
+
+	if (event == EV_TIMEOUT) {
+		what |= EVBUFFER_TIMEOUT;
+		goto error;
+	}
+
+	buftls->bt_ctx = NULL;
+	res = tls_accept_socket(sctx, &buftls->bt_ctx, fd);
+	switch (res) {
+	case TLS_READ_AGAIN:
+		event_set(&bufev->ev_write, fd, EV_READ,
+		    buffertls_acceptcb, buftls);
+		goto reschedule;
+	case TLS_WRITE_AGAIN:
+		event_set(&bufev->ev_write, fd, EV_WRITE,
+		    buffertls_acceptcb, buftls);
+		goto reschedule;
+	case -1:
+		if (errno == EAGAIN || errno == EINTR)
+			goto reschedule;
+		/* error case */
+		what |= EVBUFFER_ERROR;
+		break;
+	}
+	if (res < 0)
+		goto error;
+
+	/*
+	 * There might be data available in the tls layer.  Try
+	 * an read operation and setup the callbacks.  Call the read
+	 * callback after enabling the write callback to give the
+	 * read error handler a chance to disable the write event.
+	 */
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
+	if (EVBUFFER_LENGTH(bufev->output) != 0)
+		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
+	buffertls_readcb(fd, 0, buftls);
+
+	return;
+
+ reschedule:
+	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+	return;
+
+ error:
+	(*bufev->errorcb)(bufev, what, bufev->cbarg);
+}
+
+static void
 buffertls_connectcb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
@@ -275,6 +331,19 @@ buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	buftls->bt_bufev = bufev;
 	buftls->bt_ctx = ctx;
+}
+
+void
+buffertls_accept(struct buffertls *buftls, int fd, struct tls *sctx)
+{
+	struct bufferevent *bufev = buftls->bt_bufev;
+
+	event_del(&bufev->ev_read);
+	event_del(&bufev->ev_write);
+
+	buftls->bt_sctx = sctx;
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_acceptcb, buftls);
+	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
 }
 
 void
