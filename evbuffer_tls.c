@@ -277,6 +277,18 @@ buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
 }
 
 void
+buffertls_accept(struct buffertls *buftls, int fd)
+{
+	struct bufferevent *bufev = buftls->bt_bufev;
+
+	event_del(&bufev->ev_read);
+	event_del(&bufev->ev_write);
+
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_handshakecb, buftls);
+	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+}
+
+void
 buffertls_connect(struct buffertls *buftls, int fd)
 {
 	struct bufferevent *bufev = buftls->bt_bufev;

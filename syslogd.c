@@ -997,7 +997,7 @@ tcp_acceptcb(int lfd, short event, void *arg)
 		dprintf("tcp accept callback: TLS context success\n");
 
 		buffertls_set(&p->p_buftls, p->p_bufev, p->p_ctx, fd);
-		// buffertls_accept(&p->p_buftls, fd);
+		buffertls_accept(&p->p_buftls, fd, p->p_ctx);
 	}
 	if (!NoDNS && peername != hostname_unknown &&
 	    priv_getnameinfo((struct sockaddr *)&ss, ss.ss_len, hostname,
