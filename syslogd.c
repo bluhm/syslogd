@@ -1267,7 +1267,6 @@ tcp_connectcb(int fd, short event, void *arg)
 {
 	struct filed		*f = arg;
 	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
-	struct tls		*ctx;
 	int			 s;
 
 	if ((s = tcp_socket(f)) == -1) {
@@ -1286,16 +1285,16 @@ tcp_connectcb(int fd, short event, void *arg)
 	bufferevent_enable(bufev, EV_READ|EV_WRITE);
 
 	if (f->f_type == F_FORWTLS) {
-		if ((ctx = tls_socket(f)) == NULL) {
+		if ((f->f_un.f_forw.f_ctx = tls_socket(f)) == NULL) {
 			close(f->f_file);
 			f->f_file = -1;
 			tcp_connect_retry(bufev, f);
 			return;
 		}
 		dprintf("tcp connect callback: TLS context success\n");
-		f->f_un.f_forw.f_ctx = ctx;
 
-		buffertls_set(&f->f_un.f_forw.f_buftls, bufev, ctx, s);
+		buffertls_set(&f->f_un.f_forw.f_buftls, bufev,
+		    f->f_un.f_forw.f_ctx, s);
 		buffertls_connect(&f->f_un.f_forw.f_buftls, s,
 		    f->f_un.f_forw.f_host);
 	}
