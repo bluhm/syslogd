@@ -2686,7 +2686,7 @@ double_sockbuf(int fd, int optname)
 	int i, newsize, oldsize = 0;
 
 	len = sizeof(oldsize);
-	if (getsockopt(fd, SOL_SOCKET, optname, &oldsize, &len) == 1)
+	if (getsockopt(fd, SOL_SOCKET, optname, &oldsize, &len) == -1)
 		logerror("getsockopt bufsize");
 	len = sizeof(newsize);
 	newsize =  MAXLINE + 128;  /* data + control */
