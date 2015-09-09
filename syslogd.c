@@ -280,7 +280,9 @@ int		 fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys, fd_udp, fd_udp6,
 struct event	 *ev_ctlaccept, *ev_ctlread, *ev_ctlwrite;
 
 struct peer {
+	struct buffertls	 p_buftls;
 	struct bufferevent	*p_bufev;
+	struct tls		*p_ctx;
 	char			*p_peername;
 	char			*p_hostname;
 	int			 p_fd;
@@ -936,7 +938,7 @@ reserve_accept4(int lfd, int event, struct event *ev,
 }
 
 void
-tcp_acceptcb(int fd, short event, void *arg)
+tcp_acceptcb(int lfd, short event, void *arg)
 {
 	struct event		*ev = arg;
 	struct peer		*p;
@@ -944,9 +946,10 @@ tcp_acceptcb(int fd, short event, void *arg)
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
 	char			*peername, ebuf[ERRBUFSIZE];
+	int			 fd;
 
 	sslen = sizeof(ss);
-	if ((fd = reserve_accept4(fd, event, ev, tcp_acceptcb,
+	if ((fd = reserve_accept4(lfd, event, ev, tcp_acceptcb,
 	    (struct sockaddr *)&ss, &sslen, SOCK_NONBLOCK)) == -1) {
 		if (errno != ENFILE && errno != EMFILE &&
 		    errno != EINTR && errno != EWOULDBLOCK &&
@@ -979,6 +982,22 @@ tcp_acceptcb(int fd, short event, void *arg)
 		free(p);
 		close(fd);
 		return;
+	}
+	p->p_ctx = NULL;
+	if (lfd == fd_tls) {
+		if ((p->p_ctx = tls_server()) == NULL) {
+			snprintf(ebuf, sizeof(ebuf), "tls_server \"%s\"",
+			    peername);
+			logerror(ebuf);
+			bufferevent_free(p->p_bufev);
+			free(p);
+			close(fd);
+			return;
+		}
+		dprintf("tcp accept callback: TLS context success\n");
+
+		buffertls_set(&p->p_buftls, p->p_bufev, p->p_ctx, fd);
+		// buffertls_accept(&p->p_buftls, fd);
 	}
 	if (!NoDNS && peername != hostname_unknown &&
 	    priv_getnameinfo((struct sockaddr *)&ss, ss.ss_len, hostname,
