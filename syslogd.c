@@ -1026,8 +1026,8 @@ tcp_acceptcb(int lfd, short event, void *arg)
 	peernum++;
 	bufferevent_enable(p->p_bufev, EV_READ);
 
-	snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" accepted",
-	    peername);
+	snprintf(ebuf, sizeof(ebuf), "syslogd: %s logger \"%s\" accepted",
+	    p->p_ctx ? "tls" : "tcp", peername);
 	logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 }
 
@@ -1116,7 +1116,8 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 	int			 len;
 
 	while (EVBUFFER_LENGTH(bufev->input) > 0) {
-		dprintf("tcp logger \"%s\"", p->p_peername);
+		dprintf("%s logger \"%s\"", p->p_ctx ? "tls" : "tcp",
+		    p->p_peername);
 		msg = NULL;
 		len = octet_counting(bufev->input, &msg, 1);
 		if (len < 0)
@@ -1154,12 +1155,14 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 	char			 ebuf[ERRBUFSIZE];
 
 	if (event & EVBUFFER_EOF) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
-		    "connection close", p->p_peername);
+		snprintf(ebuf, sizeof(ebuf), "syslogd: %s logger \"%s\" "
+		    "connection close", p->p_ctx ? "tls" : "tcp",
+		    p->p_peername);
 		logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 	} else {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: tcp logger \"%s\" "
-		    "connection error: %s", p->p_peername, strerror(errno));
+		snprintf(ebuf, sizeof(ebuf), "syslogd: %s logger \"%s\" "
+		    "connection error: %s", p->p_ctx ? "tls" : "tcp",
+		    p->p_peername, strerror(errno));
 		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
 	}
 
