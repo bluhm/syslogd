@@ -1338,8 +1338,8 @@ usage(void)
 
 	(void)fprintf(stderr,
 	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-f config_file]\n"
-	    "               [-m mark_interval] [-p log_socket] [-s reporting_socket]\n"
-	    "               [-T listen_address] [-U bind_address]\n");
+	    "               [-m mark_interval] [-p log_socket] [-S listen_address]\n"
+	    "               [-s reporting_socket] [-T listen_address] [-U bind_address]\n");
 	exit(1);
 }
 
