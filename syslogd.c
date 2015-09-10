@@ -1006,8 +1006,17 @@ tcp_acceptcb(int lfd, short event, void *arg)
 	}
 	p->p_ctx = NULL;
 	if (lfd == fd_tls) {
+		if (tls_accept_socket(tlsserver, &p->p_ctx, fd) < 0) {
+		    snprintf(ebuf, sizeof(ebuf), "tls_accept_socket \"%s\": "
+		    "%s", peername, tls_error(tlsserver));
+			logerror(ebuf);
+			bufferevent_free(p->p_bufev);
+			free(p);
+			close(fd);
+			return;
+		}
 		buffertls_set(&p->p_buftls, p->p_bufev, NULL, fd);
-		buffertls_accept(&p->p_buftls, fd, tlsserver);
+		buffertls_accept(&p->p_buftls, fd);
 		dprintf("tcp accept callback: tls context success\n");
 	}
 	if (!NoDNS && peername != hostname_unknown &&
