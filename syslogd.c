@@ -1156,7 +1156,8 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 	} else {
 		snprintf(ebuf, sizeof(ebuf), "syslogd: %s logger \"%s\" "
 		    "connection error: %s", p->p_ctx ? "tls" : "tcp",
-		    p->p_peername, strerror(errno));
+		    p->p_peername,
+		    p->p_ctx ? tls_error(p->p_ctx) : strerror(errno));
 		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
 	}
 
