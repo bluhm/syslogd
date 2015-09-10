@@ -31,7 +31,7 @@ struct buffertls {
 
 void	buffertls_set(struct buffertls *, struct bufferevent *, struct tls *,
     int);
-void	buffertls_accept(struct buffertls *, int)
+void	buffertls_accept(struct buffertls *, int);
 void	buffertls_connect(struct buffertls *, int);
 
 #endif /* _EVBUFFER_TLS_H_ */
