@@ -1256,14 +1256,6 @@ tcp_connectcb(int fd, short event, void *arg)
 	dprintf("tcp connect callback: socket success, event %#x\n", event);
 	f->f_file = s;
 
-	bufferevent_setfd(bufev, s);
-	bufferevent_setcb(bufev, tcp_dropcb, tcp_writecb, tcp_errorcb, f);
-	/*
-	 * Although syslog is a write only protocol, enable reading from
-	 * the socket to detect connection close and errors.
-	 */
-	bufferevent_enable(bufev, EV_READ|EV_WRITE);
-
 	if (f->f_type == F_FORWTLS) {
 		if ((f->f_un.f_forw.f_ctx = tls_client()) == NULL) {
 			snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
@@ -1288,9 +1280,14 @@ tcp_connectcb(int fd, short event, void *arg)
 
 		buffertls_set(&f->f_un.f_forw.f_buftls, bufev,
 		    f->f_un.f_forw.f_ctx, s);
-		buffertls_connect(&f->f_un.f_forw.f_buftls, s);
-	}
-
+	} else
+		bufferevent_setfd(bufev, s);
+	bufferevent_setcb(bufev, tcp_dropcb, tcp_writecb, tcp_errorcb, f);
+	/*
+	 * Although syslog is a write only protocol, enable reading from
+	 * the socket to detect connection close and errors.
+	 */
+	bufferevent_enable(bufev, EV_READ|EV_WRITE);
 	return;
 
  error:

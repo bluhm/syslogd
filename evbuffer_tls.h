@@ -19,8 +19,6 @@
 #ifndef _EVBUFFER_TLS_H_
 #define _EVBUFFER_TLS_H_
 
-#define EVBUFFER_HANDSHAKE	0x04
-
 struct bufferevent;
 struct tls;
 
@@ -31,6 +29,5 @@ struct buffertls {
 
 void	buffertls_set(struct buffertls *, struct bufferevent *, struct tls *,
     int);
-void	buffertls_connect(struct buffertls *, int);
 
 #endif /* _EVBUFFER_TLS_H_ */
