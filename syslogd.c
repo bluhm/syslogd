@@ -1228,7 +1228,7 @@ tcp_connectcb(int fd, short event, void *arg)
 {
 	struct filed		*f = arg;
 	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
-	char		 	 ebuf[ERRBUFSIZE];
+	char			 ebuf[ERRBUFSIZE];
 	int			 s;
 
 	if ((s = tcp_socket(f)) == -1) {
@@ -1253,14 +1253,14 @@ tcp_connectcb(int fd, short event, void *arg)
 			goto error;
 		}
 		if (tlsconfig &&
-		    tls_configure(f->f_un.f_forw.f_ctx, tlsconfig) < 0) {
+		    tls_configure(f->f_un.f_forw.f_ctx, tlsconfig) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "tls_configure "
 			    "\"%s\": %s", f->f_un.f_forw.f_loghost,
 			    tls_error(f->f_un.f_forw.f_ctx));
 			goto error;
 		}
 		if (tls_connect_socket(f->f_un.f_forw.f_ctx, s,
-		    f->f_un.f_forw.f_host) < 0) {
+		    f->f_un.f_forw.f_host) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "tls_connect_socket "
 			    "\"%s\": %s", f->f_un.f_forw.f_loghost,
 			    tls_error(f->f_un.f_forw.f_ctx));
