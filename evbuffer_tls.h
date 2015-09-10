@@ -29,12 +29,11 @@ struct buffertls {
 	struct bufferevent	*bt_bufev;
 	struct tls		*bt_ctx;
 	const char		*bt_hostname;
-	struct tls		*bt_sctx;
 };
 
 void	buffertls_set(struct buffertls *, struct bufferevent *, struct tls *,
     int);
-void	buffertls_accept(struct buffertls *, int, struct tls *);
+void	buffertls_accept(struct buffertls *, int);
 void	buffertls_connect(struct buffertls *, int, const char *);
 
 #endif /* _EVBUFFER_TLS_H_ */

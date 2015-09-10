@@ -214,7 +214,6 @@ buffertls_acceptcb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
 	struct bufferevent *bufev = buftls->bt_bufev;
-	struct tls *sctx = buftls->bt_sctx;
 	int res = 0;
 	short what = EVBUFFER_ACCEPT;
 
@@ -223,7 +222,7 @@ buffertls_acceptcb(int fd, short event, void *arg)
 		goto error;
 	}
 
-	res = tls_accept_socket(sctx, &buftls->bt_ctx, fd);
+	res = tls_handshake(buftls->bt_ctx);
 	switch (res) {
 	case TLS_READ_AGAIN:
 		event_set(&bufev->ev_write, fd, EV_READ,
@@ -333,14 +332,13 @@ buffertls_set(struct buffertls *buftls, struct bufferevent *bufev,
 }
 
 void
-buffertls_accept(struct buffertls *buftls, int fd, struct tls *sctx)
+buffertls_accept(struct buffertls *buftls, int fd)
 {
 	struct bufferevent *bufev = buftls->bt_bufev;
 
 	event_del(&bufev->ev_read);
 	event_del(&bufev->ev_write);
 
-	buftls->bt_sctx = sctx;
 	event_set(&bufev->ev_read, fd, EV_READ, buffertls_acceptcb, buftls);
 	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
 }
