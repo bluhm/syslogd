@@ -1,4 +1,4 @@
-/*	$OpenBSD: evbuffer_tls.h,v 1.3 2015/07/18 22:33:46 bluhm Exp $ */
+/*	$OpenBSD: evbuffer_tls.h,v 1.4 2015/09/10 18:32:06 bluhm Exp $ */
 
 /*
  * Copyright (c) 2014-2015 Alexander Bluhm <bluhm@openbsd.org>
