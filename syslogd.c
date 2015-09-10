@@ -224,7 +224,7 @@ char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *serverctx;
-struct	tls_config *clientconfig;
+struct	tls_config *clientconfig, *serverconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
@@ -539,13 +539,15 @@ main(int argc, char *argv[])
 		logerrorx("tls_init");
 	} else {
 		if ((clientconfig = tls_config_new()) == NULL)
-			logerror("tls_config_new");
+			logerror("tls_config_new client");
 		if (tls_host) {
 			if ((serverctx = tls_server()) == NULL) {
 				logerror("tls_server");
 				close(fd_tls);
 				fd_tls = -1;
 			}
+			if ((serverconfig = tls_config_new()) == NULL)
+				logerror("tls_config_new server");
 		}
 	}
 	if (clientconfig) {
@@ -580,9 +582,8 @@ main(int argc, char *argv[])
 		tls_config_set_protocols(clientconfig, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(clientconfig, "compat") != 0)
 			logerror("tls set ciphers");
-#if 0
 		if (serverctx) {
-			if (tls_configure(serverctx, clientconfig) != 0) {
+			if (tls_configure(serverctx, serverconfig) != 0) {
 				logerror("tls_configure server");
 				tls_free(serverctx);
 				serverctx = NULL;
@@ -590,7 +591,6 @@ main(int argc, char *argv[])
 				fd_tls = -1;
 			}
 		}
-#endif
 	}
 
 	dprintf("off & running....\n");
