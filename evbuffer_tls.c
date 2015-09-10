@@ -46,6 +46,8 @@
 void bufferevent_read_pressure_cb(struct evbuffer *, size_t, size_t, void *);
 int evtls_read(struct evbuffer *, int, int, struct tls *);
 int evtls_write(struct evbuffer *, int, struct tls *);
+static void buffertls_writecb(int fd, short event, void *arg);
+static void buffertls_readcb(int fd, short event, void *arg);
 
 static int
 bufferevent_add(struct event *ev, int timeout)
@@ -120,6 +122,12 @@ buffertls_readcb(int fd, short event, void *arg)
 	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
 	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
 
+	/* After the pollin/pollout dance restore the other direction */
+	event_del(&bufev->ev_write);
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
+	if (EVBUFFER_LENGTH(bufev->output) != 0 && (bufev->enabled & EV_WRITE))
+		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
+
 	/* See if this callbacks meets the water marks */
 	len = EVBUFFER_LENGTH(bufev->input);
 	if (bufev->wm_read.low != 0 && len < bufev->wm_read.low)
@@ -190,6 +198,12 @@ buffertls_writecb(int fd, short event, void *arg)
 	if (EVBUFFER_LENGTH(bufev->output) != 0)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 
+	/* After the pollin/pollout dance restore the other direction */
+	event_del(&bufev->ev_read);
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
+	if (bufev->enabled & EV_READ)
+		bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+
 	/*
 	 * Invoke the user callback if our buffer is drained or below the
 	 * low watermark.
@@ -197,7 +211,6 @@ buffertls_writecb(int fd, short event, void *arg)
 	if (bufev->writecb != NULL &&
 	    EVBUFFER_LENGTH(bufev->output) <= bufev->wm_write.low)
 		(*bufev->writecb)(bufev, bufev->cbarg);
-
 	return;
 
  reschedule:
