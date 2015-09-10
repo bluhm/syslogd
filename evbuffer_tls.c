@@ -95,11 +95,11 @@ buffertls_readcb(int fd, short event, void *arg)
 
 	res = evtls_read(bufev->input, fd, howmuch, ctx);
 	switch (res) {
-	case TLS_READ_AGAIN:
+	case TLS_WANT_POLLIN:
 		event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb,
 		    buftls);
 		goto reschedule;
-	case TLS_WRITE_AGAIN:
+	case TLS_WANT_POLLOUT:
 		event_set(&bufev->ev_read, fd, EV_WRITE, buffertls_readcb,
 		    buftls);
 		goto reschedule;
@@ -162,11 +162,11 @@ buffertls_writecb(int fd, short event, void *arg)
 	if (EVBUFFER_LENGTH(bufev->output) != 0) {
 		res = evtls_write(bufev->output, fd, ctx);
 		switch (res) {
-		case TLS_READ_AGAIN:
+		case TLS_WANT_POLLIN:
 			event_set(&bufev->ev_write, fd, EV_READ,
 			    buffertls_writecb, buftls);
 			goto reschedule;
-		case TLS_WRITE_AGAIN:
+		case TLS_WANT_POLLOUT:
 			event_set(&bufev->ev_write, fd, EV_WRITE,
 			    buffertls_writecb, buftls);
 			goto reschedule;
@@ -226,11 +226,11 @@ buffertls_connectcb(int fd, short event, void *arg)
 
 	res = tls_connect_socket(ctx, fd, hostname);
 	switch (res) {
-	case TLS_READ_AGAIN:
+	case TLS_WANT_POLLIN:
 		event_set(&bufev->ev_write, fd, EV_READ,
 		    buffertls_connectcb, buftls);
 		goto reschedule;
-	case TLS_WRITE_AGAIN:
+	case TLS_WANT_POLLOUT:
 		event_set(&bufev->ev_write, fd, EV_WRITE,
 		    buffertls_connectcb, buftls);
 		goto reschedule;
