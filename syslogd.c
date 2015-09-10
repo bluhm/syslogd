@@ -223,7 +223,7 @@ char	*tls_host = NULL;	/* listen on TLS receive socket */
 char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
-struct	tls *tlsserver;
+struct	tls *serverctx;
 struct	tls_config *tlsconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
@@ -541,7 +541,7 @@ main(int argc, char *argv[])
 		if ((tlsconfig = tls_config_new()) == NULL)
 			logerror("tls_config_new");
 		if (tls_host) {
-			if ((tlsserver = tls_server()) == NULL) {
+			if ((serverctx = tls_server()) == NULL) {
 				logerror("tls_server");
 				close(fd_tls);
 				fd_tls = -1;
@@ -581,11 +581,11 @@ main(int argc, char *argv[])
 		if (tls_config_set_ciphers(tlsconfig, "compat") != 0)
 			logerror("tls set ciphers");
 #if 0
-		if (tlsserver) {
-			if (tls_configure(tlsserver, tlsconfig) != 0) {
+		if (serverctx) {
+			if (tls_configure(serverctx, tlsconfig) != 0) {
 				logerror("tls_configure server");
-				tls_free(tlsserver);
-				tlsserver = NULL;
+				tls_free(serverctx);
+				serverctx = NULL;
 				close(fd_tls);
 				fd_tls = -1;
 			}
@@ -1006,9 +1006,9 @@ tcp_acceptcb(int lfd, short event, void *arg)
 	}
 	p->p_ctx = NULL;
 	if (lfd == fd_tls) {
-		if (tls_accept_socket(tlsserver, &p->p_ctx, fd) < 0) {
+		if (tls_accept_socket(serverctx, &p->p_ctx, fd) < 0) {
 		    snprintf(ebuf, sizeof(ebuf), "tls_accept_socket \"%s\": "
-		    "%s", peername, tls_error(tlsserver));
+		    "%s", peername, tls_error(serverctx));
 			logerror(ebuf);
 			bufferevent_free(p->p_bufev);
 			free(p);
