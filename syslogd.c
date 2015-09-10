@@ -224,7 +224,7 @@ char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *serverctx;
-struct	tls_config *tlsconfig;
+struct	tls_config *clientconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
@@ -538,7 +538,7 @@ main(int argc, char *argv[])
 	if (tls_init() == -1) {
 		logerrorx("tls_init");
 	} else {
-		if ((tlsconfig = tls_config_new()) == NULL)
+		if ((clientconfig = tls_config_new()) == NULL)
 			logerror("tls_config_new");
 		if (tls_host) {
 			if ((serverctx = tls_server()) == NULL) {
@@ -548,10 +548,10 @@ main(int argc, char *argv[])
 			}
 		}
 	}
-	if (tlsconfig) {
+	if (clientconfig) {
 		if (NoVerify) {
-			tls_config_insecure_noverifycert(tlsconfig);
-			tls_config_insecure_noverifyname(tlsconfig);
+			tls_config_insecure_noverifycert(clientconfig);
+			tls_config_insecure_noverifyname(clientconfig);
 		} else {
 			struct stat sb;
 
@@ -567,7 +567,7 @@ main(int argc, char *argv[])
 				logerror("calloc CAfile");
 			} else if (read(fd, p, sb.st_size) != sb.st_size) {
 				logerror("read CAfile");
-			} else if (tls_config_set_ca_mem(tlsconfig, p,
+			} else if (tls_config_set_ca_mem(clientconfig, p,
 			    sb.st_size) == -1) {
 				logerrorx("tls_config_set_ca_mem");
 			} else {
@@ -577,12 +577,12 @@ main(int argc, char *argv[])
 			free(p);
 			close(fd);
 		}
-		tls_config_set_protocols(tlsconfig, TLS_PROTOCOLS_ALL);
-		if (tls_config_set_ciphers(tlsconfig, "compat") != 0)
+		tls_config_set_protocols(clientconfig, TLS_PROTOCOLS_ALL);
+		if (tls_config_set_ciphers(clientconfig, "compat") != 0)
 			logerror("tls set ciphers");
 #if 0
 		if (serverctx) {
-			if (tls_configure(serverctx, tlsconfig) != 0) {
+			if (tls_configure(serverctx, clientconfig) != 0) {
 				logerror("tls_configure server");
 				tls_free(serverctx);
 				serverctx = NULL;
@@ -1330,8 +1330,8 @@ tcp_connectcb(int fd, short event, void *arg)
 			logerror(ebuf);
 			goto error;
 		}
-		if (tlsconfig &&
-		    tls_configure(f->f_un.f_forw.f_ctx, tlsconfig) == -1) {
+		if (clientconfig &&
+		    tls_configure(f->f_un.f_forw.f_ctx, clientconfig) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerrorctx(ebuf, f->f_un.f_forw.f_ctx);
