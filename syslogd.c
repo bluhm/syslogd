@@ -520,7 +520,7 @@ main(int argc, char *argv[])
 	close(pair[1]);
 
 	if (tls_init() == -1) {
-		logerror("tls_init");
+		logerrorx("tls_init");
 	} else if ((tlsconfig = tls_config_new()) == NULL) {
 		logerror("tls_config_new");
 	} else if (NoVerify) {
@@ -544,7 +544,7 @@ main(int argc, char *argv[])
 			logerror("read CAfile");
 		} else if (tls_config_set_ca_mem(tlsconfig, p, sb.st_size)
 		    == -1) {
-			logerror("tls_config_set_ca_mem");
+			logerrorx("tls_config_set_ca_mem");
 		} else {
 			dprintf("CAfile %s, size %lld\n", CAfile, sb.st_size);
 		}
