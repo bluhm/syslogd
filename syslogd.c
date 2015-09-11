@@ -2416,7 +2416,7 @@ cfline(char *line, char *progblock, char *hostblock)
 				snprintf(ebuf, sizeof(ebuf),
 				    "bufferevent \"%s\"",
 				    f->f_un.f_forw.f_loghost);
-				logerrorx(ebuf);
+				logerror(ebuf);
 				break;
 			}
 			if (strncmp(proto, "tls", 3) == 0) {
