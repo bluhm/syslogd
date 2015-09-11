@@ -319,6 +319,7 @@ void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
 void	logerror(const char *);
+void	logerror_reason(const char *, const char *);
 void	logmsg(int, char *, char *, int);
 struct filed *find_dup(struct filed *);
 void	printline(char *, char *);
@@ -1889,15 +1890,21 @@ init_signalcb(int signum, short event, void *arg)
  * Print syslogd errors some place.
  */
 void
-logerror(const char *type)
+logerror(const char *message)
+{
+	logerror_reason(message, errno ? strerror(errno) : NULL);
+}
+
+void
+logerror_reason(const char *message, const char *reason)
 {
 	char ebuf[ERRBUFSIZE];
 
-	if (errno)
+	if (reason)
 		(void)snprintf(ebuf, sizeof(ebuf), "syslogd: %s: %s",
-		    type, strerror(errno));
+		    message, reason);
 	else
-		(void)snprintf(ebuf, sizeof(ebuf), "syslogd: %s", type);
+		(void)snprintf(ebuf, sizeof(ebuf), "syslogd: %s", message);
 	errno = 0;
 	dprintf("%s\n", ebuf);
 	if (Startup)
