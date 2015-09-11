@@ -319,6 +319,7 @@ void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
 void	logerror(const char *);
+void	logerrorctx(const char *, struct tls *);
 void	logerror_reason(const char *, const char *);
 void	logmsg(int, char *, char *, int);
 struct filed *find_dup(struct filed *);
@@ -1262,20 +1263,21 @@ tcp_connectcb(int fd, short event, void *arg)
 		if ((f->f_un.f_forw.f_ctx = tls_client()) == NULL) {
 			snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
 			    f->f_un.f_forw.f_loghost);
+			logerror(ebuf);
 			goto error;
 		}
 		if (tlsconfig &&
 		    tls_configure(f->f_un.f_forw.f_ctx, tlsconfig) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "tls_configure "
-			    "\"%s\": %s", f->f_un.f_forw.f_loghost,
-			    tls_error(f->f_un.f_forw.f_ctx));
+			snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			logerrorctx(ebuf, f->f_un.f_forw.f_ctx);
 			goto error;
 		}
 		if (tls_connect_socket(f->f_un.f_forw.f_ctx, s,
 		    f->f_un.f_forw.f_host) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "tls_connect_socket "
-			    "\"%s\": %s", f->f_un.f_forw.f_loghost,
-			    tls_error(f->f_un.f_forw.f_ctx));
+			    "\"%s\"", f->f_un.f_forw.f_loghost);
+			logerrorctx(ebuf, f->f_un.f_forw.f_ctx);
 			goto error;
 		}
 		dprintf("tcp connect callback: tls context success\n");
@@ -1288,7 +1290,6 @@ tcp_connectcb(int fd, short event, void *arg)
 	return;
 
  error:
-	logerror(ebuf);
 	if (f->f_un.f_forw.f_ctx) {
 		tls_free(f->f_un.f_forw.f_ctx);
 		f->f_un.f_forw.f_ctx = NULL;
@@ -1893,6 +1894,12 @@ void
 logerror(const char *message)
 {
 	logerror_reason(message, errno ? strerror(errno) : NULL);
+}
+
+void
+logerrorctx(const char *message, struct tls *ctx)
+{
+	logerror_reason(message, ctx ? tls_error(ctx) : NULL);
 }
 
 void
