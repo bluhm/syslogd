@@ -536,8 +536,8 @@ main(int argc, char *argv[])
 			logerror("open CAfile");
 		} else if (fstat(fd, &sb) == -1) {
 			logerror("fstat CAfile");
-		} else if (sb.st_size > 1024*1024*1024) {
-			logerrorx("CAfile larger than 1GB");
+		} else if (sb.st_size > 50*1024*1024) {
+			logerrorx("CAfile larger than 50MB");
 		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
 			logerror("calloc CAfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
