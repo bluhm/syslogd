@@ -322,6 +322,7 @@ void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
 void	logerror(const char *);
+void	logerrorx(const char *);
 void	logerrorctx(const char *, struct tls *);
 void	logerror_reason(const char *, const char *);
 void	logmsg(int, char *, char *, int);
@@ -455,7 +456,7 @@ main(int argc, char *argv[])
 	if (socket_bind("udp", NULL, "syslog", SecureMode,
 	    &fd_udp, &fd_udp6) == -1) {
 		errno = 0;
-		logerror("socket bind *");
+		logerrorx("socket bind *");
 		if (!Debug)
 			die(0);
 	}
@@ -463,7 +464,7 @@ main(int argc, char *argv[])
 	if (bind_host && socket_bind("udp", bind_host, bind_port, 0,
 	    &fd_bind, &fd_bind) == -1) {
 		errno = 0;
-		logerror("socket bind udp");
+		logerrorx("socket bind udp");
 		if (!Debug)
 			die(0);
 	}
@@ -471,7 +472,7 @@ main(int argc, char *argv[])
 	if (listen_host && socket_bind("tcp", listen_host, listen_port, 0,
 	    &fd_listen, &fd_listen) == -1) {
 		errno = 0;
-		logerror("socket listen tcp");
+		logerrorx("socket listen tcp");
 		if (!Debug)
 			die(0);
 	}
@@ -539,7 +540,7 @@ main(int argc, char *argv[])
 		} else if (fstat(fd, &sb) == -1) {
 			logerror("fstat CAfile");
 		} else if (sb.st_size > 1024*1024*1024) {
-			logerror("CAfile larger than 1GB");
+			logerrorx("CAfile larger than 1GB");
 		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
 			logerror("calloc CAfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
@@ -745,7 +746,7 @@ socket_bind(const char *proto, const char *host, const char *port,
 		snprintf(ebuf, sizeof(ebuf), "getaddrinfo "
 		    "proto %s, host %s, port %s: %s",
 		    proto, host ? host : "*", port, gai_strerror(error));
-		logerror(ebuf);
+		logerrorx(ebuf);
 		die(0);
 	}
 
@@ -1743,7 +1744,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 				retryonce = 1;
 				if (f->f_file < 0) {
 					f->f_type = F_UNUSED;
-					logerror(f->f_un.f_fname);
+					logerrorx(f->f_un.f_fname);
 				} else
 					goto again;
 			} else if ((e == EPIPE || e == EBADF) &&
@@ -1752,7 +1753,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 				retryonce = 1;
 				if (f->f_file < 0) {
 					f->f_type = F_UNUSED;
-					logerror(f->f_un.f_fname);
+					logerrorx(f->f_un.f_fname);
 				} else
 					goto again;
 			} else {
@@ -1805,7 +1806,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 	if (reenter++)
 		return;
 	if ((uf = priv_open_utmp()) == NULL) {
-		logerror(_PATH_UTMP);
+		logerrorx(_PATH_UTMP);
 		reenter = 0;
 		return;
 	}
@@ -1817,10 +1818,8 @@ wallmsg(struct filed *f, struct iovec *iov)
 		strncpy(line, ut.ut_line, sizeof(line) - 1);
 		line[sizeof(line) - 1] = '\0';
 		if (f->f_type == F_WALL) {
-			if ((p = ttymsg(iov, 6, line, TTYMSGTIME)) != NULL) {
-				errno = 0;	/* already in msg */
-				logerror(p);
-			}
+			if ((p = ttymsg(iov, 6, line, TTYMSGTIME)) != NULL)
+				logerrorx(p);
 			continue;
 		}
 		/* should we send the message to this user? */
@@ -1830,10 +1829,8 @@ wallmsg(struct filed *f, struct iovec *iov)
 			if (!strncmp(f->f_un.f_uname[i], ut.ut_name,
 			    UT_NAMESIZE)) {
 				if ((p = ttymsg(iov, 6, line, TTYMSGTIME))
-								!= NULL) {
-					errno = 0;	/* already in msg */
-					logerror(p);
-				}
+				    != NULL)
+					logerrorx(p);
 				break;
 			}
 		}
@@ -1904,6 +1901,12 @@ logerror(const char *message)
 }
 
 void
+logerrorx(const char *message)
+{
+	logerror_reason(message, NULL);
+}
+
+void
 logerrorctx(const char *message, struct tls *ctx)
 {
 	logerror_reason(message, ctx ? tls_error(ctx) : NULL);
@@ -1959,8 +1962,7 @@ die(int signo)
 		dprintf("syslogd: exiting on signal %d\n", signo);
 		(void)snprintf(ebuf, sizeof(ebuf), "exiting on signal %d",
 		    signo);
-		errno = 0;
-		logerror(ebuf);
+		logerrorx(ebuf);
 	}
 	dprintf("[unpriv] syslogd child about to exit\n");
 	exit(0);
@@ -2128,7 +2130,7 @@ init(void)
 		m = SIMPLEQ_FIRST(&mb);
 		SIMPLEQ_REMOVE_HEAD(&mb, f_next);
 		if (m->f_un.f_mb.f_rb != NULL) {
-			logerror("Mismatched membuf");
+			logerrorx("Mismatched membuf");
 			ringbuf_free(m->f_un.f_mb.f_rb);
 		}
 		dprintf("Freeing membuf %p\n", m);
@@ -2239,8 +2241,6 @@ cfline(char *line, char *progblock, char *hostblock)
 	dprintf("cfline(\"%s\", f, \"%s\", \"%s\")\n",
 	    line, progblock, hostblock);
 
-	errno = 0;	/* keep strerror() stuff out of logerror messages */
-
 	if ((f = calloc(1, sizeof(*f))) == NULL) {
 		logerror("Couldn't allocate struct filed");
 		die(0);
@@ -2292,7 +2292,7 @@ cfline(char *line, char *progblock, char *hostblock)
 			if (pri < 0) {
 				(void)snprintf(ebuf, sizeof ebuf,
 				    "unknown priority name \"%s\"", buf);
-				logerror(ebuf);
+				logerrorx(ebuf);
 				free(f);
 				return (NULL);
 			}
@@ -2312,7 +2312,7 @@ cfline(char *line, char *progblock, char *hostblock)
 					(void)snprintf(ebuf, sizeof(ebuf),
 					    "unknown facility name \"%s\"",
 					    buf);
-					logerror(ebuf);
+					logerrorx(ebuf);
 					free(f);
 					return (NULL);
 				}
@@ -2336,13 +2336,13 @@ cfline(char *line, char *progblock, char *hostblock)
 		    sizeof(f->f_un.f_forw.f_loghost))) {
 			snprintf(ebuf, sizeof(ebuf), "loghost too long \"%s\"",
 			    p);
-			logerror(ebuf);
+			logerrorx(ebuf);
 			break;
 		}
 		if (loghost_parse(++p, &proto, &host, &port) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
+			logerrorx(ebuf);
 			break;
 		}
 		if (proto == NULL)
@@ -2358,14 +2358,14 @@ cfline(char *line, char *progblock, char *hostblock)
 			if (fd_udp == -1) {
 				snprintf(ebuf, sizeof(ebuf), "no udp4 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
-				logerror(ebuf);
+				logerrorx(ebuf);
 				break;
 			}
 		} else if (strcmp(proto, "udp6") == 0) {
 			if (fd_udp6 == -1) {
 				snprintf(ebuf, sizeof(ebuf), "no udp6 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
-				logerror(ebuf);
+				logerrorx(ebuf);
 				break;
 			}
 		} else if (strcmp(proto, "tcp") == 0 ||
@@ -2380,13 +2380,13 @@ cfline(char *line, char *progblock, char *hostblock)
 		} else {
 			snprintf(ebuf, sizeof(ebuf), "bad protocol \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
+			logerrorx(ebuf);
 			break;
 		}
 		if (strlen(host) >= NI_MAXHOST) {
 			snprintf(ebuf, sizeof(ebuf), "host too long \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
+			logerrorx(ebuf);
 			break;
 		}
 		if (port == NULL)
@@ -2395,7 +2395,7 @@ cfline(char *line, char *progblock, char *hostblock)
 		if (strlen(port) >= NI_MAXSERV) {
 			snprintf(ebuf, sizeof(ebuf), "port too long \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
+			logerrorx(ebuf);
 			break;
 		}
 		if (priv_getaddrinfo(ipproto, host, port,
@@ -2403,7 +2403,7 @@ cfline(char *line, char *progblock, char *hostblock)
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
+			logerrorx(ebuf);
 			break;
 		}
 		f->f_file = -1;
@@ -2423,7 +2423,7 @@ cfline(char *line, char *progblock, char *hostblock)
 				snprintf(ebuf, sizeof(ebuf),
 				    "bufferevent \"%s\"",
 				    f->f_un.f_forw.f_loghost);
-				logerror(ebuf);
+				logerrorx(ebuf);
 				break;
 			}
 			if (strncmp(proto, "tls", 3) == 0) {
@@ -2464,7 +2464,7 @@ cfline(char *line, char *progblock, char *hostblock)
 			f->f_file = priv_open_log(p);
 		if (f->f_file < 0) {
 			f->f_type = F_UNUSED;
-			logerror(p);
+			logerrorx(p);
 			break;
 		}
 		if (isatty(f->f_file)) {
@@ -2519,7 +2519,7 @@ cfline(char *line, char *progblock, char *hostblock)
 		/* Error on missing or non-unique name, or bad buffer length */
 		if (i == 0 || rb_len > MAX_MEMBUF || xf != NULL) {
 			f->f_type = F_UNUSED;
-			logerror(p);
+			logerrorx(p);
 			break;
 		}
 
@@ -2662,7 +2662,7 @@ unix_socket(char *path, int type, mode_t mode)
 	if (strlcpy(s_un.sun_path, path, sizeof(s_un.sun_path)) >=
 	    sizeof(s_un.sun_path)) {
 		snprintf(ebuf, sizeof(ebuf), "socket path too long: %s", path);
-		logerror(ebuf);
+		logerrorx(ebuf);
 		die(0);
 	}
 
@@ -2831,14 +2831,14 @@ ctlconn_readcb(int fd, short event, void *arg)
 		return;
 
 	if (ntohl(ctl_cmd.version) != CTL_VERSION) {
-		logerror("Unknown client protocol version");
+		logerrorx("Unknown client protocol version");
 		ctlconn_cleanup();
 		return;
 	}
 
 	/* Ensure that logname is \0 terminated */
 	if (memchr(ctl_cmd.logname, '\0', sizeof(ctl_cmd.logname)) == NULL) {
-		logerror("Corrupt ctlsock command");
+		logerrorx("Corrupt ctlsock command");
 		ctlconn_cleanup();
 		return;
 	}
@@ -2906,7 +2906,7 @@ ctlconn_readcb(int fd, short event, void *arg)
 		strlcat(reply_text, "\n", MAX_MEMBUF);
 		break;
 	default:
-		logerror("Unsupported ctlsock command");
+		logerrorx("Unsupported ctlsock command");
 		ctlconn_cleanup();
 		return;
 	}
@@ -2936,7 +2936,7 @@ ctlconn_writecb(int fd, short event, void *arg)
 	if (!(ctl_state == CTL_WRITING_REPLY ||
 	    ctl_state == CTL_WRITING_CONT_REPLY)) {
 		/* Shouldn't be here! */
-		logerror("ctlconn_write with bad ctl_state");
+		logerrorx("ctlconn_write with bad ctl_state");
 		ctlconn_cleanup();
 		return;
 	}
