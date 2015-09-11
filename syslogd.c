@@ -485,7 +485,7 @@ main(int argc, char *argv[])
 	if (tls_host && socket_bind("tls", tls_host, tls_port, 0,
 	    &fd_tls, &fd_tls) == -1) {
 		errno = 0;
-		logerror("socket listen tls");
+		logerrorx("socket listen tls");
 		if (!Debug)
 			die(0);
 	}
@@ -1007,9 +1007,9 @@ tcp_acceptcb(int lfd, short event, void *arg)
 	p->p_ctx = NULL;
 	if (lfd == fd_tls) {
 		if (tls_accept_socket(serverctx, &p->p_ctx, fd) < 0) {
-		    snprintf(ebuf, sizeof(ebuf), "tls_accept_socket \"%s\": "
-		    "%s", peername, tls_error(serverctx));
-			logerror(ebuf);
+			snprintf(ebuf, sizeof(ebuf), "tls_accept_socket \"%s\"",
+			    peername);
+			logerrorctx(ebuf, serverctx);
 			bufferevent_free(p->p_bufev);
 			free(p);
 			close(fd);
