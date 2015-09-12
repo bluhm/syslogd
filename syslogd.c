@@ -484,7 +484,6 @@ main(int argc, char *argv[])
 	fd_tls = -1;
 	if (tls_host && socket_bind("tls", tls_host, tls_port, 0,
 	    &fd_tls, &fd_tls) == -1) {
-		errno = 0;
 		logerrorx("socket listen tls");
 		if (!Debug)
 			die(0);
