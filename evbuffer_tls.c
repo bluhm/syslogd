@@ -44,9 +44,9 @@
 /* prototypes */
 
 void bufferevent_read_pressure_cb(struct evbuffer *, size_t, size_t, void *);
-void buffertls_readcb(int, short, void *);
-void buffertls_writecb(int, short, void *);
-void buffertls_handshakecb(int, short, void *);
+static void buffertls_readcb(int, short, void *);
+static void buffertls_writecb(int, short, void *);
+static void buffertls_handshakecb(int, short, void *);
 int evtls_read(struct evbuffer *, int, int, struct tls *);
 int evtls_write(struct evbuffer *, int, struct tls *);
 
@@ -64,7 +64,7 @@ bufferevent_add(struct event *ev, int timeout)
 	return (event_add(ev, ptv));
 }
 
-void
+static void
 buffertls_readcb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
@@ -145,7 +145,7 @@ buffertls_readcb(int fd, short event, void *arg)
 	(*bufev->errorcb)(bufev, what, bufev->cbarg);
 }
 
-void
+static void
 buffertls_writecb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
@@ -203,7 +203,7 @@ buffertls_writecb(int fd, short event, void *arg)
 	(*bufev->errorcb)(bufev, what, bufev->cbarg);
 }
 
-void
+static void
 buffertls_handshakecb(int fd, short event, void *arg)
 {
 	struct buffertls *buftls = arg;
