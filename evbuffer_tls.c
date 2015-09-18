@@ -226,39 +226,28 @@ buffertls_handshakecb(int fd, short event, void *arg)
 	res = tls_handshake(ctx);
 	switch (res) {
 	case TLS_WANT_POLLIN:
-		event_set(&bufev->ev_write, fd, EV_READ,
-		    buffertls_handshakecb, buftls);
-		goto reschedule;
+		bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+		return;
 	case TLS_WANT_POLLOUT:
-		event_set(&bufev->ev_write, fd, EV_WRITE,
-		    buffertls_handshakecb, buftls);
-		goto reschedule;
+		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
+		return;
 	case -1:
-		if (errno == EAGAIN || errno == EINTR ||
-		    errno == EINPROGRESS)
-			goto reschedule;
-		/* error case */
 		what |= EVBUFFER_ERROR;
 		break;
 	}
 	if (res < 0)
 		goto error;
 
-	/*
-	 * There might be data available in the tls layer.  Try
-	 * an read operation and setup the callbacks.  Call the read
-	 * callback after enabling the write callback to give the
-	 * read error handler a chance to disable the write event.
-	 */
+	/* Handshake war successful, change to read and write. */
+	event_del(&bufev->ev_read);
+	event_del(&bufev->ev_write);
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
-	if (EVBUFFER_LENGTH(bufev->output) != 0)
+	if (bufev->enabled & EV_READ)
+		bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+	if (EVBUFFER_LENGTH(bufev->output) != 0 && bufev->enabled & EV_WRITE)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
-	buffertls_readcb(fd, 0, buftls);
 
-	return;
-
- reschedule:
-	bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 	return;
 
  error:
@@ -283,7 +272,7 @@ buffertls_connect(struct buffertls *buftls, int fd)
 
 	event_del(&bufev->ev_read);
 	event_del(&bufev->ev_write);
-
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_handshakecb, buftls);
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_handshakecb,
 	    buftls);
 	bufferevent_add(&bufev->ev_write, bufev->timeout_write);
