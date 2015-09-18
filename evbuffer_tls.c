@@ -232,7 +232,7 @@ buffertls_handshakecb(int fd, short event, void *arg)
 	if (res < 0)
 		goto error;
 
-	/* Handshake war successful, change to read and write. */
+	/* Handshake was successful, change to read and write. */
 	event_del(&bufev->ev_read);
 	event_del(&bufev->ev_write);
 	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
