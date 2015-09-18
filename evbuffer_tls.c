@@ -44,6 +44,8 @@
 /* prototypes */
 
 void bufferevent_read_pressure_cb(struct evbuffer *, size_t, size_t, void *);
+static void buffertls_readcb(int, short, void *);
+static void buffertls_writecb(int, short, void *);
 int evtls_read(struct evbuffer *, int, int, struct tls *);
 int evtls_write(struct evbuffer *, int, struct tls *);
 
@@ -96,16 +98,15 @@ buffertls_readcb(int fd, short event, void *arg)
 	res = evtls_read(bufev->input, fd, howmuch, ctx);
 	switch (res) {
 	case TLS_WANT_POLLIN:
-		event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb,
-		    buftls);
-		goto reschedule;
+		bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+		return;
 	case TLS_WANT_POLLOUT:
-		event_set(&bufev->ev_read, fd, EV_WRITE, buffertls_readcb,
+		event_del(&bufev->ev_write);
+		event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_readcb,
 		    buftls);
-		goto reschedule;
+		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
+		return;
 	case -1:
-		if (errno == EAGAIN || errno == EINTR)
-			goto reschedule;
 		/* error case */
 		what |= EVBUFFER_ERROR;
 		break;
@@ -117,8 +118,12 @@ buffertls_readcb(int fd, short event, void *arg)
 	if (res <= 0)
 		goto error;
 
-	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
-	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+	event_del(&bufev->ev_write);
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
+	if (bufev->enabled & EV_READ)
+		bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+	if (EVBUFFER_LENGTH(bufev->output) != 0 && bufev->enabled & EV_WRITE)
+		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 
 	/* See if this callbacks meets the water marks */
 	len = EVBUFFER_LENGTH(bufev->input);
@@ -135,10 +140,6 @@ buffertls_readcb(int fd, short event, void *arg)
 	/* Invoke the user callback - must always be called last */
 	if (bufev->readcb != NULL)
 		(*bufev->readcb)(bufev, bufev->cbarg);
-	return;
-
- reschedule:
-	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
 	return;
 
  error:
@@ -163,22 +164,18 @@ buffertls_writecb(int fd, short event, void *arg)
 		res = evtls_write(bufev->output, fd, ctx);
 		switch (res) {
 		case TLS_WANT_POLLIN:
-			event_set(&bufev->ev_write, fd, EV_READ,
+			event_del(&bufev->ev_read);
+			event_set(&bufev->ev_read, fd, EV_READ,
 			    buffertls_writecb, buftls);
-			goto reschedule;
+			bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+			return;
 		case TLS_WANT_POLLOUT:
-			event_set(&bufev->ev_write, fd, EV_WRITE,
-			    buffertls_writecb, buftls);
-			goto reschedule;
+			bufferevent_add(&bufev->ev_write, bufev->timeout_write);
+			return;
 		case -1:
-			if (errno == EAGAIN || errno == EINTR ||
-			    errno == EINPROGRESS)
-				goto reschedule;
-			/* error case */
 			what |= EVBUFFER_ERROR;
 			break;
 		case 0:
-			/* eof case */
 			what |= EVBUFFER_EOF;
 			break;
 		}
@@ -186,8 +183,11 @@ buffertls_writecb(int fd, short event, void *arg)
 			goto error;
 	}
 
-	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
-	if (EVBUFFER_LENGTH(bufev->output) != 0)
+	event_del(&bufev->ev_read);
+	event_set(&bufev->ev_read, fd, EV_READ, buffertls_readcb, buftls);
+	if (bufev->enabled & EV_READ)
+		bufferevent_add(&bufev->ev_read, bufev->timeout_read);
+	if (EVBUFFER_LENGTH(bufev->output) != 0 && bufev->enabled & EV_WRITE)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 
 	/*
@@ -198,11 +198,6 @@ buffertls_writecb(int fd, short event, void *arg)
 	    EVBUFFER_LENGTH(bufev->output) <= bufev->wm_write.low)
 		(*bufev->writecb)(bufev, bufev->cbarg);
 
-	return;
-
- reschedule:
-	if (EVBUFFER_LENGTH(bufev->output) != 0)
-		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 	return;
 
  error:
