@@ -266,8 +266,9 @@ buffertls_accept(struct buffertls *buftls, int fd)
 
 	event_del(&bufev->ev_read);
 	event_del(&bufev->ev_write);
-
 	event_set(&bufev->ev_read, fd, EV_READ, buffertls_handshakecb, buftls);
+	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_handshakecb,
+	    buftls);
 	bufferevent_add(&bufev->ev_read, bufev->timeout_read);
 }
 
