@@ -108,11 +108,9 @@ buffertls_readcb(int fd, short event, void *arg)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 		return;
 	case -1:
-		/* error case */
 		what |= EVBUFFER_ERROR;
 		break;
 	case 0:
-		/* eof case */
 		what |= EVBUFFER_EOF;
 		break;
 	}
