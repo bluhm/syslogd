@@ -226,7 +226,7 @@ char	*path_ctlsock = NULL;	/* Path to control socket */
 struct	tls *serverctx;
 struct	tls_config *clientconfig, *serverconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
-const char *Certfile = "/etc/ssl/127.0.0.1.cert";
+const char *Certfile = "/etc/ssl/127.0.0.1.crt";
 const char *Keyfile = "/etc/ssl/private/127.0.0.1.key";
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
@@ -1060,7 +1060,7 @@ tcp_acceptcb(int lfd, short event, void *arg)
 			close(fd);
 			return;
 		}
-		buffertls_set(&p->p_buftls, p->p_bufev, NULL, fd);
+		buffertls_set(&p->p_buftls, p->p_bufev, p->p_ctx, fd);
 		buffertls_accept(&p->p_buftls, fd);
 		dprintf("tcp accept callback: tls context success\n");
 	}
