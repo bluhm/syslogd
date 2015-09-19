@@ -226,6 +226,8 @@ char	*path_ctlsock = NULL;	/* Path to control socket */
 struct	tls *serverctx;
 struct	tls_config *clientconfig, *serverconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
+const char *Certfile = "/etc/ssl/127.0.0.1.cert";
+const char *Keyfile = "/etc/ssl/private/127.0.0.1.key";
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
 
@@ -540,13 +542,13 @@ main(int argc, char *argv[])
 		if ((clientconfig = tls_config_new()) == NULL)
 			logerror("tls_config_new client");
 		if (tls_host) {
+			if ((serverconfig = tls_config_new()) == NULL)
+				logerror("tls_config_new server");
 			if ((serverctx = tls_server()) == NULL) {
 				logerror("tls_server");
 				close(fd_tls);
 				fd_tls = -1;
 			}
-			if ((serverconfig = tls_config_new()) == NULL)
-				logerror("tls_config_new server");
 		}
 	}
 	if (clientconfig) {
@@ -581,14 +583,58 @@ main(int argc, char *argv[])
 		tls_config_set_protocols(clientconfig, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(clientconfig, "compat") != 0)
 			logerror("tls set ciphers");
-		if (serverctx) {
-			if (tls_configure(serverctx, serverconfig) != 0) {
-				logerror("tls_configure server");
-				tls_free(serverctx);
-				serverctx = NULL;
-				close(fd_tls);
-				fd_tls = -1;
-			}
+	}
+	if (serverconfig && serverctx) {
+		struct stat sb;
+
+		fd = -1;
+		p = NULL;
+		if ((fd = open(Keyfile, O_RDONLY)) == -1) {
+			logerror("open Keyfile");
+		} else if (fstat(fd, &sb) == -1) {
+			logerror("fstat Keyfile");
+		} else if (sb.st_size > 50*1024) {
+			logerrorx("Keyfile larger than 50KB");
+		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
+			logerror("calloc Keyfile");
+		} else if (read(fd, p, sb.st_size) != sb.st_size) {
+			logerror("read Ketfile");
+		} else if (tls_config_set_key_mem(serverconfig, p,
+		    sb.st_size) == -1) {
+			logerrorx("tls_config_set_key_mem");
+		} else {
+			dprintf("Keyfile %s, size %lld\n",
+			    Keyfile, sb.st_size);
+		}
+		free(p);
+		close(fd);
+		fd = -1;
+		p = NULL;
+		if ((fd = open(Certfile, O_RDONLY)) == -1) {
+			logerror("open Certfile");
+		} else if (fstat(fd, &sb) == -1) {
+			logerror("fstat Certfile");
+		} else if (sb.st_size > 50*1024) {
+			logerrorx("Certfile larger than 50KB");
+		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
+			logerror("calloc Certfile");
+		} else if (read(fd, p, sb.st_size) != sb.st_size) {
+			logerror("read Ketfile");
+		} else if (tls_config_set_cert_mem(serverconfig, p,
+		    sb.st_size) == -1) {
+			logerrorx("tls_config_set_cert_mem");
+		} else {
+			dprintf("Certfile %s, size %lld\n",
+			    Certfile, sb.st_size);
+		}
+		free(p);
+		close(fd);
+		if (tls_configure(serverctx, serverconfig) != 0) {
+			logerrorx("tls_configure server");
+			tls_free(serverctx);
+			serverctx = NULL;
+			close(fd_tls);
+			fd_tls = -1;
 		}
 	}
 
