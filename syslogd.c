@@ -223,7 +223,7 @@ char	*tls_host = NULL;	/* listen on TLS receive socket */
 char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
-struct	tls *serverctx;
+struct	tls *server_ctx;
 struct	tls_config *clientconfig, *serverconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 const char *Certfile = "/etc/ssl/127.0.0.1.crt";
@@ -544,7 +544,7 @@ main(int argc, char *argv[])
 		if (tls_host) {
 			if ((serverconfig = tls_config_new()) == NULL)
 				logerror("tls_config_new server");
-			if ((serverctx = tls_server()) == NULL) {
+			if ((server_ctx = tls_server()) == NULL) {
 				logerror("tls_server");
 				close(fd_tls);
 				fd_tls = -1;
@@ -584,7 +584,7 @@ main(int argc, char *argv[])
 		if (tls_config_set_ciphers(clientconfig, "compat") != 0)
 			logerror("tls set client ciphers");
 	}
-	if (serverconfig && serverctx) {
+	if (serverconfig && server_ctx) {
 		struct stat sb;
 
 		fd = -1;
@@ -632,10 +632,10 @@ main(int argc, char *argv[])
 		tls_config_set_protocols(serverconfig, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(serverconfig, "compat") != 0)
 			logerror("tls set server ciphers");
-		if (tls_configure(serverctx, serverconfig) != 0) {
+		if (tls_configure(server_ctx, serverconfig) != 0) {
 			logerrorx("tls_configure server");
-			tls_free(serverctx);
-			serverctx = NULL;
+			tls_free(server_ctx);
+			server_ctx = NULL;
 			close(fd_tls);
 			fd_tls = -1;
 		}
@@ -1051,10 +1051,10 @@ tcp_acceptcb(int lfd, short event, void *arg)
 	}
 	p->p_ctx = NULL;
 	if (lfd == fd_tls) {
-		if (tls_accept_socket(serverctx, &p->p_ctx, fd) < 0) {
+		if (tls_accept_socket(server_ctx, &p->p_ctx, fd) < 0) {
 			snprintf(ebuf, sizeof(ebuf), "tls_accept_socket \"%s\"",
 			    peername);
-			logerrorctx(ebuf, serverctx);
+			logerrorctx(ebuf, server_ctx);
 			bufferevent_free(p->p_bufev);
 			free(p);
 			close(fd);
