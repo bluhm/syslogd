@@ -224,7 +224,7 @@ char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *server_ctx;
-struct	tls_config *clientconfig, *serverconfig;
+struct	tls_config *client_cfg, *serverconfig;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 const char *Certfile = "/etc/ssl/127.0.0.1.crt";
 const char *Keyfile = "/etc/ssl/private/127.0.0.1.key";
@@ -539,7 +539,7 @@ main(int argc, char *argv[])
 	if (tls_init() == -1) {
 		logerrorx("tls_init");
 	} else {
-		if ((clientconfig = tls_config_new()) == NULL)
+		if ((client_cfg = tls_config_new()) == NULL)
 			logerror("tls_config_new client");
 		if (tls_host) {
 			if ((serverconfig = tls_config_new()) == NULL)
@@ -551,10 +551,10 @@ main(int argc, char *argv[])
 			}
 		}
 	}
-	if (clientconfig) {
+	if (client_cfg) {
 		if (NoVerify) {
-			tls_config_insecure_noverifycert(clientconfig);
-			tls_config_insecure_noverifyname(clientconfig);
+			tls_config_insecure_noverifycert(client_cfg);
+			tls_config_insecure_noverifyname(client_cfg);
 		} else {
 			struct stat sb;
 
@@ -570,7 +570,7 @@ main(int argc, char *argv[])
 				logerror("calloc CAfile");
 			} else if (read(fd, p, sb.st_size) != sb.st_size) {
 				logerror("read CAfile");
-			} else if (tls_config_set_ca_mem(clientconfig, p,
+			} else if (tls_config_set_ca_mem(client_cfg, p,
 			    sb.st_size) == -1) {
 				logerrorx("tls_config_set_ca_mem");
 			} else {
@@ -580,8 +580,8 @@ main(int argc, char *argv[])
 			free(p);
 			close(fd);
 		}
-		tls_config_set_protocols(clientconfig, TLS_PROTOCOLS_ALL);
-		if (tls_config_set_ciphers(clientconfig, "compat") != 0)
+		tls_config_set_protocols(client_cfg, TLS_PROTOCOLS_ALL);
+		if (tls_config_set_ciphers(client_cfg, "compat") != 0)
 			logerror("tls set client ciphers");
 	}
 	if (serverconfig && server_ctx) {
@@ -1375,8 +1375,8 @@ tcp_connectcb(int fd, short event, void *arg)
 			logerror(ebuf);
 			goto error;
 		}
-		if (clientconfig &&
-		    tls_configure(f->f_un.f_forw.f_ctx, clientconfig) == -1) {
+		if (client_cfg &&
+		    tls_configure(f->f_un.f_forw.f_ctx, client_cfg) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerrorctx(ebuf, f->f_un.f_forw.f_ctx);
