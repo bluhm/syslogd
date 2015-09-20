@@ -224,7 +224,7 @@ char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *server_ctx;
-struct	tls_config *client_cfg, *serverconfig;
+struct	tls_config *client_cfg, *server_cfg;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 const char *Certfile = "/etc/ssl/127.0.0.1.crt";
 const char *Keyfile = "/etc/ssl/private/127.0.0.1.key";
@@ -542,7 +542,7 @@ main(int argc, char *argv[])
 		if ((client_cfg = tls_config_new()) == NULL)
 			logerror("tls_config_new client");
 		if (tls_host) {
-			if ((serverconfig = tls_config_new()) == NULL)
+			if ((server_cfg = tls_config_new()) == NULL)
 				logerror("tls_config_new server");
 			if ((server_ctx = tls_server()) == NULL) {
 				logerror("tls_server");
@@ -584,7 +584,7 @@ main(int argc, char *argv[])
 		if (tls_config_set_ciphers(client_cfg, "compat") != 0)
 			logerror("tls set client ciphers");
 	}
-	if (serverconfig && server_ctx) {
+	if (server_cfg && server_ctx) {
 		struct stat sb;
 
 		fd = -1;
@@ -599,7 +599,7 @@ main(int argc, char *argv[])
 			logerror("calloc Keyfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
 			logerror("read Ketfile");
-		} else if (tls_config_set_key_mem(serverconfig, p,
+		} else if (tls_config_set_key_mem(server_cfg, p,
 		    sb.st_size) == -1) {
 			logerrorx("tls_config_set_key_mem");
 		} else {
@@ -620,7 +620,7 @@ main(int argc, char *argv[])
 			logerror("calloc Certfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
 			logerror("read Ketfile");
-		} else if (tls_config_set_cert_mem(serverconfig, p,
+		} else if (tls_config_set_cert_mem(server_cfg, p,
 		    sb.st_size) == -1) {
 			logerrorx("tls_config_set_cert_mem");
 		} else {
@@ -629,10 +629,10 @@ main(int argc, char *argv[])
 		}
 		free(p);
 		close(fd);
-		tls_config_set_protocols(serverconfig, TLS_PROTOCOLS_ALL);
-		if (tls_config_set_ciphers(serverconfig, "compat") != 0)
+		tls_config_set_protocols(server_cfg, TLS_PROTOCOLS_ALL);
+		if (tls_config_set_ciphers(server_cfg, "compat") != 0)
 			logerror("tls set server ciphers");
-		if (tls_configure(server_ctx, serverconfig) != 0) {
+		if (tls_configure(server_ctx, server_cfg) != 0) {
 			logerrorx("tls_configure server");
 			tls_free(server_ctx);
 			server_ctx = NULL;
