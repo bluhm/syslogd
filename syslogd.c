@@ -225,7 +225,7 @@ char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *server_ctx;
-struct	tls_config *client_cfg, *server_cfg;
+struct	tls_config *client_config, *server_config;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 const char *Certfile = "/etc/ssl/127.0.0.1.crt";
 const char *Keyfile = "/etc/ssl/private/127.0.0.1.key";
@@ -541,10 +541,10 @@ main(int argc, char *argv[])
 	if (tls_init() == -1) {
 		logerrorx("tls_init");
 	} else {
-		if ((client_cfg = tls_config_new()) == NULL)
+		if ((client_config = tls_config_new()) == NULL)
 			logerror("tls_config_new client");
 		if (tls_hostport) {
-			if ((server_cfg = tls_config_new()) == NULL)
+			if ((server_config = tls_config_new()) == NULL)
 				logerror("tls_config_new server");
 			if ((server_ctx = tls_server()) == NULL) {
 				logerror("tls_server");
@@ -553,10 +553,10 @@ main(int argc, char *argv[])
 			}
 		}
 	}
-	if (client_cfg) {
+	if (client_config) {
 		if (NoVerify) {
-			tls_config_insecure_noverifycert(client_cfg);
-			tls_config_insecure_noverifyname(client_cfg);
+			tls_config_insecure_noverifycert(client_config);
+			tls_config_insecure_noverifyname(client_config);
 		} else {
 			struct stat sb;
 
@@ -572,7 +572,7 @@ main(int argc, char *argv[])
 				logerror("calloc CAfile");
 			} else if (read(fd, p, sb.st_size) != sb.st_size) {
 				logerror("read CAfile");
-			} else if (tls_config_set_ca_mem(client_cfg, p,
+			} else if (tls_config_set_ca_mem(client_config, p,
 			    sb.st_size) == -1) {
 				logerrorx("tls_config_set_ca_mem");
 			} else {
@@ -582,11 +582,11 @@ main(int argc, char *argv[])
 			free(p);
 			close(fd);
 		}
-		tls_config_set_protocols(client_cfg, TLS_PROTOCOLS_ALL);
-		if (tls_config_set_ciphers(client_cfg, "compat") != 0)
+		tls_config_set_protocols(client_config, TLS_PROTOCOLS_ALL);
+		if (tls_config_set_ciphers(client_config, "compat") != 0)
 			logerror("tls set client ciphers");
 	}
-	if (server_cfg && server_ctx) {
+	if (server_config && server_ctx) {
 		struct stat sb;
 
 		fd = -1;
@@ -601,7 +601,7 @@ main(int argc, char *argv[])
 			logerror("calloc Keyfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
 			logerror("read Ketfile");
-		} else if (tls_config_set_key_mem(server_cfg, p,
+		} else if (tls_config_set_key_mem(server_config, p,
 		    sb.st_size) == -1) {
 			logerrorx("tls_config_set_key_mem");
 		} else {
@@ -622,7 +622,7 @@ main(int argc, char *argv[])
 			logerror("calloc Certfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
 			logerror("read Ketfile");
-		} else if (tls_config_set_cert_mem(server_cfg, p,
+		} else if (tls_config_set_cert_mem(server_config, p,
 		    sb.st_size) == -1) {
 			logerrorx("tls_config_set_cert_mem");
 		} else {
@@ -631,10 +631,10 @@ main(int argc, char *argv[])
 		}
 		free(p);
 		close(fd);
-		tls_config_set_protocols(server_cfg, TLS_PROTOCOLS_ALL);
-		if (tls_config_set_ciphers(server_cfg, "compat") != 0)
+		tls_config_set_protocols(server_config, TLS_PROTOCOLS_ALL);
+		if (tls_config_set_ciphers(server_config, "compat") != 0)
 			logerror("tls set server ciphers");
-		if (tls_configure(server_ctx, server_cfg) != 0) {
+		if (tls_configure(server_ctx, server_config) != 0) {
 			logerrorx("tls_configure server");
 			tls_free(server_ctx);
 			server_ctx = NULL;
@@ -1380,8 +1380,8 @@ tcp_connectcb(int fd, short event, void *arg)
 			logerror(ebuf);
 			goto error;
 		}
-		if (client_cfg &&
-		    tls_configure(f->f_un.f_forw.f_ctx, client_cfg) == -1) {
+		if (client_config &&
+		    tls_configure(f->f_un.f_forw.f_ctx, client_config) == -1) {
 			snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			logerrorctx(ebuf, f->f_un.f_forw.f_ctx);
