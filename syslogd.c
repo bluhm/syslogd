@@ -582,7 +582,7 @@ main(int argc, char *argv[])
 		}
 		tls_config_set_protocols(clientconfig, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(clientconfig, "compat") != 0)
-			logerror("tls set ciphers");
+			logerror("tls set client ciphers");
 	}
 	if (serverconfig && serverctx) {
 		struct stat sb;
@@ -629,6 +629,9 @@ main(int argc, char *argv[])
 		}
 		free(p);
 		close(fd);
+		tls_config_set_protocols(serverconfig, TLS_PROTOCOLS_ALL);
+		if (tls_config_set_ciphers(serverconfig, "compat") != 0)
+			logerror("tls set server ciphers");
 		if (tls_configure(serverctx, serverconfig) != 0) {
 			logerrorx("tls_configure server");
 			tls_free(serverctx);
