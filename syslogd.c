@@ -219,7 +219,8 @@ char	*bind_host = NULL;	/* bind UDP receive socket */
 char	*bind_port = NULL;
 char	*listen_host = NULL;	/* listen on TCP receive socket */
 char	*listen_port = NULL;
-char	*tls_host = NULL;	/* listen on TLS receive socket */
+char	*tls_hostport = NULL;	/* listen on TLS receive socket */
+char	*tls_host = NULL;
 char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
@@ -397,6 +398,7 @@ main(int argc, char *argv[])
 			path_unix[0] = optarg;
 			break;
 		case 'S':		/* allow tls and listen on address */
+			tls_hostport = optarg;
 			if ((p = strdup(optarg)) == NULL)
 				err(1, "strdup tls address");
 			if (loghost_parse(p, NULL, &tls_host, &tls_port) == -1)
@@ -541,7 +543,7 @@ main(int argc, char *argv[])
 	} else {
 		if ((client_cfg = tls_config_new()) == NULL)
 			logerror("tls_config_new client");
-		if (tls_host) {
+		if (tls_hostport) {
 			if ((server_cfg = tls_config_new()) == NULL)
 				logerror("tls_config_new server");
 			if ((server_ctx = tls_server()) == NULL) {
