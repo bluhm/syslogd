@@ -840,7 +840,7 @@ socket_bind(const char *proto, const char *host, const char *port,
 	if (proto == NULL)
 		proto = "udp";
 	if (port == NULL)
-		port = "syslog";
+		port = strcmp(proto, "tls") == 0 ? "syslog-tls" : "syslog";
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = Family;
