@@ -50,7 +50,7 @@
  * extensive changes by Ralph Campbell
  * more extensive changes by Eric Allman (again)
  * memory buffer logging by Damien Miller
- * IPv6, libevent, sending over TCP and TLS by Alexander Bluhm
+ * IPv6, libevent, syslog over TCP and TLS by Alexander Bluhm
  */
 
 #define MAXLINE		8192		/* maximum line length */
