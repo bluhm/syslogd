@@ -537,8 +537,9 @@ main(int argc, char *argv[])
 		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
 			logerror("calloc CAfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
-			p = NULL;
 			logerror("read CAfile");
+			free(p);
+			p = NULL;
 		} else if (tls_config_set_ca_mem(tlsconfig, p, sb.st_size)
 		    == -1) {
 			logerrorx("tls_config_set_ca_mem");
