@@ -596,7 +596,7 @@ main(int argc, char *argv[])
 	if (priv_init(ConfFile, NoDNS, lockpipe[1], nullfd, argv) < 0)
 		errx(1, "unable to privsep");
 
-	if (tame("malloc unix inet cmsg", NULL) == -1)
+	if (tame("stdio unix inet cmsg", NULL) == -1)
 		err(1, "tame");
 
 	/* Process is now unprivileged and inside a chroot */
