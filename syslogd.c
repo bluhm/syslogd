@@ -537,6 +537,7 @@ main(int argc, char *argv[])
 		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
 			logerror("calloc CAfile");
 		} else if (read(fd, p, sb.st_size) != sb.st_size) {
+			p = NULL;
 			logerror("read CAfile");
 		} else if (tls_config_set_ca_mem(tlsconfig, p, sb.st_size)
 		    == -1) {
@@ -544,6 +545,8 @@ main(int argc, char *argv[])
 		} else {
 			dprintf("CAfile %s, size %lld\n", CAfile, sb.st_size);
 		}
+		if (p == NULL)
+			tls_config_set_ca_mem(tlsconfig, "", 0);
 		free(p);
 		close(fd);
 	}
