@@ -53,7 +53,6 @@
  * IPv6, libevent, syslog over TCP and TLS by Alexander Bluhm
  */
 
-#define MAXLINE		8192		/* maximum line length */
 #define MAX_UDPMSG	1180		/* maximum UDP send size */
 #define MIN_MEMBUF	(MAXLINE * 4)	/* Minimum memory buffer size */
 #define MAX_MEMBUF	(256 * 1024)	/* Maximum memory buffer size */
