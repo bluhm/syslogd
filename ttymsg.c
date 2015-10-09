@@ -55,7 +55,7 @@ void ttycb(int, short, void *);
 
 /*
  * Display the contents of a uio structure on a terminal.
- * Forks and finishes in child if write would block, waiting up to TTYMSGTIME
+ * Schedules an event if write would block, waiting up to TTYMSGTIME
  * seconds.  Returns pointer to error string on unexpected error;
  * string is not newline-terminated.  Various "normal" errors are ignored
  * (exclusive-use, lack of permission, etc.).
