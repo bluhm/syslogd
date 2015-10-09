@@ -65,7 +65,6 @@
 #define DEFSPRI		(LOG_KERN|LOG_CRIT)
 #define TIMERINTVL	30		/* interval for checking flush, mark */
 #define TTYMSGTIME	1		/* timeout passed to ttymsg */
-#define ERRBUFSIZE	256
 
 #include <sys/ioctl.h>
 #include <sys/stat.h>
