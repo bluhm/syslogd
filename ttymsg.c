@@ -50,7 +50,7 @@ struct tty_delay {
 	struct event	 td_event;
 	char		 td_line[MAXLINE + 1];
 };
-
+int tty_delayed = 0;
 void ttycb(int, short, void *);
 
 /*
@@ -127,7 +127,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			}
 			continue;
 		}
-		if (errno == EWOULDBLOCK) {
+		if (tty_delayed < TTYMAXDELAY && errno == EWOULDBLOCK) {
 			struct tty_delay	*td;
 			struct timeval	 	 to;
 			char			*p;
@@ -150,6 +150,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 				--iovcnt;
 			}
 			*p = '\0';
+			tty_delayed++;
 			event_set(&td->td_event, fd, EV_WRITE, ttycb, td);
 			to.tv_sec = TTYMSGTIME;
 			to.tv_usec = 0;
@@ -199,5 +200,6 @@ ttycb(int fd, short event, void *arg)
 	return;
 
  done:
+	tty_delayed--;
 	free(td);
 }
