@@ -330,7 +330,6 @@ void	logmsg(int, char *, char *, int);
 struct filed *find_dup(struct filed *);
 void	printline(char *, char *);
 void	printsys(char *);
-char   *ttymsg(struct iovec *, int, char *, int);
 void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
 int	loghost_parse(char *, char **, char **, char **);
@@ -1945,7 +1944,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 		strncpy(utline, ut.ut_line, sizeof(utline) - 1);
 		utline[sizeof(utline) - 1] = '\0';
 		if (f->f_type == F_WALL) {
-			if ((p = ttymsg(iov, 6, utline, TTYMSGTIME)) != NULL)
+			if ((p = ttymsg(iov, 6, utline)) != NULL)
 				logerrorx(p);
 			continue;
 		}
@@ -1955,7 +1954,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 				break;
 			if (!strncmp(f->f_un.f_uname[i], ut.ut_name,
 			    UT_NAMESIZE)) {
-				if ((p = ttymsg(iov, 6, utline, TTYMSGTIME))
+				if ((p = ttymsg(iov, 6, utline))
 				    != NULL)
 					logerrorx(p);
 				break;
