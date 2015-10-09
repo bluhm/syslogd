@@ -1927,7 +1927,7 @@ void
 wallmsg(struct filed *f, struct iovec *iov)
 {
 	struct utmp ut;
-	char line[sizeof(ut.ut_line) + 1], *p;
+	char utline[sizeof(ut.ut_line) + 1], *p;
 	static int reenter;			/* avoid calling ourselves */
 	FILE *uf;
 	int i;
@@ -1943,10 +1943,10 @@ wallmsg(struct filed *f, struct iovec *iov)
 		if (ut.ut_name[0] == '\0')
 			continue;
 		/* must use strncpy since ut_* may not be NUL terminated */
-		strncpy(line, ut.ut_line, sizeof(line) - 1);
-		line[sizeof(line) - 1] = '\0';
+		strncpy(utline, ut.ut_line, sizeof(utline) - 1);
+		utline[sizeof(utline) - 1] = '\0';
 		if (f->f_type == F_WALL) {
-			if ((p = ttymsg(iov, 6, line, TTYMSGTIME)) != NULL)
+			if ((p = ttymsg(iov, 6, utline, TTYMSGTIME)) != NULL)
 				logerrorx(p);
 			continue;
 		}
@@ -1956,7 +1956,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 				break;
 			if (!strncmp(f->f_un.f_uname[i], ut.ut_name,
 			    UT_NAMESIZE)) {
-				if ((p = ttymsg(iov, 6, line, TTYMSGTIME))
+				if ((p = ttymsg(iov, 6, utline, TTYMSGTIME))
 				    != NULL)
 					logerrorx(p);
 				break;
