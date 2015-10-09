@@ -57,7 +57,8 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline, int tmout)
 {
 	static char device[MAXNAMLEN] = _PATH_DEV;
 	static char ebuf[ERRBUFSIZE];
-	int cnt, fd, left;
+	int cnt, fd;
+	size_t left;
 	ssize_t wret;
 	struct iovec localiov[6];
 	int forked = 0;
@@ -94,14 +95,15 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline, int tmout)
 		return (ebuf);
 	}
 
-	for (cnt = left = 0; cnt < iovcnt; ++cnt)
+	left = 0;
+	for (cnt = 0; cnt < iovcnt; ++cnt)
 		left += iov[cnt].iov_len;
 
 	for (;;) {
 		wret = writev(fd, iov, iovcnt);
-		if (wret >= left)
-			break;
 		if (wret >= 0) {
+			if ((size_t)wret >= left)
+				break;
 			left -= wret;
 			if (iov != localiov) {
 				bcopy(iov, localiov,
