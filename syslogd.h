@@ -47,6 +47,7 @@ extern char *path_ctlsock;
 extern int fd_ctlsock, fd_ctlconn, fd_klog, fd_sendsys;
 extern int fd_udp, fd_udp6, fd_bind, fd_listen, fd_tls, fd_unix[MAXUNIX];
 
+#define MAXLINE		8192		/* maximum line length */
 #define ERRBUFSIZE	256
 void logdebug(const char *, ...) __attribute__((__format__ (printf, 1, 2)));
 extern int Debug;
