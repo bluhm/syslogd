@@ -33,15 +33,15 @@
 #include <sys/param.h>	/* nitems */
 #include <sys/stat.h>
 
-#include <signal.h>
-#include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <paths.h>
-#include <unistd.h>
+#include <signal.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "syslogd.h"
 
