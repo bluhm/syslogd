@@ -35,6 +35,7 @@
 
 #include <dirent.h>
 #include <errno.h>
+#include <event.h>
 #include <fcntl.h>
 #include <paths.h>
 #include <signal.h>
@@ -44,6 +45,11 @@
 #include <unistd.h>
 
 #include "syslogd.h"
+
+struct tty_delay {
+	struct event	 td_event;
+	char		 td_line[MAXLINE + 1];
+};
 
 /*
  * Display the contents of a uio structure on a terminal.
@@ -61,8 +67,6 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 	size_t left;
 	ssize_t wret;
 	struct iovec localiov[6];
-	int forked = 0;
-	sigset_t mask;
 
 	if (iovcnt < 0 || (size_t)iovcnt > nitems(localiov))
 		return ("too many iov's (change code in syslogd/ttymsg.c)");
@@ -122,33 +126,33 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			continue;
 		}
 		if (errno == EWOULDBLOCK) {
-			int off = 0;
-			pid_t cpid;
+			struct timeval to;
+			struct tty_delay *td;
+			char *p;
 
-			if (forked) {
-				(void) close(fd);
-				_exit(1);
-			}
 			logdebug("ttymsg delayed write\n");
-			cpid = fork();
-			if (cpid < 0) {
+			if ((td = malloc(sizeof(*td))) == NULL) {
 				(void) snprintf(ebuf, sizeof(ebuf),
-				    "fork: %s", strerror(errno));
-				(void) close(fd);
+				    "%s: malloc: %s", device, strerror(errno));
 				return (ebuf);
 			}
-			if (cpid) {	/* parent */
-				(void) close(fd);
-				return (NULL);
+			p = td->td_line;
+			if (left > MAXLINE)
+				left = MAXLINE;
+			while (iovcnt && left) {
+				if (iov->iov_len > left)
+					iov->iov_len = left;
+				memcpy(p, iov->iov_base, iov->iov_len);
+				p += iov->iov_len;
+				left -= iov->iov_len;
+				++iov;
+				--iovcnt;
 			}
-			forked++;
-			/* wait at most TTYMSGTIME seconds */
-			(void) signal(SIGALRM, SIG_DFL);
-			(void) signal(SIGTERM, SIG_DFL); /* XXX */
-			(void) sigemptyset(&mask);
-			(void) sigprocmask(SIG_SETMASK, &mask, NULL);
-			(void) alarm((u_int)TTYMSGTIME);
-			(void) fcntl(fd, O_NONBLOCK, &off);
+			*p = '\0';
+			event_set(&td->td_event, fd, EV_WRITE, ttycb, td);
+			to.tv_sec = TTYMSGTIME;
+			to.tv_usec = 0;
+			event_add(&td->td_event, &to);
 			continue;
 		}
 		/*
@@ -158,15 +162,11 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 		if (errno == ENODEV || errno == EIO)
 			break;
 		(void) close(fd);
-		if (forked)
-			_exit(1);
 		(void) snprintf(ebuf, sizeof(ebuf),
 		    "%s: %s", device, strerror(errno));
 		return (ebuf);
 	}
 
 	(void) close(fd);
-	if (forked)
-		_exit(0);
 	return (NULL);
 }
