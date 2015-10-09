@@ -53,7 +53,7 @@
  * (exclusive-use, lack of permission, etc.).
  */
 char *
-ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout)
+ttymsg(struct iovec *iov, int iovcnt, char *utline, int tmout)
 {
 	static char device[MAXNAMLEN] = _PATH_DEV;
 	static char ebuf[ERRBUFSIZE];
@@ -69,11 +69,11 @@ ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout)
 	/*
 	 * Ignore lines that start with "ftp" or "uucp".
 	 */
-	if ((strncmp(line, "ftp", 3) == 0) ||
-	    (strncmp(line, "uucp", 4) == 0))
+	if ((strncmp(utline, "ftp", 3) == 0) ||
+	    (strncmp(utline, "uucp", 4) == 0))
 		return (NULL);
 
-	(void) strlcpy(device + sizeof(_PATH_DEV) - 1, line,
+	(void) strlcpy(device + sizeof(_PATH_DEV) - 1, utline,
 	    sizeof(device) - (sizeof(_PATH_DEV) - 1));
 	if (strchr(device + sizeof(_PATH_DEV) - 1, '/')) {
 		/* A slash is an attempt to break security... */
