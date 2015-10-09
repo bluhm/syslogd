@@ -1950,8 +1950,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 				break;
 			if (!strncmp(f->f_un.f_uname[i], ut.ut_name,
 			    UT_NAMESIZE)) {
-				if ((p = ttymsg(iov, 6, utline))
-				    != NULL)
+				if ((p = ttymsg(iov, 6, utline)) != NULL)
 					logerrorx(p);
 				break;
 			}
