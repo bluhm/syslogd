@@ -56,7 +56,7 @@ char *
 ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout)
 {
 	static char device[MAXNAMLEN] = _PATH_DEV;
-	static char errbuf[1024];
+	static char ebuf[ERRBUFSIZE];
 	int cnt, fd, left;
 	ssize_t wret;
 	struct iovec localiov[6];
@@ -77,9 +77,9 @@ ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout)
 	    sizeof(device) - (sizeof(_PATH_DEV) - 1));
 	if (strchr(device + sizeof(_PATH_DEV) - 1, '/')) {
 		/* A slash is an attempt to break security... */
-		(void) snprintf(errbuf, sizeof(errbuf), "'/' in \"%s\"",
+		(void) snprintf(ebuf, sizeof(ebuf), "'/' in \"%s\"",
 		    device);
-		return (errbuf);
+		return (ebuf);
 	}
 
 	/*
@@ -89,9 +89,9 @@ ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout)
 	if ((fd = priv_open_tty(device)) < 0) {
 		if (errno == EBUSY || errno == EACCES)
 			return (NULL);
-		(void) snprintf(errbuf, sizeof(errbuf),
+		(void) snprintf(ebuf, sizeof(ebuf),
 		    "%s: %s", device, strerror(errno));
-		return (errbuf);
+		return (ebuf);
 	}
 
 	for (cnt = left = 0; cnt < iovcnt; ++cnt)
@@ -129,10 +129,10 @@ ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout)
 			}
 			cpid = fork();
 			if (cpid < 0) {
-				(void) snprintf(errbuf, sizeof(errbuf),
+				(void) snprintf(ebuf, sizeof(ebuf),
 				    "fork: %s", strerror(errno));
 				(void) close(fd);
-				return (errbuf);
+				return (ebuf);
 			}
 			if (cpid) {	/* parent */
 				(void) close(fd);
@@ -157,9 +157,9 @@ ttymsg(struct iovec *iov, int iovcnt, char *line, int tmout)
 		(void) close(fd);
 		if (forked)
 			_exit(1);
-		(void) snprintf(errbuf, sizeof(errbuf),
+		(void) snprintf(ebuf, sizeof(ebuf),
 		    "%s: %s", device, strerror(errno));
-		return (errbuf);
+		return (ebuf);
 	}
 
 	(void) close(fd);
