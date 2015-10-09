@@ -32,8 +32,8 @@ int   priv_getaddrinfo(char *, char *, char *, struct sockaddr *, size_t);
 int   priv_getnameinfo(struct sockaddr *, socklen_t, char *, size_t);
 
 /* Terminal message */
-#define TTYMSGTIME	1		/* timeout passed to ttymsg */
-char *ttymsg(struct iovec *, int, char *, int);
+#define TTYMSGTIME	1		/* timeout used by ttymsg */
+char *ttymsg(struct iovec *, int, char *);
 
 /* File descriptor send/recv */
 void send_fd(int, int);
