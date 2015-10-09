@@ -47,13 +47,13 @@
 
 /*
  * Display the contents of a uio structure on a terminal.
- * Forks and finishes in child if write would block, waiting up to tmout
+ * Forks and finishes in child if write would block, waiting up to TTYMSGTIME
  * seconds.  Returns pointer to error string on unexpected error;
  * string is not newline-terminated.  Various "normal" errors are ignored
  * (exclusive-use, lack of permission, etc.).
  */
 char *
-ttymsg(struct iovec *iov, int iovcnt, char *utline, int tmout)
+ttymsg(struct iovec *iov, int iovcnt, char *utline)
 {
 	static char device[MAXNAMLEN] = _PATH_DEV;
 	static char ebuf[ERRBUFSIZE];
@@ -141,12 +141,12 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline, int tmout)
 				return (NULL);
 			}
 			forked++;
-			/* wait at most tmout seconds */
+			/* wait at most TTYMSGTIME seconds */
 			(void) signal(SIGALRM, SIG_DFL);
 			(void) signal(SIGTERM, SIG_DFL); /* XXX */
 			(void) sigemptyset(&mask);
 			(void) sigprocmask(SIG_SETMASK, &mask, NULL);
-			(void) alarm((u_int)tmout);
+			(void) alarm((u_int)TTYMSGTIME);
 			(void) fcntl(fd, O_NONBLOCK, &off);
 			continue;
 		}
