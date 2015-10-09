@@ -51,6 +51,8 @@ struct tty_delay {
 	char		 td_line[MAXLINE + 1];
 };
 
+void ttycb(int, short, void *);
+
 /*
  * Display the contents of a uio structure on a terminal.
  * Forks and finishes in child if write would block, waiting up to TTYMSGTIME
@@ -126,9 +128,9 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			continue;
 		}
 		if (errno == EWOULDBLOCK) {
-			struct timeval to;
-			struct tty_delay *td;
-			char *p;
+			struct tty_delay	*td;
+			struct timeval	 	 to;
+			char			*p;
 
 			if ((td = malloc(sizeof(*td))) == NULL) {
 				(void) snprintf(ebuf, sizeof(ebuf),
@@ -168,4 +170,34 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 
 	(void) close(fd);
 	return (NULL);
+}
+
+void
+ttycb(int fd, short event, void *arg)
+{
+	struct tty_delay	*td = arg;
+	struct timeval	 	 to;
+	size_t			 left;
+	ssize_t			 wret;
+
+	if (event != EV_WRITE)
+		goto done;
+
+	left = strlen(td->td_line);
+	wret = write(fd, td->td_line, left);
+	if (wret < 0 && errno != EINTR && errno != EWOULDBLOCK)
+		goto done;
+	if (wret > 0) {
+		left -= wret;
+		if (left == 0)
+			goto done;
+		memmove(td->td_line, td->td_line + wret, left + 1);
+	}
+	to.tv_sec = TTYMSGTIME;
+	to.tv_usec = 0;
+	event_add(&td->td_event, &to);
+	return;
+
+ done:
+	free(td);
 }
