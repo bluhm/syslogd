@@ -2017,9 +2017,18 @@ init_signalcb(int signum, short event, void *arg)
 	}
 }
 
-/*
- * Print syslogd errors some place.
- */
+void
+logdebug(const char *fmt, ...)
+{
+	va_list ap;
+
+	if (Debug) {
+		va_start(ap, fmt);
+		vprintf(fmt, ap);
+		va_end(ap);
+	}
+}
+
 void
 logerror(const char *message)
 {
