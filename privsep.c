@@ -144,6 +144,10 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 		return 0;
 	}
 
+	if (pledge("stdio rpath wpath cpath inet dns getpw sendfd proc exec",
+	    NULL) == -1)
+		err(1, "pledge priv");
+
 	if (!Debug) {
 		close(lockfd);
 		dup2(nullfd, STDIN_FILENO);
