@@ -129,7 +129,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 				(void) close(fd);
 				_exit(1);
 			}
-			logdebug("ttymsg delayed write");
+			logdebug("ttymsg delayed write\n");
 			cpid = fork();
 			if (cpid < 0) {
 				(void) snprintf(ebuf, sizeof(ebuf),
