@@ -156,7 +156,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			to.tv_sec = TTYMSGTIME;
 			to.tv_usec = 0;
 			event_add(&td->td_event, &to);
-			continue;
+			return (NULL);
 		}
 		/*
 		 * We get ENODEV on a slip line if we're running as root,
@@ -202,5 +202,6 @@ ttycb(int fd, short event, void *arg)
 
  done:
 	tty_delayed--;
+	close(fd);
 	free(td);
 }
