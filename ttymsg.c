@@ -133,6 +133,11 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			char			*p;
 
 			logdebug("ttymsg delayed write\n");
+			if (iov != localiov) {
+				bcopy(iov, localiov,
+				    iovcnt * sizeof(struct iovec));
+				iov = localiov;
+			}
 			if ((td = malloc(sizeof(*td))) == NULL) {
 				(void) snprintf(ebuf, sizeof(ebuf),
 				    "%s: malloc: %s", device, strerror(errno));
