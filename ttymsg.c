@@ -129,7 +129,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 		}
 		if (tty_delayed < TTYMAXDELAY && errno == EWOULDBLOCK) {
 			struct tty_delay	*td;
-			struct timeval	 	 to;
+			struct timeval		 to;
 			char			*p;
 
 			logdebug("ttymsg delayed write\n");
@@ -183,7 +183,7 @@ void
 ttycb(int fd, short event, void *arg)
 {
 	struct tty_delay	*td = arg;
-	struct timeval	 	 to;
+	struct timeval		 to;
 	size_t			 left;
 	ssize_t			 wret;
 
