@@ -133,7 +133,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			struct timeval		 to;
 
 			if (tty_delayed >= TTYMAXDELAY) {
-				snprintf(ebuf, sizeof(ebuf),
+				(void) snprintf(ebuf, sizeof(ebuf),
 				    "%s: too many delayed writes", device);
 				return (ebuf);
 			}
