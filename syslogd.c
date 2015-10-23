@@ -550,6 +550,7 @@ main(int argc, char *argv[])
 			tls_config_insecure_noverifyname(client_config);
 		} else {
 			struct stat sb;
+			int fail = 1;
 
 			fd = -1;
 			p = NULL;
@@ -567,9 +568,13 @@ main(int argc, char *argv[])
 			    sb.st_size) == -1) {
 				logerrorx("tls_config_set_ca_mem");
 			} else {
+				fail = 0;
 				logdebug("CAfile %s, size %lld\n",
 				    CAfile, sb.st_size);
 			}
+			/* avoid reading default certs in chroot */
+			if (fail)
+				tls_config_set_ca_mem(client_config, "", 0);
 			free(p);
 			close(fd);
 		}
