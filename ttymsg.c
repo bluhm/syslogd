@@ -48,7 +48,8 @@
 
 struct tty_delay {
 	struct event	 td_event;
-	char		 td_line[MAXLINE + 1];
+	size_t		 td_length;
+	char		 td_line[MAXLINE];
 };
 int tty_delayed = 0;
 void ttycb(int, short, void *);
@@ -130,7 +131,6 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 		if (errno == EWOULDBLOCK) {
 			struct tty_delay	*td;
 			struct timeval		 to;
-			char			*p;
 
 			if (tty_delayed >= TTYMAXDELAY) {
 				snprintf(ebuf, sizeof(ebuf),
@@ -148,19 +148,19 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 				    "%s: malloc: %s", device, strerror(errno));
 				return (ebuf);
 			}
-			p = td->td_line;
+			td->td_length = 0;
 			if (left > MAXLINE)
 				left = MAXLINE;
 			while (iovcnt && left) {
 				if (iov->iov_len > left)
 					iov->iov_len = left;
-				memcpy(p, iov->iov_base, iov->iov_len);
-				p += iov->iov_len;
+				memcpy(td->td_line + td->td_length,
+				    iov->iov_base, iov->iov_len);
+				td->td_length += iov->iov_len;
 				left -= iov->iov_len;
 				++iov;
 				--iovcnt;
 			}
-			*p = '\0';
 			tty_delayed++;
 			event_set(&td->td_event, fd, EV_WRITE, ttycb, td);
 			to.tv_sec = TTYMSGTIME;
@@ -189,21 +189,19 @@ ttycb(int fd, short event, void *arg)
 {
 	struct tty_delay	*td = arg;
 	struct timeval		 to;
-	size_t			 left;
 	ssize_t			 wret;
 
 	if (event != EV_WRITE)
 		goto done;
 
-	left = strlen(td->td_line);
-	wret = write(fd, td->td_line, left);
+	wret = write(fd, td->td_line, td->td_length);
 	if (wret < 0 && errno != EINTR && errno != EWOULDBLOCK)
 		goto done;
 	if (wret > 0) {
-		left -= wret;
-		if (left == 0)
+		td->td_length -= wret;
+		if (td->td_length == 0)
 			goto done;
-		memmove(td->td_line, td->td_line + wret, left + 1);
+		memmove(td->td_line, td->td_line + wret, td->td_length);
 	}
 	to.tv_sec = TTYMSGTIME;
 	to.tv_usec = 0;
