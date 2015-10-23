@@ -705,7 +705,7 @@ main(int argc, char *argv[])
 	if (priv_init(ConfFile, NoDNS, lockpipe[1], nullfd, argv) < 0)
 		errx(1, "unable to privsep");
 
-	if (pledge("stdio rpath unix inet recvfd", NULL) == -1)
+	if (pledge("stdio unix inet recvfd", NULL) == -1)
 		err(1, "pledge");
 
 	/* Process is now unprivileged and inside a chroot */
