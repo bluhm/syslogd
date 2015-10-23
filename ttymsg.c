@@ -127,11 +127,16 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			}
 			continue;
 		}
-		if (tty_delayed < TTYMAXDELAY && errno == EWOULDBLOCK) {
+		if (errno == EWOULDBLOCK) {
 			struct tty_delay	*td;
 			struct timeval		 to;
 			char			*p;
 
+			if (tty_delayed >= TTYMAXDELAY) {
+				snprintf(ebuf, sizeof(ebuf),
+				    "%s: too many delayed writes", device);
+				return (ebuf);
+			}
 			logdebug("ttymsg delayed write\n");
 			if (iov != localiov) {
 				bcopy(iov, localiov,
