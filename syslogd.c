@@ -1995,7 +1995,14 @@ die_signalcb(int signum, short event, void *arg)
 void
 mark_timercb(int unused, short event, void *arg)
 {
+	struct event	*ev = arg;
+	struct timeval	to;
+
 	markit();
+
+	to.tv_sec = TIMERINTVL;
+	to.tv_usec = 0;
+	evtimer_add(ev, &to);
 }
 
 void
