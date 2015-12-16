@@ -321,6 +321,7 @@ void	die(int);
 void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
+void	logevent(int, const char *);
 void	logerror(const char *);
 void	logerrorx(const char *);
 void	logerrorctx(const char *, struct tls *);
@@ -709,6 +710,8 @@ main(int argc, char *argv[])
 		err(1, "pledge");
 
 	/* Process is now unprivileged and inside a chroot */
+	if (Debug)
+		event_set_log_callback(logevent);
 	event_init();
 
 	if ((ev_ctlaccept = malloc(sizeof(struct event))) == NULL ||
@@ -2023,6 +2026,31 @@ init_signalcb(int signum, short event, void *arg)
 		tcpbuf_dropped = 0;
 		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 	}
+}
+
+void
+logevent(int severity, const char *msg)
+{
+	const char *severity_str;
+
+	switch (severity) {
+	case _EVENT_LOG_DEBUG:
+		severity_str = "debug";
+		break;
+	case _EVENT_LOG_MSG:
+		severity_str = "msg";
+		break;
+	case _EVENT_LOG_WARN:
+		severity_str = "warn";
+		break;
+	case _EVENT_LOG_ERR:
+		severity_str = "err";
+		break;
+	default:
+		severity_str = "???";
+		break;
+	}
+	logdebug("libevent [%s] %s\n", severity_str, msg);
 }
 
 void
