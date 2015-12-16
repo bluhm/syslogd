@@ -753,7 +753,7 @@ main(int argc, char *argv[])
 	signal_set(ev_quit, SIGQUIT, die_signalcb, ev_quit);
 	signal_set(ev_term, SIGTERM, die_signalcb, ev_term);
 
-	evtimer_set(ev_mark, mark_timercb, ev_mark);
+	event_set(ev_mark, -1, EV_PERSIST, mark_timercb, ev_mark);
 
 	init();
 
