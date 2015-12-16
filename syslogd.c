@@ -2031,7 +2031,7 @@ init_signalcb(int signum, short event, void *arg)
 void
 logevent(int severity, const char *msg)
 {
-	logdebug("libevent[%d]: %s\n", severity, msg);
+	logdebug("libevent: [%d] %s\n", severity, msg);
 }
 
 void
