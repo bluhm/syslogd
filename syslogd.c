@@ -2031,26 +2031,7 @@ init_signalcb(int signum, short event, void *arg)
 void
 logevent(int severity, const char *msg)
 {
-	const char *severity_str;
-
-	switch (severity) {
-	case _EVENT_LOG_DEBUG:
-		severity_str = "debug";
-		break;
-	case _EVENT_LOG_MSG:
-		severity_str = "msg";
-		break;
-	case _EVENT_LOG_WARN:
-		severity_str = "warn";
-		break;
-	case _EVENT_LOG_ERR:
-		severity_str = "err";
-		break;
-	default:
-		severity_str = "???";
-		break;
-	}
-	logdebug("libevent [%s] %s\n", severity_str, msg);
+	logdebug("libevent [%d] %s\n", severity, msg);
 }
 
 void
