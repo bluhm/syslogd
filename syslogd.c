@@ -1487,6 +1487,10 @@ usage(void)
 	exit(1);
 }
 
+/*
+ * Parse a priority code of the form "<123>" into pri, and return the
+ * length of the priority code including the surrounding angle brackets.
+ */
 size_t
 parsepriority(const char *msg, int *pri)
 {
@@ -1498,8 +1502,7 @@ parsepriority(const char *msg, int *pri)
 	if (*msg++ == '<') {
 		nlen = strspn(msg, "1234567890");
 		if (nlen > 0 && nlen < sizeof(buf) && msg[nlen] == '>') {
-			memcpy(buf, msg, nlen);
-			buf[nlen] = '\0';
+			strlcpy(buf, msg, nlen + 1);
 			maybepri = strtonum(buf, 0, INT_MAX, &errstr);
 			if (errstr == NULL) {
 				*pri = maybepri;
