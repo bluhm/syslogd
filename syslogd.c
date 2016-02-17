@@ -328,6 +328,7 @@ void	logerrorctx(const char *, struct tls *);
 void	logerror_reason(const char *, const char *);
 void	logmsg(int, char *, char *, int);
 struct filed *find_dup(struct filed *);
+size_t	parsepriority(const char *, int *);
 void	printline(char *, char *);
 void	printsys(char *);
 void	usage(void);
