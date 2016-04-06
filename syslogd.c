@@ -903,9 +903,9 @@ socket_bind(const char *proto, const char *host, const char *port,
 			continue;
 		}
 		reuseaddr = 1;
-		if (setsockopt(*fdp, SOL_SOCKET, SO_REUSEADDR, &reuseaddr,
+		if (setsockopt(*fdp, SOL_SOCKET, SO_REUSEPORT, &reuseaddr,
 		    sizeof(reuseaddr)) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "setsockopt SO_REUSEADDR "
+			snprintf(ebuf, sizeof(ebuf), "setsockopt SO_REUSEPORT "
 			    "protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
 			logerror(ebuf);
