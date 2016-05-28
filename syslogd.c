@@ -600,75 +600,33 @@ main(int argc, char *argv[])
 			logerror("tls set client ciphers");
 	}
 	if (server_config && server_ctx) {
-		struct stat sb;
-		char *path;
+		const char *names[2];
 
-		fd = -1;
-		p = NULL;
-		path = NULL;
-		if (asprintf(&path, "/etc/ssl/private/%s.key", tls_hostport)
-		    == -1 || (fd = open(path, O_RDONLY)) == -1) {
-			free(path);
-			path = NULL;
-			if (asprintf(&path, "/etc/ssl/private/%s.key", tls_host)
-			    == -1 || (fd = open(path, O_RDONLY)) == -1) {
-				free(path);
-				path = NULL;
-			}
-		}
-		if (fd == -1) {
-			logerror("open keyfile");
-		} else if (fstat(fd, &sb) == -1) {
-			logerror("fstat keyfile");
-		} else if (sb.st_size > 50*1024) {
-			logerrorx("keyfile larger than 50KB");
-		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
-			logerror("calloc keyfile");
-		} else if (read(fd, p, sb.st_size) != sb.st_size) {
-			logerror("read keyfile");
-		} else if (tls_config_set_key_mem(server_config, p,
-		    sb.st_size) == -1) {
-			logerrorx("tls_config_set_key_mem");
-		} else {
-			logdebug("Keyfile %s, size %lld\n", path, sb.st_size);
-		}
-		free(p);
-		close(fd);
-		free(path);
+		names[0] = tls_hostport;
+		names[1] = tls_host;
 
-		fd = -1;
-		p = NULL;
-		path = NULL;
-		if (asprintf(&path, "/etc/ssl/%s.crt", tls_hostport)
-		    == -1 || (fd = open(path, O_RDONLY)) == -1) {
-			free(path);
-			path = NULL;
-			if (asprintf(&path, "/etc/ssl/%s.crt", tls_host)
-			    == -1 || (fd = open(path, O_RDONLY)) == -1) {
-				free(path);
-				path = NULL;
+		for (i = 0; i < 2; i++) {
+			if (asprintf(&p, "/etc/ssl/private/%s.key", names[i])
+			    == -1)
+				continue;
+			if (tls_config_set_key_file(server_config, p) == -1) {
+				free(p);
+				logerrorx("tls_config_set_key_file");
+				continue;
 			}
+			logdebug("Keyfile %s\n", p);
+			free(p);
+			if (asprintf(&p, "/etc/ssl/%s.crt", names[i]) == -1)
+				continue;
+			if (tls_config_set_cert_file(server_config, p) == -1) {
+				free(p);
+				logerrorx("tls_config_set_cert_file");
+				continue;
+			}
+			logdebug("Certfile %s\n", p);
+			free(p);
+			break;
 		}
-		if (fd == -1) {
-			logerror("open certfile");
-		} else if (fstat(fd, &sb) == -1) {
-			logerror("fstat certfile");
-		} else if (sb.st_size > 50*1024) {
-			logerrorx("certfile larger than 50KB");
-		} else if ((p = calloc(sb.st_size, 1)) == NULL) {
-			logerror("calloc certfile");
-		} else if (read(fd, p, sb.st_size) != sb.st_size) {
-			logerror("read certfile");
-		} else if (tls_config_set_cert_mem(server_config, p,
-		    sb.st_size) == -1) {
-			logerrorx("tls_config_set_cert_mem");
-		} else {
-			logdebug("Certfile %s, size %lld\n",
-			    path, sb.st_size);
-		}
-		free(p);
-		close(fd);
-		free(path);
 
 		tls_config_set_protocols(server_config, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(server_config, "compat") != 0)
