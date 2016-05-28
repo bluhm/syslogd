@@ -553,34 +553,13 @@ main(int argc, char *argv[])
 			tls_config_insecure_noverifycert(client_config);
 			tls_config_insecure_noverifyname(client_config);
 		} else {
-			struct stat sb;
-			int fail = 1;
-
-			fd = -1;
-			p = NULL;
-			if ((fd = open(CAfile, O_RDONLY)) == -1) {
-				logerror("open CAfile");
-			} else if (fstat(fd, &sb) == -1) {
-				logerror("fstat CAfile");
-			} else if (sb.st_size > 50*1024*1024) {
-				logerrorx("CAfile larger than 50MB");
-			} else if ((p = calloc(sb.st_size, 1)) == NULL) {
-				logerror("calloc CAfile");
-			} else if (read(fd, p, sb.st_size) != sb.st_size) {
-				logerror("read CAfile");
-			} else if (tls_config_set_ca_mem(client_config, p,
-			    sb.st_size) == -1) {
-				logerrorx("tls_config_set_ca_mem");
-			} else {
-				fail = 0;
-				logdebug("CAfile %s, size %lld\n",
-				    CAfile, sb.st_size);
-			}
-			/* avoid reading default certs in chroot */
-			if (fail)
+			if (tls_config_set_ca_file(client_config,
+			    CAfile) == -1) {
+				/* avoid reading default certs in chroot */
 				tls_config_set_ca_mem(client_config, "", 0);
-			free(p);
-			close(fd);
+				logerrorx("tls_config_set_ca_file");
+			} else
+				logdebug("CAfile %s\n", CAfile);
 		}
 		tls_config_set_protocols(client_config, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(client_config, "compat") != 0)
