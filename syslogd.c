@@ -225,6 +225,8 @@ struct	tls *server_ctx;
 struct	tls_config *client_config, *server_config;
 const char *CAfile = NULL;	/* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
+char	*ClientCertfile = NULL;
+char	*ClientKeyfile = NULL;
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
 
 #define CTL_READING_CMD		1
@@ -353,7 +355,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:dFf:hm:np:S:s:T:U:uV")) != -1)
+	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hk:m:np:S:s:T:U:uV")) != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			Family = PF_INET;
@@ -369,6 +371,9 @@ main(int argc, char *argv[])
 		case 'C':		/* file containing CA certificates */
 			CAfile = optarg;
 			break;
+		case 'c':		/* file containing client certificate */
+			ClientCertfile = optarg;	
+			break;
 		case 'd':		/* debug */
 			Debug++;
 			break;
@@ -380,6 +385,9 @@ main(int argc, char *argv[])
 			break;
 		case 'h':		/* RFC 3164 hostnames */
 			IncludeHostname = 1;
+			break;
+		case 'k':		/* file containing client key */
+			ClientKeyfile = optarg;	
 			break;
 		case 'm':		/* mark interval */
 			MarkInterval = strtonum(optarg, 0, 365*24*60, &errstr);
@@ -557,6 +565,31 @@ main(int argc, char *argv[])
 				logerrorx("tls_config_set_ca_file");
 			else
 				logdebug("CAfile %s\n", CAfile);
+		}
+		if (ClientCertfile && ClientKeyfile) {
+			uint8_t *clientcert, *clientkey;
+			size_t clientcertlen, clientkeylen;
+
+			clientcert = tls_load_file(ClientCertfile, &clientcertlen, NULL);
+			if (clientcert == NULL) {
+				logerror("unable to load client TLS certificate file");
+			} else if (tls_config_set_cert_mem(client_config, clientcert,
+			    clientcertlen) == -1) {
+				logerror("unable to set client TLS certificate file");
+			} else {
+				logdebug("Client cert_file %s\n", ClientCertfile);
+			}
+			clientkey = tls_load_file(ClientKeyfile, &clientkeylen, NULL);
+			if (clientkey == NULL) {
+				logerror("unable to load client TLS key file");
+			} else if (tls_config_set_key_mem(client_config, clientkey,
+			    clientkeylen) == -1) {
+				logerror("unable to set client TLS key file");
+			} else {
+				logdebug("Client key_file %s\n", ClientKeyfile);
+			}
+		} else if (ClientCertfile || ClientKeyfile) {
+			logerrorx("options -c and -k must be used together");
 		}
 		tls_config_set_protocols(client_config, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(client_config, "compat") != 0)
@@ -1417,9 +1450,10 @@ usage(void)
 {
 
 	(void)fprintf(stderr,
-	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-f config_file]\n"
-	    "               [-m mark_interval] [-p log_socket] [-S listen_address]\n"
-	    "               [-s reporting_socket] [-T listen_address] [-U bind_address]\n");
+	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-c cert_file]\n"
+	    "               [-f config_file] [-k key_file] [-m mark_interval]\n"
+	    "               [-p log_socket] [-S listen_address] [-s reporting_socket]\n"
+	    "               [-T listen_address] [-U bind_address]\n");	 
 	exit(1);
 }
 

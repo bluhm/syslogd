@@ -42,7 +42,9 @@
 .Op Fl 46dFhnuV
 .Op Fl a Ar path
 .Op Fl C Ar CAfile
+.Op Fl c Ar cert_file
 .Op Fl f Ar config_file
+.Op Fl k Ar key_file
 .Op Fl m Ar mark_interval
 .Op Fl p Ar log_socket
 .Op Fl S Ar listen_address
@@ -81,6 +83,9 @@ PEM encoded file containing CA certificates used for certificate
 validation;
 the default is
 .Pa /etc/ssl/cert.pem .
+.It Fl c Ar cert_file
+PEM encoded file containing the client certificate for TLS connection
+to a remote host. The default is not to use a certificate.
 .It Fl d
 Enable debugging to the standard output,
 and do not disassociate from the controlling terminal.
@@ -93,6 +98,9 @@ the default is
 .Pa /etc/syslog.conf .
 .It Fl h
 Include the hostname when forwarding messages to a remote host.
+.It Fl k Ar key_file
+PEM encoded file containing the client private key for TLS connection
+to a remote host.
 .It Fl m Ar mark_interval
 Select the number of minutes between
 .Dq mark
