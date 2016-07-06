@@ -86,7 +86,8 @@ the default is
 .It Fl c Ar cert_file
 PEM encoded file containing the client certificate for TLS connection
 to a remote host.
-The default is not to use a certificate.
+The default is not to use a client certificate for the connection
+to a syslog server.
 .It Fl d
 Enable debugging to the standard output,
 and do not disassociate from the controlling terminal.
@@ -102,6 +103,8 @@ Include the hostname when forwarding messages to a remote host.
 .It Fl k Ar key_file
 PEM encoded file containing the client private key for TLS connection
 to a remote host.
+This option has to be used together with
+.Fl c Ar cert_file .
 .It Fl m Ar mark_interval
 Select the number of minutes between
 .Dq mark
