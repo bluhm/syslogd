@@ -372,7 +372,7 @@ main(int argc, char *argv[])
 			CAfile = optarg;
 			break;
 		case 'c':		/* file containing client certificate */
-			ClientCertfile = optarg;	
+			ClientCertfile = optarg;
 			break;
 		case 'd':		/* debug */
 			Debug++;
@@ -387,7 +387,7 @@ main(int argc, char *argv[])
 			IncludeHostname = 1;
 			break;
 		case 'k':		/* file containing client key */
-			ClientKeyfile = optarg;	
+			ClientKeyfile = optarg;
 			break;
 		case 'm':		/* mark interval */
 			MarkInterval = strtonum(optarg, 0, 365*24*60, &errstr);
@@ -1519,7 +1519,7 @@ usage(void)
 	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-c cert_file]\n"
 	    "               [-f config_file] [-k key_file] [-m mark_interval]\n"
 	    "               [-p log_socket] [-S listen_address] [-s reporting_socket]\n"
-	    "               [-T listen_address] [-U bind_address]\n");	 
+	    "               [-T listen_address] [-U bind_address]\n");
 	exit(1);
 }
 
