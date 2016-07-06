@@ -223,7 +223,7 @@ char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *server_ctx;
 struct	tls_config *client_config, *server_config;
-const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
+const char *CAfile = NULL;	/* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
 
@@ -552,13 +552,10 @@ main(int argc, char *argv[])
 		if (NoVerify) {
 			tls_config_insecure_noverifycert(client_config);
 			tls_config_insecure_noverifyname(client_config);
-		} else {
-			if (tls_config_set_ca_file(client_config,
-			    CAfile) == -1) {
-				/* avoid reading default certs in chroot */
-				tls_config_set_ca_mem(client_config, "", 0);
+		} else if (CAfile) {
+			if (tls_config_set_ca_file(client_config, CAfile) == -1)
 				logerrorx("tls_config_set_ca_file");
-			} else
+			else
 				logdebug("CAfile %s\n", CAfile);
 		}
 		tls_config_set_protocols(client_config, TLS_PROTOCOLS_ALL);
