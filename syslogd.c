@@ -567,27 +567,16 @@ main(int argc, char *argv[])
 				logdebug("CAfile %s\n", CAfile);
 		}
 		if (ClientCertfile && ClientKeyfile) {
-			uint8_t *clientcert, *clientkey;
-			size_t clientcertlen, clientkeylen;
-
-			clientcert = tls_load_file(ClientCertfile, &clientcertlen, NULL);
-			if (clientcert == NULL) {
-				logerror("unable to load client TLS certificate file");
-			} else if (tls_config_set_cert_mem(client_config, clientcert,
-			    clientcertlen) == -1) {
-				logerror("unable to set client TLS certificate file");
-			} else {
-				logdebug("Client cert_file %s\n", ClientCertfile);
-			}
-			clientkey = tls_load_file(ClientKeyfile, &clientkeylen, NULL);
-			if (clientkey == NULL) {
-				logerror("unable to load client TLS key file");
-			} else if (tls_config_set_key_mem(client_config, clientkey,
-			    clientkeylen) == -1) {
-				logerror("unable to set client TLS key file");
-			} else {
-				logdebug("Client key_file %s\n", ClientKeyfile);
-			}
+			if (tls_config_set_cert_file(client_config,
+			    ClientCertfile) == -1)
+				logerrorx("tls_config_set_cert_file");
+			else
+				logdebug("ClientCertfile %s\n", ClientCertfile);
+			if (tls_config_set_key_file(client_config,
+			    ClientKeyfile) == -1)
+				logerrorx("tls_config_set_key_file");
+			else
+				logdebug("ClientKeyfile %s\n", ClientKeyfile);
 		} else if (ClientCertfile || ClientKeyfile) {
 			logerrorx("options -c and -k must be used together");
 		}
