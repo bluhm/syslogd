@@ -592,26 +592,26 @@ main(int argc, char *argv[])
 			close(fd);
 		}
 		if (ClientCertfile && ClientKeyfile) {
-			uint8_t *clientcert, *clientkey;
-			size_t clientcertlen, clientkeylen;
+			uint8_t *cert, *key;
+			size_t certlen, keylen;
 
-			clientcert = tls_load_file(ClientCertfile, &clientcertlen, NULL);
-			if (clientcert == NULL) {
-				logerror("unable to load client TLS certificate file");
-			} else if (tls_config_set_cert_mem(client_config, clientcert,
-			    clientcertlen) == -1) {
-				logerror("unable to set client TLS certificate file");
+			cert = tls_load_file(ClientCertfile, &certlen, NULL);
+			if (cert == NULL) {
+				logerror("load client TLS cert failed");
+			} else if (tls_config_set_cert_mem(client_config, cert,
+			    certlen) == -1) {
+				logerror("set client TLS cert failed");
 			} else {
-				logdebug("Client cert_file %s\n", ClientCertfile);
+				logdebug("Client cert %s\n", ClientCertfile);
 			}
-			clientkey = tls_load_file(ClientKeyfile, &clientkeylen, NULL);
-			if (clientkey == NULL) {
-				logerror("unable to load client TLS key file");
-			} else if (tls_config_set_key_mem(client_config, clientkey,
-			    clientkeylen) == -1) {
-				logerror("unable to set client TLS key file");
+			key = tls_load_file(ClientKeyfile, &keylen, NULL);
+			if (key == NULL) {
+				logerror("load client TLS key failed");
+			} else if (tls_config_set_key_mem(client_config, key,
+			    keylen) == -1) {
+				logerror("set client TLS key failed");
 			} else {
-				logdebug("Client key_file %s\n", ClientKeyfile);
+				logdebug("Client key %s\n", ClientKeyfile);
 			}
 		} else if (ClientCertfile || ClientKeyfile) {
 			logerrorx("options -c and -k must be used together");
