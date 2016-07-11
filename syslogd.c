@@ -355,7 +355,8 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hk:m:np:S:s:T:U:uV")) != -1)
+	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hk:m:np:S:s:T:U:uV"))
+	    != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			Family = PF_INET;
@@ -1440,9 +1441,9 @@ usage(void)
 
 	(void)fprintf(stderr,
 	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-c cert_file]\n"
-	    "               [-f config_file] [-k key_file] [-m mark_interval]\n"
-	    "               [-p log_socket] [-S listen_address] [-s reporting_socket]\n"
-	    "               [-T listen_address] [-U bind_address]\n");
+	    "\t[-f config_file] [-k key_file] [-m mark_interval]\n"
+	    "\t[-p log_socket] [-S listen_address] [-s reporting_socket]\n"
+	    "\t[-T listen_address] [-U bind_address]\n");
 	exit(1);
 }
 
