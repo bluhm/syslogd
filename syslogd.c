@@ -602,7 +602,7 @@ main(int argc, char *argv[])
 			    certlen) == -1) {
 				logerror("set client TLS cert failed");
 			} else {
-				logdebug("Client cert %s\n", ClientCertfile);
+				logdebug("ClientCertfile %s\n", ClientCertfile);
 			}
 			key = tls_load_file(ClientKeyfile, &keylen, NULL);
 			if (key == NULL) {
@@ -611,7 +611,7 @@ main(int argc, char *argv[])
 			    keylen) == -1) {
 				logerror("set client TLS key failed");
 			} else {
-				logdebug("Client key %s\n", ClientKeyfile);
+				logdebug("ClientKeyfile %s\n", ClientKeyfile);
 			}
 		} else if (ClientCertfile || ClientKeyfile) {
 			logerrorx("options -c and -k must be used together");
