@@ -566,32 +566,22 @@ main(int argc, char *argv[])
 			    CAfile) == -1) {
 				/* avoid reading default certs in chroot */
 				tls_config_set_ca_mem(client_config, "", 0);
-				logerrorx("tls_config_set_ca_file");
+				logerror("load client TLS CA failed");
 			} else
 				logdebug("CAfile %s\n", CAfile);
 		}
 		if (ClientCertfile && ClientKeyfile) {
-			uint8_t *cert, *key;
-			size_t certlen, keylen;
-
-			cert = tls_load_file(ClientCertfile, &certlen, NULL);
-			if (cert == NULL) {
+			if (tls_config_set_cert_file(client_config,
+			    ClientCertfile) == -1)
 				logerror("load client TLS cert failed");
-			} else if (tls_config_set_cert_mem(client_config, cert,
-			    certlen) == -1) {
-				logerror("set client TLS cert failed");
-			} else {
+			else
 				logdebug("ClientCertfile %s\n", ClientCertfile);
-			}
-			key = tls_load_file(ClientKeyfile, &keylen, NULL);
-			if (key == NULL) {
+
+			if (tls_config_set_key_file(client_config,
+			    ClientKeyfile) == -1)
 				logerror("load client TLS key failed");
-			} else if (tls_config_set_key_mem(client_config, key,
-			    keylen) == -1) {
-				logerror("set client TLS key failed");
-			} else {
+			else
 				logdebug("ClientKeyfile %s\n", ClientKeyfile);
-			}
 		} else if (ClientCertfile || ClientKeyfile) {
 			logerrorx("options -c and -k must be used together");
 		}
