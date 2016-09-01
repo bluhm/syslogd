@@ -637,7 +637,7 @@ main(int argc, char *argv[])
 				/* avoid reading default certs in chroot */
 				tls_config_set_ca_mem(server_config, "", 0);
 			} else
-				logdebug("Server CAfile %s\n", CAfile);
+				logdebug("Server CAfile %s\n", ServerCAfile);
 			tls_config_verify_client(server_config);
 		}
 		tls_config_set_protocols(server_config, TLS_PROTOCOLS_ALL);
