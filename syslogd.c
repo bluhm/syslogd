@@ -227,7 +227,7 @@ const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
 const char *ClientCertfile = NULL;
 const char *ClientKeyfile = NULL;
-const char *ClientCAfile = NULL;
+const char *ServerCAfile = NULL;
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
 
 #define CTL_READING_CMD		1
@@ -390,7 +390,7 @@ main(int argc, char *argv[])
 			IncludeHostname = 1;
 			break;
 		case 'K':		/* verify client with CA file */
-			ClientCAfile = optarg;
+			ServerCAfile = optarg;
 			break;
 		case 'k':		/* file containing client key */
 			ClientKeyfile = optarg;
@@ -629,6 +629,17 @@ main(int argc, char *argv[])
 			break;
 		}
 
+		if (ServerCAfile) {
+			if (tls_config_set_ca_file(server_config,
+			    ServerCAfile) == -1) {
+				logerrortlsconf("Load server TLS CA failed",
+				    server_config);
+				/* avoid reading default certs in chroot */
+				tls_config_set_ca_mem(server_config, "", 0);
+			} else
+				logdebug("Server CAfile %s\n", CAfile);
+			tls_config_verify_client(server_config);
+		}
 		tls_config_set_protocols(server_config, TLS_PROTOCOLS_ALL);
 		if (tls_config_set_ciphers(server_config, "compat") != 0)
 			logerrortlsconf("Set server TLS ciphers failed",
