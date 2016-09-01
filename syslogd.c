@@ -225,8 +225,9 @@ struct	tls *server_ctx;
 struct	tls_config *client_config, *server_config;
 const char *CAfile = "/etc/ssl/cert.pem"; /* file containing CA certificates */
 int	NoVerify = 0;		/* do not verify TLS server x509 certificate */
-char	*ClientCertfile = NULL;
-char	*ClientKeyfile = NULL;
+const char *ClientCertfile = NULL;
+const char *ClientKeyfile = NULL;
+const char *ClientCAfile = NULL;
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
 
 #define CTL_READING_CMD		1
@@ -356,7 +357,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hk:m:np:S:s:T:U:uV"))
+	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:np:S:s:T:U:uV"))
 	    != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
@@ -387,6 +388,9 @@ main(int argc, char *argv[])
 			break;
 		case 'h':		/* RFC 3164 hostnames */
 			IncludeHostname = 1;
+			break;
+		case 'K':		/* verify client with CA file */
+			ClientCAfile = optarg;
 			break;
 		case 'k':		/* file containing client key */
 			ClientKeyfile = optarg;
