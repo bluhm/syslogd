@@ -1468,7 +1468,7 @@ usage(void)
 
 	(void)fprintf(stderr,
 	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-c cert_file]\n"
-	    "[-f config_file] [-K server_CAfile] [-k key_file]\n"
+	    "\t[-f config_file] [-K server_CAfile] [-k key_file]\n"
 	    "\t[-m mark_interval] [-p log_socket] [-S listen_address]\n"
 	    "\t[-s reporting_socket] [-T listen_address] [-U bind_address]\n");
 	exit(1);
