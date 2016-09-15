@@ -210,6 +210,7 @@ int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
 int	MarkSeq = 0;		/* mark sequence number */
 int	SecureMode = 1;		/* when true, speak only unix domain socks */
 int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
+int	ZuluTime = 0;		/* display date and time in UTC ISO format */
 int	IncludeHostname = 0;	/* include RFC 3164 style hostnames when forwarding */
 int	Family = PF_UNSPEC;	/* protocol family, may disable IPv4 or IPv6 */
 char	*bind_host = NULL;	/* bind UDP receive socket */
@@ -356,7 +357,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hk:m:np:S:s:T:U:uV"))
+	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hk:m:np:S:s:T:U:uVz"))
 	    != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
@@ -432,6 +433,9 @@ main(int argc, char *argv[])
 			break;
 		case 'V':		/* do not verify certificates */
 			NoVerify = 1;
+			break;
+		case 'z':		/* time stamps in UTC ISO format */
+			ZuluTime = 1;
 			break;
 		default:
 			usage();
@@ -1452,7 +1456,7 @@ usage(void)
 {
 
 	(void)fprintf(stderr,
-	    "usage: syslogd [-46dFhnuV] [-a path] [-C CAfile] [-c cert_file]\n"
+	    "usage: syslogd [-46dFhnuVz] [-a path] [-C CAfile] [-c cert_file]\n"
 	    "\t[-f config_file] [-k key_file] [-m mark_interval]\n"
 	    "\t[-p log_socket] [-S listen_address] [-s reporting_socket]\n"
 	    "\t[-T listen_address] [-U bind_address]\n");
