@@ -1598,7 +1598,9 @@ logmsg(int pri, char *msg, char *from, int flags)
 				/* TIME-SECFRAC */
 				msg++;
 				msglen--;
-				while (msglen >= 1 && isdigit(msg[0])) {
+				for (i = 0; i < 6; i++) {
+					if (msglen < 1 || !isdigit(msg[0]))
+						break;
 					msg++;
 					msglen--; 
 				}
