@@ -1598,18 +1598,50 @@ logmsg(int pri, char *msg, char *from, int flags)
 	 * Check to see if msg looks non-standard.
 	 */
 	msglen = strlen(msg);
-	if (msglen < 16 || msg[3] != ' ' || msg[6] != ' ' ||
-	    msg[9] != ':' || msg[12] != ':' || msg[15] != ' ')
-		flags |= ADDDATE;
+	if ((flags & ADDDATE) == 0) {
+		if (msglen >= 16 && msg[3] == ' ' && msg[6] == ' ' &&
+		    msg[9] == ':' && msg[12] == ':' && msg[15] == ' ') {
+			/* BSD syslog TIMESTAMP, RFC 3164 */
+			timestamp = msg;
+			msg += 16;
+			msglen -= 16;
+		} else if (msglen >= 19 && msg[4] == '-' && msg[7] == '-' &&
+		    msg[10] == 'T' && msg[13] == ':' && msg[16] == ':') {
+			/* FULL-DATE "T" FULL-TIME, RFC 5424 */
+			timestamp = msg;
+			msg += 19;
+			msglen -= 19;
+			if (msglen >= 2 && msg[0] == '.') {
+				/* TIME-SECFRAC */
+				msg++;
+				msglen--;
+				while (msglen >= 1 && isdigit(msg[0])) {
+					msg++;
+					msglen--; 
+				}
+			}
+			if (msglen >= 2 && msg[0] == 'Z' && msg[1] == ' ') {
+				/* "Z" */
+				msg += 2;
+				msglen -= 2;
+			} else if (msglen >= 7 && (msg[0] == '+' ||
+			    msg[0] == '-') && msg[3] == ':' && msg[6] == ' ') {
+				/* TIME-NUMOFFSET */
+				msg += 7;
+				msglen -= 7;
+			}
+		} else if (msglen >= 2 && msg[0] == '-' && msg[1] == ' ') {
+			/* NILVALUE, RFC 5424 */
+			msg += 2;
+			msglen -= 2;
+			flags |= ADDDATE;
+		} else
+			flags |= ADDDATE;
+	}
 
 	(void)time(&now);
 	if (flags & ADDDATE)
 		timestamp = ctime(&now) + 4;
-	else {
-		timestamp = msg;
-		msg += 16;
-		msglen -= 16;
-	}
 
 	/* extract facility and priority level */
 	if (flags & MARK)
