@@ -1606,6 +1606,8 @@ logmsg(int pri, char *msg, char *from, int flags)
 			strlcpy(timestamp, msg, 16);
 			msg += 16;
 			msglen -= 16;
+			if (ZuluTime)
+				flags |= ADDDATE;
 		} else if (msglen >= 20 && msg[4] == '-' && msg[7] == '-' &&
 		    msg[10] == 'T' && msg[13] == ':' && msg[16] == ':' &&
 		    (msg[19] == '.' || msg[19] == 'Z' || msg[19] == '+' ||
