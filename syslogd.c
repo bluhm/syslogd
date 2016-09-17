@@ -1605,8 +1605,10 @@ logmsg(int pri, char *msg, char *from, int flags)
 			timestamp = msg;
 			msg += 16;
 			msglen -= 16;
-		} else if (msglen >= 19 && msg[4] == '-' && msg[7] == '-' &&
-		    msg[10] == 'T' && msg[13] == ':' && msg[16] == ':') {
+		} else if (msglen >= 20 && msg[4] == '-' && msg[7] == '-' &&
+		    msg[10] == 'T' && msg[13] == ':' && msg[16] == ':' &&
+		    (msg[19] == '.' || msg[19] == 'Z' || msg[19] == '+' ||
+		    msg[19] == '-')) {
 			/* FULL-DATE "T" FULL-TIME, RFC 5424 */
 			timestamp = msg;
 			msg += 19;
@@ -1629,6 +1631,9 @@ logmsg(int pri, char *msg, char *from, int flags)
 				/* TIME-NUMOFFSET */
 				msg += 7;
 				msglen -= 7;
+			} else if (msglen >= 1 && msg[0] == ' ') {
+				msg++;
+				msglen--;
 			}
 		} else if (msglen >= 2 && msg[0] == '-' && msg[1] == ' ') {
 			/* NILVALUE, RFC 5424 */
