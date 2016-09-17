@@ -153,7 +153,7 @@ struct filed {
 		} f_mb;		/* Memory buffer */
 	} f_un;
 	char	f_prevline[MAXSVLINE];		/* last message logged */
-	char	f_lasttime[16];			/* time of last occurrence */
+	char	f_lasttime[33];			/* time of last occurrence */
 	char	f_prevhost[HOST_NAME_MAX+1];	/* host from which recd. */
 	int	f_prevpri;			/* pri of f_prevline */
 	int	f_prevlen;			/* length of f_prevline */
@@ -1568,8 +1568,9 @@ void
 logmsg(int pri, char *msg, char *from, int flags)
 {
 	struct filed *f;
+	struct tm *tm;
 	int fac, msglen, prilev, i;
-	char *timestamp;
+	char timestamp[33];
 	char prog[NAME_MAX+1];
 
 	logdebug("logmsg: pri 0%o, flags 0x%x, from %s, msg %s\n",
@@ -1583,7 +1584,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 		if (msglen >= 16 && msg[3] == ' ' && msg[6] == ' ' &&
 		    msg[9] == ':' && msg[12] == ':' && msg[15] == ' ') {
 			/* BSD syslog TIMESTAMP, RFC 3164 */
-			timestamp = msg;
+			strlcpy(timestamp, msg, 16);
 			msg += 16;
 			msglen -= 16;
 		} else if (msglen >= 20 && msg[4] == '-' && msg[7] == '-' &&
@@ -1591,30 +1592,34 @@ logmsg(int pri, char *msg, char *from, int flags)
 		    (msg[19] == '.' || msg[19] == 'Z' || msg[19] == '+' ||
 		    msg[19] == '-' || msg[19] == ' ')) {
 			/* FULL-DATE "T" FULL-TIME, RFC 5424 */
-			timestamp = msg;
+			strlcpy(timestamp, msg, sizeof(timestamp));
 			msg += 19;
 			msglen -= 19;
+			i = 0;
 			if (msglen >= 2 && msg[0] == '.') {
 				/* TIME-SECFRAC */
 				msg++;
 				msglen--;
-				for (i = 0; i < 6; i++) {
-					if (msglen < 1 || !isdigit(msg[0]))
-						break;
+				i++;
+				while(i < 7 && msglen >= 1 && isdigit(msg[0])) {
 					msg++;
 					msglen--; 
+					i++;
 				}
 			}
 			if (msglen >= 2 && msg[0] == 'Z' && msg[1] == ' ') {
 				/* "Z" */
+				timestamp[20+i] = '\0';
 				msg += 2;
 				msglen -= 2;
 			} else if (msglen >= 7 && (msg[0] == '+' ||
 			    msg[0] == '-') && msg[3] == ':' && msg[6] == ' ') {
 				/* TIME-NUMOFFSET */
+				timestamp[25+i] = '\0';
 				msg += 7;
 				msglen -= 7;
 			} else if (msglen >= 1 && msg[0] == ' ') {
+				timestamp[19+i] = '\0';
 				msg++;
 				msglen--;
 			}
@@ -1628,8 +1633,13 @@ logmsg(int pri, char *msg, char *from, int flags)
 	}
 
 	(void)time(&now);
-	if (flags & ADDDATE)
-		timestamp = ctime(&now) + 4;
+	if (flags & ADDDATE) {
+		if (ZuluTime) {
+			tm = gmtime(&now);
+			strftime(timestamp, sizeof(timestamp), "%FT%TZ", tm);
+		} else
+			strlcpy(timestamp, ctime(&now) + 4, 16);
+	}
 
 	/* extract facility and priority level */
 	if (flags & MARK)
@@ -1690,7 +1700,8 @@ logmsg(int pri, char *msg, char *from, int flags)
 		if ((flags & MARK) == 0 && msglen == f->f_prevlen &&
 		    !strcmp(msg, f->f_prevline) &&
 		    !strcmp(from, f->f_prevhost)) {
-			strlcpy(f->f_lasttime, timestamp, 16);
+			strlcpy(f->f_lasttime, timestamp,
+			    sizeof(f->f_lasttime));
 			f->f_prevcount++;
 			logdebug("msg repeated %d times, %ld sec of %d\n",
 			    f->f_prevcount, (long)(now - f->f_time),
@@ -1711,7 +1722,8 @@ logmsg(int pri, char *msg, char *from, int flags)
 				fprintlog(f, 0, (char *)NULL);
 			f->f_repeatcount = 0;
 			f->f_prevpri = pri;
-			strlcpy(f->f_lasttime, timestamp, 16);
+			strlcpy(f->f_lasttime, timestamp,
+			    sizeof(f->f_lasttime));
 			strlcpy(f->f_prevhost, from,
 			    sizeof(f->f_prevhost));
 			if (msglen < MAXSVLINE) {
@@ -1753,7 +1765,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		v++;
 	} else if (f->f_lasttime[0] != '\0') {
 		v->iov_base = f->f_lasttime;
-		v->iov_len = 15;
+		v->iov_len = strlen(f->f_lasttime);
 		v++;
 		v->iov_base = " ";
 		v->iov_len = 1;
