@@ -1608,7 +1608,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 		} else if (msglen >= 20 && msg[4] == '-' && msg[7] == '-' &&
 		    msg[10] == 'T' && msg[13] == ':' && msg[16] == ':' &&
 		    (msg[19] == '.' || msg[19] == 'Z' || msg[19] == '+' ||
-		    msg[19] == '-')) {
+		    msg[19] == '-' || msg[19] == ' ')) {
 			/* FULL-DATE "T" FULL-TIME, RFC 5424 */
 			timestamp = msg;
 			msg += 19;
