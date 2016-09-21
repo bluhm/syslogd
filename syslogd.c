@@ -1260,6 +1260,7 @@ tcp_socket(struct filed *f)
 		logerror(ebuf);
 		return (-1);
 	}
+	set_sockbuf(s);
 	if (connect(s, (struct sockaddr *)&f->f_un.f_forw.f_addr,
 	    f->f_un.f_forw.f_addr.ss_len) == -1 && errno != EINPROGRESS) {
 		snprintf(ebuf, sizeof(ebuf), "connect \"%s\"",
