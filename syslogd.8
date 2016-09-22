@@ -197,12 +197,14 @@ The PID can be used to kill or reconfigure
 .Nm .
 .Pp
 .Nm
-opens an Internet domain socket, as specified
+opens an UDP socket, as specified
 in
 .Pa /etc/services ,
 for sending forwarded messages.
-If running in secure mode, all incoming data on this socket is discarded.
-In insecure mode it will also read messages from the socket.
+Per default all incoming data on this socket is discarded.
+If insecure mode is switched on with
+.Fl u ,
+it will also read messages from the socket.
 .Nm
 also opens and reads messages from the
 .Ux Ns -domain
