@@ -212,7 +212,10 @@ socket
 .Pa /dev/log ,
 and from the special device
 .Pa /dev/klog
-(to read kernel messages).
+(to read kernel messages),
+and from
+.Xr sendsyslog 2
+(to read messages from userland processes).
 .Pp
 The message sent to
 .Nm
