@@ -80,7 +80,8 @@ of various chroot filespaces, though the need for these is
 less urgent after the introduction of
 .Xr sendsyslog 2 .
 .It Fl C Ar CAfile
-PEM encoded file containing CA certificates used for certificate validation;
+PEM encoded file containing CA certificates used for certificate
+validation of a remote loghost;
 the default is
 .Pa /etc/ssl/cert.pem .
 .It Fl c Ar cert_file
@@ -210,9 +211,9 @@ This priority code should map into the priorities defined in the
 include file
 .In sys/syslog.h .
 .Pp
-When sending syslog messages to a remote host via TLS, the server's
-certificate and hostname are validated to prevent malicious servers
-from reading messages.
+When sending syslog messages to a remote loghost via TLS, the
+server's certificate and hostname are validated to prevent malicious
+servers from reading messages.
 If the server has a certificate with a matching hostname signed by
 a CA in
 .Pa /etc/ssl/cert.pem ,
