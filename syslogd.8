@@ -226,13 +226,14 @@ option and put that CA into
 Validation can be explicitly turned off using the
 .Fl V
 option.
-If the server is not accepting messages from everybody, use the
+If the server is accepting messages only from clients with a trusted
+client certificate, use the
 .Fl k
 and
 .Fl c
 options to authenticate
 .Nm
-with a client certificate.
+with this certificate.
 .Pp
 When receiving syslog messages from a TLS client, there must be
 a server key and certificate in
