@@ -238,7 +238,7 @@ When receiving syslog messages from a TLS client, there must be
 a server key and certificate in
 .Pa /etc/ssl/private/host Ns Oo : Ns Ar port Oc Ns Ar .key
 and
-.Pa /etc/ssl/private/host Ns Oo : Ns Ar port Oc Ns Ar .key .
+.Pa /etc/ssl/host Ns Oo : Ns Ar port Oc Ns Ar .crt .
 If the client uses certificates to authenticate, the CA of the
 client's certificate may be added to
 .Ar CAfile
