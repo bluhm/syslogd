@@ -210,29 +210,28 @@ This priority code should map into the priorities defined in the
 include file
 .In sys/syslog.h .
 .Pp
-When sending syslog messages to a remote host,
-the server's certificate and hostname are validated
-to prevent malicious servers from reading messages.
-If the server has a certificate with a matching hostname
-signed by a CA in
+When sending syslog messages to a remote host via TLS, the server's
+certificate and hostname are validated to prevent malicious servers
+from reading messages.
+If the server has a certificate with a matching hostname signed by
+a CA in
 .Pa /etc/ssl/cert.pem ,
-use that.
-If the server has a certificate with a matching hostname
-signed by a private CA,
-use the
+it is verified with that by default.
+If the server has a certificate with a matching hostname signed by
+a private CA, use the
 .Fl C
-option to put that CA into
+option and put that CA into
 .Ar CAfile .
-If the server is not accepting messages from anybody,
-use the
-.Fl k
-and
-.Fl c
-options to put the CA of that client certificate
-into the trusted CAs at the server.
 Validation can be explicitly turned off using the
 .Fl V
 option.
+If the server is not accepting messages from everybody, use the
+.Fl k
+and
+.Fl c
+options to to authenticate
+.Nm
+with a client certificate.
 .Pp
 When receiving syslog messages from a client,
 there should be a server key and certificate in
