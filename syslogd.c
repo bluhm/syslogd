@@ -1838,7 +1838,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 	case F_FORWUDP:
 		logdebug(" %s\n", f->f_un.f_forw.f_loghost);
 		l = snprintf(line, MINIMUM(MAX_UDPMSG + 1, sizeof(line)),
-		    "<%d>%.15s %s%s%s", f->f_prevpri, (char *)iov[0].iov_base,
+		    "<%d>%.32s %s%s%s", f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
@@ -1880,7 +1880,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		 * buffer synchronisation, helps legacy implementations,
 		 * and makes line based testing easier.
 		 */
-		l = snprintf(line, sizeof(line), "<%d>%.15s %s%s\n",
+		l = snprintf(line, sizeof(line), "<%d>%.32s %s%s\n",
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "");
@@ -1890,7 +1890,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			break;
 		}
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
-		    "%zu <%d>%.15s %s%s%s\n",
+		    "%zu <%d>%.32s %s%s%s\n",
 		    (size_t)l + strlen(iov[4].iov_base),
 		    f->f_prevpri, (char *)iov[0].iov_base,
 		    IncludeHostname ? LocalHostName : "",
@@ -1987,7 +1987,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_MEMBUF:
 		logdebug("\n");
-		snprintf(line, sizeof(line), "%.15s %s %s",
+		snprintf(line, sizeof(line), "%.32s %s %s",
 		    (char *)iov[0].iov_base, (char *)iov[2].iov_base,
 		    (char *)iov[4].iov_base);
 		if (ringbuf_append_line(f->f_un.f_mb.f_rb, line) == 1)
