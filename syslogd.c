@@ -1639,6 +1639,12 @@ logmsg(int pri, char *msg, char *from, int flags)
 				timestamp[25+i] = '\0';
 				msg += 7;
 				msglen -= 7;
+			} else {
+				/* invalid time format, roll back */
+				timestamp[0] = '\0';
+				msg -= 19 + i;
+				msglen += 19 + i;
+				flags |= ADDDATE;
 			}
 		} else if (msglen >= 2 && msg[0] == '-' && msg[1] == ' ') {
 			/* NILVALUE, RFC 5424 */
