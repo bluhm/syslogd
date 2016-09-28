@@ -1617,11 +1617,11 @@ logmsg(int pri, char *msg, char *from, int flags)
 			msg += 19;
 			msglen -= 19;
 			i = 0;
-			if (msglen >= 2 && msg[0] == '.') {
+			if (msglen >= 3 && msg[0] == '.' && isdigit(msg[1])) {
 				/* TIME-SECFRAC */
-				msg++;
-				msglen--;
-				i++;
+				msg += 2;
+				msglen -= 2;
+				i += 2;
 				while(i < 7 && msglen >= 1 && isdigit(msg[0])) {
 					msg++;
 					msglen--; 
