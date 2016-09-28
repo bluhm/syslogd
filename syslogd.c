@@ -359,7 +359,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:np:S:s:T:U:uVz"))
+	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:np:S:s:T:U:uVZ"))
 	    != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
@@ -439,7 +439,7 @@ main(int argc, char *argv[])
 		case 'V':		/* do not verify certificates */
 			NoVerify = 1;
 			break;
-		case 'z':		/* time stamps in UTC ISO format */
+		case 'Z':		/* time stamps in UTC ISO format */
 			ZuluTime = 1;
 			break;
 		default:
@@ -1475,7 +1475,7 @@ usage(void)
 {
 
 	(void)fprintf(stderr,
-	    "usage: syslogd [-46dFhnuVz] [-a path] [-C CAfile] [-c cert_file]\n"
+	    "usage: syslogd [-46dFhnuVZ] [-a path] [-C CAfile] [-c cert_file]\n"
 	    "\t[-f config_file] [-K CAfile] [-k key_file] [-m mark_interval]\n"
 	    "\t[-p log_socket] [-S listen_address] [-s reporting_socket]\n"
 	    "\t[-T listen_address] [-U bind_address]\n");

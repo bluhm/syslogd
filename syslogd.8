@@ -39,7 +39,7 @@
 .Sh SYNOPSIS
 .Nm syslogd
 .Bk -words
-.Op Fl 46dFhnuVz
+.Op Fl 46dFhnuVZ
 .Op Fl a Ar path
 .Op Fl C Ar CAfile
 .Op Fl c Ar cert_file
@@ -169,7 +169,7 @@ attacks over the network, including attackers remotely filling logs.
 .It Fl V
 Do not perform remote server certificate and hostname validation
 when sending messages.
-.It Fl z
+.It Fl Z
 Generate timestamps in ISO format.
 This includes the year and the timezone, and all logging is done
 in UTC.
