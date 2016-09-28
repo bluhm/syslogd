@@ -1615,7 +1615,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 		    isdigit(msg[8]) && isdigit(msg[9]) && msg[10] == 'T' &&
 		    isdigit(msg[11]) && isdigit(msg[12]) && msg[13] == ':' &&
 		    isdigit(msg[14]) && isdigit(msg[15]) && msg[16] == ':' &&
-		    isdigit(msg[17]) && isdigit(msg[17]) && (msg[19] == '.' ||
+		    isdigit(msg[17]) && isdigit(msg[18]) && (msg[19] == '.' ||
 		    msg[19] == 'Z' || msg[19] == '+' || msg[19] == '-')) {
 			/* FULL-DATE "T" FULL-TIME, RFC 5424 */
 			strlcpy(timestamp, msg, sizeof(timestamp));
