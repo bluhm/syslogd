@@ -1608,10 +1608,15 @@ logmsg(int pri, char *msg, char *from, int flags)
 			msglen -= 16;
 			if (ZuluTime)
 				flags |= ADDDATE;
-		} else if (msglen >= 20 && msg[4] == '-' && msg[7] == '-' &&
-		    msg[10] == 'T' && msg[13] == ':' && msg[16] == ':' &&
-		    (msg[19] == '.' || msg[19] == 'Z' || msg[19] == '+' ||
-		    msg[19] == '-')) {
+		} else if (msglen >= 20 &&
+		    isdigit(msg[0]) && isdigit(msg[1]) && isdigit(msg[2]) && 
+		    isdigit(msg[3]) && msg[4] == '-' &&
+		    isdigit(msg[5]) && isdigit(msg[6]) && msg[7] == '-' &&
+		    isdigit(msg[8]) && isdigit(msg[9]) && msg[10] == 'T' &&
+		    isdigit(msg[11]) && isdigit(msg[12]) && msg[13] == ':' &&
+		    isdigit(msg[14]) && isdigit(msg[15]) && msg[16] == ':' &&
+		    isdigit(msg[17]) && isdigit(msg[17]) && (msg[19] == '.' ||
+		    msg[19] == 'Z' || msg[19] == '+' || msg[19] == '-')) {
 			/* FULL-DATE "T" FULL-TIME, RFC 5424 */
 			strlcpy(timestamp, msg, sizeof(timestamp));
 			msg += 19;
@@ -1633,8 +1638,12 @@ logmsg(int pri, char *msg, char *from, int flags)
 				timestamp[20+i] = '\0';
 				msg += 2;
 				msglen -= 2;
-			} else if (msglen >= 7 && (msg[0] == '+' ||
-			    msg[0] == '-') && msg[3] == ':' && msg[6] == ' ') {
+			} else if (msglen >= 7 &&
+			    (msg[0] == '+' || msg[0] == '-') &&
+			    isdigit(msg[1]) && isdigit(msg[2]) &&
+			    msg[3] == ':' &&
+			    isdigit(msg[4]) && isdigit(msg[5]) &&
+			    msg[6] == ' ') {
 				/* TIME-NUMOFFSET */
 				timestamp[25+i] = '\0';
 				msg += 7;
