@@ -167,7 +167,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, int argc, char *argv[
 }
 
 /* Father */
-void
+__dead void
 priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 {
 	int i, fd, sock, cmd, addr_len, result, restart;
