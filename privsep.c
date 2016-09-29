@@ -95,7 +95,7 @@ static void must_read(int, void *, size_t);
 static void must_write(int, void *, size_t);
 static int  may_read(int, void *, size_t);
 
-int
+void
 priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 {
 	int i, fd, socks[2], cmd, addr_len, result, restart;
@@ -142,7 +142,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 			err(1, "setresuid() failed");
 		close(socks[0]);
 		priv_fd = socks[1];
-		return 0;
+		return;
 	}
 	close(socks[1]);
 

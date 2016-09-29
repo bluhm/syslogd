@@ -21,7 +21,7 @@
 #include <sys/uio.h>
 
 /* Privilege separation */
-int   priv_init(char *, int, int, int, char **);
+void  priv_init(char *, int, int, int, char **);
 int   priv_open_tty(const char *);
 int   priv_open_log(const char *);
 FILE *priv_open_utmp(void);
