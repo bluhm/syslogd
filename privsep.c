@@ -96,7 +96,7 @@ static void must_write(int, void *, size_t);
 static int  may_read(int, void *, size_t);
 
 void
-priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
+priv_init(char *conf, int numeric, int lockfd, int nullfd, int argc, char *argv[])
 {
 	int i, socks[2];
 	struct passwd *pw;

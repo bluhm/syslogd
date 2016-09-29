@@ -449,7 +449,7 @@ main(int argc, char *argv[])
 		default:
 			usage();
 		}
-	if ((argc -= optind) != 0)
+	if (argc != optind)
 		usage();
 
 	if (Debug)
@@ -699,7 +699,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Privilege separation begins here */
-	priv_init(ConfFile, NoDNS, lockpipe[1], nullfd, argv);
+	priv_init(ConfFile, NoDNS, lockpipe[1], nullfd, argc, argv);
 
 	if (pledge("stdio unix inet recvfd", NULL) == -1)
 		err(1, "pledge");
