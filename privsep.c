@@ -97,6 +97,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, int argc, char *argv[
 {
 	int i, socks[2];
 	struct passwd *pw;
+	char childnum[11], **privargv;
 
 	/* Create sockets */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, PF_UNSPEC, socks) == -1)
@@ -163,7 +164,16 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, int argc, char *argv[
 
 	if (dup3(socks[0], 3, 0) == -1)
 		err(1, "dup3 priv sock failed");
-	priv_exec(conf, numeric, child_pid, argc, argv);
+	snprintf(childnum, sizeof(childnum), "%d", child_pid);
+	if ((privargv = reallocarray(NULL, argc + 3, sizeof(char *))) == NULL)
+		err(1, "alloc priv argv failed");
+	for (i = 0; i < argc; i++)
+		privargv[i] = argv[i];
+	privargv[i++] = "-P";
+	privargv[i++] = childnum;
+	privargv[i++] = NULL;
+	execv(privargv[0], privargv);
+	err(1, "exec '%s' failed", privargv[0]);
 }
 
 /* Father */
@@ -413,7 +423,7 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 		execvp(argv[0], argv);
 	}
 	unlink(_PATH_LOGPID);
-	_exit(0);
+	exit(0);
 }
 
 static int
