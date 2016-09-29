@@ -192,6 +192,10 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	    NULL) == -1)
 		err(1, "pledge priv");
 
+	if (argc <= 2 || strcmp("-P", argv[argc - 2]) != 0)
+		errx(1, "exec without priv");
+	argv[argc -= 2] = NULL;
+
 	sock = 3;
 	for (fd = 4; fd < 1024; fd++)
 		close(fd);
@@ -419,8 +423,6 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 		int status;
 
 		waitpid(child_pid, &status, 0);
-		if (argc > 2 && strcmp("-P", argv[argc - 2]) == 0)
-			argv[argc - 2] = NULL;
 		execvp(argv[0], argv);
 		err(1, "exec restart '%s' failed", argv[0]);
 	}
