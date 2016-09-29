@@ -73,7 +73,6 @@ enum cmd_types {
 static int priv_fd = -1;
 static volatile pid_t child_pid = -1;
 static struct stat cf_info;
-static int allow_getnameinfo = 0;
 static volatile sig_atomic_t cur_state = STATE_INIT;
 
 /* Queue for the allowed logfiles */
@@ -210,12 +209,6 @@ priv_exec(char *conf, int numeric, int argc, char *argv[])
 
 	if (stat(conf, &cf_info) < 0)
 		err(1, "stat config file failed");
-
-	/* Save whether or not the child can have access to getnameinfo(3) */
-	if (numeric > 0)
-		allow_getnameinfo = 0;
-	else
-		allow_getnameinfo = 1;
 
 	TAILQ_INIT(&lognames);
 	increase_state(STATE_CONFIG);
@@ -378,7 +371,7 @@ priv_exec(char *conf, int numeric, int argc, char *argv[])
 
 		case PRIV_GETNAMEINFO:
 			logdebug("[priv]: msg PRIV_GETNAMEINFO received\n");
-			if (!allow_getnameinfo)
+			if (numeric)
 				errx(1, "rejected attempt to getnameinfo");
 			/* Expecting: length, sockaddr */
 			must_read(sock, &addr_len, sizeof(int));
