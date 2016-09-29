@@ -1598,6 +1598,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 	/*
 	 * Check to see if msg looks non-standard.
 	 */
+	timestamp[0] = '\0';
 	msglen = strlen(msg);
 	if ((flags & ADDDATE) == 0) {
 		if (msglen >= 16 && msg[3] == ' ' && msg[6] == ' ' &&
