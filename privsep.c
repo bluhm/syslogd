@@ -163,12 +163,12 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, int argc, char *argv[
 
 	if (dup3(socks[0], 3, 0) == -1)
 		err(1, "dup3 priv sock failed");
-	priv_exec(conf, numeric, argc, argv);
+	priv_exec(conf, numeric, child_pid, argc, argv);
 }
 
 /* Father */
 void
-priv_exec(char *conf, int numeric, int argc, char *argv[])
+priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 {
 	int i, fd, sock, cmd, addr_len, result, restart;
 	size_t path_len, protoname_len, hostname_len, servname_len;
@@ -186,6 +186,8 @@ priv_exec(char *conf, int numeric, int argc, char *argv[])
 	sock = 3;
 	for (fd = 4; fd < 1024; fd++)
 		close(fd);
+
+	child_pid = child;
 
 	memset(&sa, 0, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
