@@ -72,7 +72,6 @@ enum cmd_types {
 
 static int priv_fd = -1;
 static volatile pid_t child_pid = -1;
-static struct stat cf_info;
 static volatile sig_atomic_t cur_state = STATE_INIT;
 
 /* Queue for the allowed logfiles */
@@ -176,7 +175,7 @@ priv_exec(char *conf, int numeric, int argc, char *argv[])
 	char path[PATH_MAX], protoname[5];
 	char hostname[NI_MAXHOST], servname[NI_MAXSERV];
 	struct sockaddr_storage addr;
-	struct stat cf_stat;
+	struct stat cf_info, cf_stat;
 	struct addrinfo hints, *res0;
 	struct sigaction sa;
 
