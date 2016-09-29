@@ -700,7 +700,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Privilege separation begins here */
-	priv_init(ConfFile, NoDNS, lockpipe[1], nullfd, argc, argv);
+	priv_init(lockpipe[1], nullfd, argc, argv);
 
 	if (pledge("stdio unix inet recvfd", NULL) == -1)
 		err(1, "pledge");
