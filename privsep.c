@@ -173,7 +173,7 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	privargv[i++] = childnum;
 	privargv[i++] = NULL;
 	execv(privargv[0], privargv);
-	err(1, "exec '%s' failed", privargv[0]);
+	err(1, "exec priv '%s' failed", privargv[0]);
 }
 
 /* Father */
@@ -420,7 +420,10 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 		int status;
 
 		waitpid(child_pid, &status, 0);
+		if (argc > 2 && strcmp("-P", argv[argc - 2]) == 0)
+			argv[argc - 2] = NULL;
 		execvp(argv[0], argv);
+		err(1, "exec restart '%s' failed", argv[0]);
 	}
 	unlink(_PATH_LOGPID);
 	exit(0);
