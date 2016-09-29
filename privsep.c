@@ -176,7 +176,6 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	err(1, "exec priv '%s' failed", privargv[0]);
 }
 
-/* Father */
 __dead void
 priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 {
