@@ -144,10 +144,7 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 		priv_fd = socks[1];
 		return 0;
 	}
-
-	if (pledge("stdio rpath wpath cpath dns getpw sendfd id proc exec",
-	    NULL) == -1)
-		err(1, "pledge priv");
+	close(socks[1]);
 
 	if (!Debug) {
 		close(lockfd);
@@ -157,20 +154,6 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	}
 	if (nullfd > 2)
 		close(nullfd);
-
-	/* Father */
-	/* Pass TERM/HUP/INT/QUIT through to child, and accept CHLD */
-	sa.sa_handler = sig_pass_to_chld;
-	sigaction(SIGTERM, &sa, NULL);
-	sigaction(SIGHUP, &sa, NULL);
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGQUIT, &sa, NULL);
-	sa.sa_handler = sig_got_chld;
-	sa.sa_flags |= SA_NOCLDSTOP;
-	sigaction(SIGCHLD, &sa, NULL);
-
-	setproctitle("[priv]");
-	close(socks[1]);
 
 	/* Close descriptors that only the unpriv child needs */
 	if (fd_ctlconn != -1)
@@ -194,6 +177,23 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, char *argv[])
 	for (i = 0; i < nunix; i++)
 		if (fd_unix[i] != -1)
 			close(fd_unix[i]);
+
+	if (pledge("stdio rpath wpath cpath dns getpw sendfd id proc exec",
+	    NULL) == -1)
+		err(1, "pledge priv");
+
+	/* Father */
+	/* Pass TERM/HUP/INT/QUIT through to child, and accept CHLD */
+	sa.sa_handler = sig_pass_to_chld;
+	sigaction(SIGTERM, &sa, NULL);
+	sigaction(SIGHUP, &sa, NULL);
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGQUIT, &sa, NULL);
+	sa.sa_handler = sig_got_chld;
+	sa.sa_flags |= SA_NOCLDSTOP;
+	sigaction(SIGCHLD, &sa, NULL);
+
+	setproctitle("[priv]");
 
 	/* Save the config file specified by the child process */
 	if (strlcpy(config_file, conf, sizeof config_file) >= sizeof(config_file))
