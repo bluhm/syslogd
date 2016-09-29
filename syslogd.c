@@ -208,7 +208,7 @@ int	Initialized = 0;	/* set when we have initialized ourselves */
 
 int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
 int	MarkSeq = 0;		/* mark sequence number */
-int	PrivExec = 0;		/* Exec the privileged parent process */
+int	PrivChild = 0;		/* Exec the privileged parent process */
 int	SecureMode = 1;		/* when true, speak only unix domain socks */
 int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
 int	ZuluTime = 0;		/* display date and time in UTC ISO format */
@@ -408,7 +408,9 @@ main(int argc, char *argv[])
 			NoDNS = 1;
 			break;
 		case 'P':		/* used internally, exec the parent */
-			PrivExec = 1;
+			PrivChild = strtonum(optarg, 2, INT_MAX, &errstr);
+			if (errstr)
+				errx(1, "priv child %s: %s", errstr, optarg);
 			break;
 		case 'p':		/* path */
 			path_unix[0] = optarg;
