@@ -417,9 +417,9 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 		(void)unlink(path_ctlsock);
 
 	if (restart) {
-		int r;
+		int status;
 
-		wait(&r);
+		waitpid(child_pid, &status, 0);
 		execvp(argv[0], argv);
 	}
 	unlink(_PATH_LOGPID);
