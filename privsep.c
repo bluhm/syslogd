@@ -2,6 +2,7 @@
 
 /*
  * Copyright (c) 2003 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2016 Alexander Bluhm <bluhm@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
