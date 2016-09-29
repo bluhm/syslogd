@@ -72,7 +72,6 @@ enum cmd_types {
 
 static int priv_fd = -1;
 static volatile pid_t child_pid = -1;
-static char config_file[PATH_MAX];
 static struct stat cf_info;
 static int allow_getnameinfo = 0;
 static volatile sig_atomic_t cur_state = STATE_INIT;
@@ -209,11 +208,7 @@ priv_exec(char *conf, int numeric, int argc, char *argv[])
 
 	setproctitle("[priv]");
 
-	/* Save the config file specified by the child process */
-	if (strlcpy(config_file, conf, sizeof config_file) >= sizeof(config_file))
-		errx(1, "config_file truncation");
-
-	if (stat(config_file, &cf_info) < 0)
+	if (stat(conf, &cf_info) < 0)
 		err(1, "stat config file failed");
 
 	/* Save whether or not the child can have access to getnameinfo(3) */
@@ -285,8 +280,8 @@ priv_exec(char *conf, int numeric, int argc, char *argv[])
 
 		case PRIV_OPEN_CONFIG:
 			logdebug("[priv]: msg PRIV_OPEN_CONFIG received\n");
-			stat(config_file, &cf_info);
-			fd = open(config_file, O_RDONLY|O_NONBLOCK, 0);
+			stat(conf, &cf_info);
+			fd = open(conf, O_RDONLY|O_NONBLOCK, 0);
 			send_fd(sock, fd);
 			if (fd < 0)
 				warnx("priv_open_config failed");
@@ -296,7 +291,7 @@ priv_exec(char *conf, int numeric, int argc, char *argv[])
 
 		case PRIV_CONFIG_MODIFIED:
 			logdebug("[priv]: msg PRIV_CONFIG_MODIFIED received\n");
-			if (stat(config_file, &cf_stat) < 0 ||
+			if (stat(conf, &cf_stat) < 0 ||
 			    timespeccmp(&cf_info.st_mtimespec,
 			    &cf_stat.st_mtimespec, <) ||
 			    cf_info.st_size != cf_stat.st_size) {
