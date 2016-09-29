@@ -699,8 +699,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Privilege separation begins here */
-	if (priv_init(ConfFile, NoDNS, lockpipe[1], nullfd, argv) < 0)
-		errx(1, "unable to privsep");
+	priv_init(ConfFile, NoDNS, lockpipe[1], nullfd, argv);
 
 	if (pledge("stdio unix inet recvfd", NULL) == -1)
 		err(1, "pledge");
