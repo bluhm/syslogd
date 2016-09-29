@@ -208,6 +208,7 @@ int	Initialized = 0;	/* set when we have initialized ourselves */
 
 int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
 int	MarkSeq = 0;		/* mark sequence number */
+int	PrivExec = 0;		/* Exec the privileged parent process */
 int	SecureMode = 1;		/* when true, speak only unix domain socks */
 int	NoDNS = 0;		/* when true, will refrain from doing DNS lookups */
 int	ZuluTime = 0;		/* display date and time in UTC ISO format */
@@ -359,7 +360,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 
-	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:np:S:s:T:U:uVZ"))
+	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:nP:p:S:s:T:U:uVZ"))
 	    != -1)
 		switch (ch) {
 		case '4':		/* disable IPv6 */
@@ -405,6 +406,9 @@ main(int argc, char *argv[])
 			break;
 		case 'n':		/* don't do DNS lookups */
 			NoDNS = 1;
+			break;
+		case 'P':		/* used internally, exec the parent */
+			PrivExec = 1;
 			break;
 		case 'p':		/* path */
 			path_unix[0] = optarg;
