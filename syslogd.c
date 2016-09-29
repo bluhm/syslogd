@@ -469,6 +469,9 @@ main(int argc, char *argv[])
 			}
 	}
 
+	if (PrivChild > 1)
+		priv_exec(ConfFile, NoDNS, PrivChild, argc, argv);
+
 	consfile.f_type = F_CONSOLE;
 	(void)strlcpy(consfile.f_un.f_fname, ctty,
 	    sizeof(consfile.f_un.f_fname));
