@@ -164,14 +164,16 @@ priv_init(char *conf, int numeric, int lockfd, int nullfd, int argc, char *argv[
 		if (fd_unix[i] != -1)
 			close(fd_unix[i]);
 
-	priv_exec(conf, numeric, socks[0], argv);
+	if (dup3(socks[0], 3, 0) == -1)
+		err(1, "dup3 priv sock failed");
+	priv_exec(conf, numeric, argc, argv);
 }
 
 /* Father */
 void
-priv_exec(char *conf, int numeric, int sock, char *argv[])
+priv_exec(char *conf, int numeric, int argc, char *argv[])
 {
-	int i, fd, cmd, addr_len, result, restart;
+	int i, fd, sock, cmd, addr_len, result, restart;
 	size_t path_len, protoname_len, hostname_len, servname_len;
 	char path[PATH_MAX], protoname[5];
 	char hostname[NI_MAXHOST], servname[NI_MAXSERV];
@@ -183,6 +185,10 @@ priv_exec(char *conf, int numeric, int sock, char *argv[])
 	if (pledge("stdio rpath wpath cpath dns getpw sendfd id proc exec",
 	    NULL) == -1)
 		err(1, "pledge priv");
+
+	sock = 3;
+	for (fd = 4; fd < 1024; fd++)
+		close(fd);
 
 	memset(&sa, 0, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
