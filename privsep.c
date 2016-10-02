@@ -172,7 +172,7 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	privargv[i++] = "-P";
 	privargv[i++] = childnum;
 	privargv[i++] = NULL;
-	execv(privargv[0], privargv);
+	execvp(privargv[0], privargv);
 	err(1, "exec priv '%s' failed", privargv[0]);
 }
 
