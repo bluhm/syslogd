@@ -197,8 +197,7 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	argv[argc -= 2] = NULL;
 
 	sock = 3;
-	for (fd = 4; fd < 1024; fd++)
-		close(fd);
+	closefrom(4);
 
 	child_pid = child;
 
