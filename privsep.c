@@ -220,6 +220,7 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	sigaction(SIGCHLD, &sa, NULL);
 
 	setproctitle("[priv]");
+	logdebug("[priv]: fork+exec done\n");
 
 	if (stat(conf, &cf_info) < 0)
 		err(1, "stat config file failed");
