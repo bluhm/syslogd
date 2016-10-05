@@ -1587,7 +1587,6 @@ void
 logmsg(int pri, char *msg, char *from, int flags)
 {
 	struct filed *f;
-	struct tm *tm;
 	int fac, msglen, prilev, i;
 	char timestamp[33];
 	char prog[NAME_MAX+1];
@@ -1668,8 +1667,13 @@ logmsg(int pri, char *msg, char *from, int flags)
 	(void)gettimeofday(&now, NULL);
 	if (flags & ADDDATE) {
 		if (ZuluTime) {
+			struct tm *tm;
+			size_t l;
+
 			tm = gmtime(&now.tv_sec);
-			strftime(timestamp, sizeof(timestamp), "%FT%TZ", tm);
+			l = strftime(timestamp, sizeof(timestamp), "%FT%T", tm);
+			snprintf(timestamp + l, sizeof(timestamp) -l, ".%03ldZ",
+			    now.tv_usec / 1000);
 		} else
 			strlcpy(timestamp, ctime(&now.tv_sec) + 4, 16);
 	}
