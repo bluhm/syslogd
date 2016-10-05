@@ -1577,7 +1577,7 @@ printsys(char *msg)
 	}
 }
 
-time_t	now;
+struct timeval	now;
 
 /*
  * Log a message to the appropriate log files, users, etc. based on
@@ -1665,13 +1665,13 @@ logmsg(int pri, char *msg, char *from, int flags)
 			flags |= ADDDATE;
 	}
 
-	(void)time(&now);
+	(void)gettimeofday(&now, NULL);
 	if (flags & ADDDATE) {
 		if (ZuluTime) {
-			tm = gmtime(&now);
+			tm = gmtime(&now.tv_sec);
 			strftime(timestamp, sizeof(timestamp), "%FT%TZ", tm);
 		} else
-			strlcpy(timestamp, ctime(&now) + 4, 16);
+			strlcpy(timestamp, ctime(&now.tv_sec) + 4, 16);
 	}
 
 	/* extract facility and priority level */
@@ -1724,7 +1724,8 @@ logmsg(int pri, char *msg, char *from, int flags)
 			continue;
 
 		/* don't output marks to recently written files */
-		if ((flags & MARK) && (now - f->f_time) < MarkInterval / 2)
+		if ((flags & MARK) &&
+		    (now.tv_sec - f->f_time) < MarkInterval / 2)
 			continue;
 
 		/*
@@ -1737,7 +1738,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 			    sizeof(f->f_lasttime));
 			f->f_prevcount++;
 			logdebug("msg repeated %d times, %ld sec of %d\n",
-			    f->f_prevcount, (long)(now - f->f_time),
+			    f->f_prevcount, (long)(now.tv_sec - f->f_time),
 			    repeatinterval[f->f_repeatcount]);
 			/*
 			 * If domark would have logged this by now,
@@ -1745,7 +1746,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 			 * but back off so we'll flush less often
 			 * in the future.
 			 */
-			if (now > REPEATTIME(f)) {
+			if (now.tv_sec > REPEATTIME(f)) {
 				fprintlog(f, flags, (char *)NULL);
 				BACKOFF(f);
 			}
@@ -1787,7 +1788,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 	if (f->f_type == F_WALL) {
 		l = snprintf(greetings, sizeof(greetings),
 		    "\r\n\7Message from syslogd@%s at %.24s ...\r\n",
-		    f->f_prevhost, ctime(&now));
+		    f->f_prevhost, ctime(&now.tv_sec));
 		if (l < 0 || (size_t)l >= sizeof(greetings))
 			l = strlen(greetings);
 		v->iov_base = greetings;
@@ -1844,7 +1845,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 	v++;
 
 	logdebug("Logging to %s", TypeNames[f->f_type]);
-	f->f_time = now;
+	f->f_time = now.tv_sec;
 
 	switch (f->f_type) {
 	case F_UNUSED:
@@ -1946,8 +1947,8 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 			/* pipe is non-blocking. log and drop message if full */
 			if (e == EAGAIN && f->f_type == F_PIPE) {
-				if (now - f->f_lasterrtime > 120) {
-					f->f_lasterrtime = now;
+				if (now.tv_sec - f->f_lasterrtime > 120) {
+					f->f_lasterrtime = now.tv_sec;
 					logerror(f->f_un.f_fname);
 				}
 				break;
@@ -2884,7 +2885,7 @@ markit(void)
 {
 	struct filed *f;
 
-	now = time(NULL);
+	(void)gettimeofday(&now, NULL);
 	MarkSeq += TIMERINTVL;
 	if (MarkSeq >= MarkInterval) {
 		logmsg(LOG_INFO, "-- MARK --",
@@ -2893,7 +2894,7 @@ markit(void)
 	}
 
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
-		if (f->f_prevcount && now >= REPEATTIME(f)) {
+		if (f->f_prevcount && now.tv_sec >= REPEATTIME(f)) {
 			logdebug("flush %s: repeated %d times, %d sec.\n",
 			    TypeNames[f->f_type], f->f_prevcount,
 			    repeatinterval[f->f_repeatcount]);
