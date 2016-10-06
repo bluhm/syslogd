@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.h,v 1.23 2015/10/23 16:28:52 bluhm Exp $ */
+/*	$OpenBSD: syslogd.h,v 1.24 2016/10/06 13:03:47 bluhm Exp $ */
 
 /*
  * Copyright (c) 2003 Anil Madhavapeddy <anil@recoil.org>
