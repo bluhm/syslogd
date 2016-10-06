@@ -1672,8 +1672,12 @@ logmsg(int pri, char *msg, char *from, int flags)
 
 			tm = gmtime(&now.tv_sec);
 			l = strftime(timestamp, sizeof(timestamp), "%FT%T", tm);
-			snprintf(timestamp + l, sizeof(timestamp) -l, ".%03ldZ",
-			    now.tv_usec / 1000);
+			/*
+			 * Use only millisecond precision as some time has
+			 * passed since syslog(3) was called.
+			 */
+			snprintf(timestamp + l, sizeof(timestamp) - l,
+			    ".%03ldZ", now.tv_usec / 1000);
 		} else
 			strlcpy(timestamp, ctime(&now.tv_sec) + 4, 16);
 	}
