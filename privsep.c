@@ -139,11 +139,11 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	if (nullfd > 2)
 		close(nullfd);
 
-
 	if (dup3(socks[0], 3, 0) == -1)
 		err(1, "dup3 priv sock failed");
 	if (closefrom(4) == -1)
 		err(1, "closefrom 4 failed");
+
 	snprintf(childnum, sizeof(childnum), "%d", child_pid);
 	if ((privargv = reallocarray(NULL, argc + 3, sizeof(char *))) == NULL)
 		err(1, "alloc priv argv failed");
