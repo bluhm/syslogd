@@ -197,8 +197,8 @@ char	*TypeNames[] = {
 SIMPLEQ_HEAD(filed_list, filed) Files;
 struct	filed consfile;
 
-int	nunix = 1;		/* Number of Unix domain sockets requested */
-char	*path_unix[MAXUNIX] = { _PATH_LOG }; /* Paths to Unix domain sockets */
+int	nunix = 0;		/* Number of Unix domain sockets requested */
+char	**path_unix;		/* Paths to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Foreground;		/* run in foreground, instead of daemonizing */
 int	Startup = 1;		/* startup flag */
@@ -361,6 +361,10 @@ main(int argc, char *argv[])
 	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
 	int		 fd_unix[MAXUNIX];
 
+	if ((path_unix = malloc(sizeof(*path_unix))) == NULL)
+		err(1, "malloc %s", _PATH_LOG);
+	path_unix[nunix++] = _PATH_LOG;
+
 	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:nP:p:S:s:T:U:uVZ"))
 	    != -1)
 		switch (ch) {
@@ -371,8 +375,9 @@ main(int argc, char *argv[])
 			Family = PF_INET6;
 			break;
 		case 'a':
-			if (nunix >= MAXUNIX)
-				errx(1, "out of descriptors: %s", optarg);
+			if ((path_unix = reallocarray(path_unix, nunix + 1,
+			    sizeof(*path_unix))) == NULL)
+				err(1, "malloc %s", optarg);
 			path_unix[nunix++] = optarg;
 			break;
 		case 'C':		/* file containing CA certificates */
