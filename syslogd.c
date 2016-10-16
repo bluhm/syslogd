@@ -359,7 +359,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
-	int		 fd_unix[MAXUNIX];
+	int		 *fd_unix;
 
 	if ((path_unix = malloc(sizeof(*path_unix))) == NULL)
 		err(1, "malloc %s", _PATH_LOG);
@@ -525,6 +525,8 @@ main(int argc, char *argv[])
 			die(0);
 	}
 
+	if ((fd_unix = reallocarray(NULL, nunix, sizeof(*fd_unix))) == NULL)
+		err(1, "malloc unix");
 	for (i = 0; i < nunix; i++) {
 		fd_unix[i] = unix_socket(path_unix[i], SOCK_DGRAM, 0666);
 		if (fd_unix[i] == -1) {
