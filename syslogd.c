@@ -1618,7 +1618,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 			if (ZuluTime)
 				flags |= ADDDATE;
 		} else if (msglen >= 20 &&
-		    isdigit(msg[0]) && isdigit(msg[1]) && isdigit(msg[2]) && 
+		    isdigit(msg[0]) && isdigit(msg[1]) && isdigit(msg[2]) &&
 		    isdigit(msg[3]) && msg[4] == '-' &&
 		    isdigit(msg[5]) && isdigit(msg[6]) && msg[7] == '-' &&
 		    isdigit(msg[8]) && isdigit(msg[9]) && msg[10] == 'T' &&
@@ -1638,7 +1638,7 @@ logmsg(int pri, char *msg, char *from, int flags)
 				i += 2;
 				while(i < 7 && msglen >= 1 && isdigit(msg[0])) {
 					msg++;
-					msglen--; 
+					msglen--;
 					i++;
 				}
 			}
