@@ -291,6 +291,8 @@ void	 unix_readcb(int, short, void *);
 int	 reserve_accept4(int, int, struct event *,
     void (*)(int, short, void *), struct sockaddr *, socklen_t *, int);
 void	 tcp_acceptcb(int, short, void *);
+void	 tls_acceptcb(int, short, void *);
+void	 acceptcb(int, short, void *, int);
 int	 octet_counting(struct evbuffer *, char **, int);
 int	 non_transparent_framing(struct evbuffer *, char **);
 void	 tcp_readcb(struct bufferevent *, void *);
@@ -772,7 +774,7 @@ main(int argc, char *argv[])
 	for (i = 0; i < nlisten; i++)
 		event_set(&ev_listen[i], fd_listen[i], EV_READ|EV_PERSIST,
 		    tcp_acceptcb, &ev_listen[i]);
-	event_set(ev_tls, fd_tls, EV_READ|EV_PERSIST, tcp_acceptcb, ev_tls);
+	event_set(ev_tls, fd_tls, EV_READ|EV_PERSIST, tls_acceptcb, ev_tls);
 	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
 		    unix_readcb, &ev_unix[i]);
@@ -1088,6 +1090,18 @@ reserve_accept4(int lfd, int event, struct event *ev,
 void
 tcp_acceptcb(int lfd, short event, void *arg)
 {
+	acceptcb(lfd, event, arg, 0);
+}
+
+void
+tls_acceptcb(int lfd, short event, void *arg)
+{
+	acceptcb(lfd, event, arg, 1);
+}
+
+void
+acceptcb(int lfd, short event, void *arg, int usetls)
+{
 	struct event		*ev = arg;
 	struct peer		*p;
 	struct sockaddr_storage	 ss;
@@ -1132,7 +1146,7 @@ tcp_acceptcb(int lfd, short event, void *arg)
 		return;
 	}
 	p->p_ctx = NULL;
-	if (lfd == fd_tls) {
+	if (usetls) {
 		if (tls_accept_socket(server_ctx, &p->p_ctx, fd) < 0) {
 			snprintf(ebuf, sizeof(ebuf), "tls_accept_socket \"%s\"",
 			    peername);
