@@ -42,7 +42,6 @@ void send_fd(int, int);
 int  receive_fd(int);
 
 /* The list of domain sockets */
-#define MAXUNIX	21
 extern int nunix;
 extern char **path_unix;
 extern char *path_ctlsock;
