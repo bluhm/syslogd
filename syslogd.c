@@ -272,7 +272,7 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 char	*linebuf;
 int	 linesize;
 
-int		 fd_ctlconn, fd_udp, fd_udp6, fd_tls;
+int		 fd_ctlconn, fd_udp, fd_udp6;
 struct event	*ev_ctlaccept, *ev_ctlread, *ev_ctlwrite;
 
 struct peer {
@@ -356,7 +356,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 	int		 fd_ctlsock, fd_klog, fd_sendsys, *fd_bind, *fd_listen;
-	int		*fd_unix, nbind, nlisten;
+	int		 fd_tls, *fd_unix, nbind, nlisten;
 	char		**bind_host, **bind_port, **listen_host, **listen_port;
 	char		*tls_hostport, *tls_host, *tls_port;
 
