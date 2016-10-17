@@ -197,7 +197,7 @@ char	*TypeNames[] = {
 SIMPLEQ_HEAD(filed_list, filed) Files;
 struct	filed consfile;
 
-int	nunix = 0;		/* Number of Unix domain sockets requested */
+int	nunix;			/* Number of Unix domain sockets requested */
 char	**path_unix;		/* Paths to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Foreground;		/* run in foreground, instead of daemonizing */
@@ -363,7 +363,8 @@ main(int argc, char *argv[])
 
 	if ((path_unix = malloc(sizeof(*path_unix))) == NULL)
 		err(1, "malloc %s", _PATH_LOG);
-	path_unix[nunix++] = _PATH_LOG;
+	path_unix[0] = _PATH_LOG;
+	nunix = 1;
 
 	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:nP:p:S:s:T:U:uVZ"))
 	    != -1)
