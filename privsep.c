@@ -168,6 +168,8 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	struct addrinfo hints, *res0;
 	struct sigaction sa;
 
+	chdir("/");
+
 	if (pledge("stdio rpath wpath cpath dns getpw sendfd id proc exec",
 	    NULL) == -1)
 		err(1, "pledge priv");

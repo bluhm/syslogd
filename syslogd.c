@@ -685,8 +685,6 @@ main(int argc, char *argv[])
 
 	logdebug("off & running....\n");
 
-	chdir("/");
-
 	tzset();
 
 	if (!Debug && !Foreground) {
