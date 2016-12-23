@@ -489,7 +489,7 @@ main(int argc, char *argv[])
 	} else
 		LocalDomain = "";
 
-	linesize = getmsgbufsize();
+	linesize = getmsgbufsize() + 64;
 	if (linesize < MAXLINE)
 		linesize = MAXLINE;
 	linesize++;
