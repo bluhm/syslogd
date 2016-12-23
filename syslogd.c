@@ -489,6 +489,10 @@ main(int argc, char *argv[])
 	} else
 		LocalDomain = "";
 
+	/*
+	 * Reserve space for kernel message buffer plus buffer full message.
+	 * Avoid a partial read as this causes a split line in the log file.
+	 */
 	linesize = getmsgbufsize() + 64;
 	if (linesize < MAXLINE)
 		linesize = MAXLINE;
