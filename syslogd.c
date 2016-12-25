@@ -353,8 +353,8 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
-	int		*fd_unix;
-	char		*bind_host, *bind_port, *listen_host, *listen_port;
+	int		*fd_unix, nbind;
+	char		**bind_host, **bind_port, *listen_host, *listen_port;
 	char		*tls_hostport, *tls_host, *tls_port;
 
 	/* block signal until handler is set up */
@@ -368,7 +368,9 @@ main(int argc, char *argv[])
 	path_unix[0] = _PATH_LOG;
 	nunix = 1;
 
-	bind_host = listen_host = tls_hostport = tls_host = NULL;
+	bind_host = bind_port = NULL;
+	listen_host = tls_hostport = tls_host = NULL;
+	nbind = 0;
 
 	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:nP:p:S:s:T:U:uVZ"))
 	    != -1)
@@ -382,7 +384,7 @@ main(int argc, char *argv[])
 		case 'a':
 			if ((path_unix = reallocarray(path_unix, nunix + 1,
 			    sizeof(*path_unix))) == NULL)
-				err(1, "malloc %s", optarg);
+				err(1, "unix path %s", optarg);
 			path_unix[nunix++] = optarg;
 			break;
 		case 'C':		/* file containing CA certificates */
@@ -446,9 +448,16 @@ main(int argc, char *argv[])
 		case 'U':		/* allow udp only from address */
 			if ((p = strdup(optarg)) == NULL)
 				err(1, "strdup bind address");
-			if (loghost_parse(p, NULL, &bind_host, &bind_port)
-			    == -1)
+			if ((bind_host = reallocarray(bind_host, nbind + 1,
+			    sizeof(*bind_host))) == NULL)
+				err(1, "bind host %s", optarg);
+			if ((bind_port = reallocarray(bind_port, nbind + 1,
+			    sizeof(*bind_port))) == NULL)
+				err(1, "bind port %s", optarg);
+			if (loghost_parse(p, NULL, &bind_host[nbind],
+			    &bind_port[nbind]) == -1)
 				errx(1, "bad bind address: %s", optarg);
+			nbind++;
 			break;
 		case 'u':		/* allow udp input port */
 			SecureMode = 0;
@@ -510,7 +519,7 @@ main(int argc, char *argv[])
 			die(0);
 	}
 	fd_bind = -1;
-	if (bind_host && socket_bind("udp", bind_host, bind_port, 0,
+	if (nbind && socket_bind("udp", bind_host[0], bind_port[0], 0,
 	    &fd_bind, &fd_bind) == -1) {
 		logerrorx("socket bind udp");
 		if (!Debug)
