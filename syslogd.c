@@ -361,6 +361,9 @@ main(int argc, char *argv[])
 	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
 	int		*fd_unix;
 
+	if (argv[0][0] != '/' && strchr(argv[0], '/'))
+		errx(1, "Cannot execute with relative path: %s", argv[0]);
+
 	if ((path_unix = malloc(sizeof(*path_unix))) == NULL)
 		err(1, "malloc %s", _PATH_LOG);
 	path_unix[0] = _PATH_LOG;
