@@ -214,13 +214,6 @@ int	NoDNS = 0;		/* when true, refrain from doing DNS lookups */
 int	ZuluTime = 0;		/* display date and time in UTC ISO format */
 int	IncludeHostname = 0;	/* include RFC 3164 hostnames when forwarding */
 int	Family = PF_UNSPEC;	/* protocol family, may disable IPv4 or IPv6 */
-char	*bind_host = NULL;	/* bind UDP receive socket */
-char	*bind_port = NULL;
-char	*listen_host = NULL;	/* listen on TCP receive socket */
-char	*listen_port = NULL;
-char	*tls_hostport = NULL;	/* listen on TLS receive socket */
-char	*tls_host = NULL;
-char	*tls_port = NULL;
 char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *server_ctx;
@@ -361,6 +354,8 @@ main(int argc, char *argv[])
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
 	int		*fd_unix;
+	char		*bind_host, *bind_port, *listen_host, *listen_port;
+	char		*tls_hostport, *tls_host, *tls_port;
 
 	/* block signal until handler is set up */
 	sigemptyset(&sigmask);
@@ -372,6 +367,8 @@ main(int argc, char *argv[])
 		err(1, "malloc %s", _PATH_LOG);
 	path_unix[0] = _PATH_LOG;
 	nunix = 1;
+
+	bind_host = listen_host = tls_hostport = tls_host = NULL;
 
 	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:nP:p:S:s:T:U:uVZ"))
 	    != -1)
