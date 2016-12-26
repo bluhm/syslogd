@@ -130,6 +130,9 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	}
 	close(socks[1]);
 
+	if (chdir("/") != 0)
+		err(1, "chdir");
+
 	if (!Debug) {
 		close(lockfd);
 		dup2(nullfd, STDIN_FILENO);
