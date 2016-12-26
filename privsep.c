@@ -130,7 +130,9 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	}
 	close(socks[1]);
 
-	if ((execpath = realpath(argv[0], NULL)) == NULL)
+	if (strchr(argv[0], '/') == NULL)
+		execpath = argv[0];
+	else if ((execpath = realpath(argv[0], NULL)) == NULL)
 		err(1, "realpath %s", argv[0]);
 	if (chdir("/") != 0)
 		err(1, "chdir /");
