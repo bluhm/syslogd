@@ -114,9 +114,9 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	if (!child_pid) {
 		/* Child - drop privileges and return */
 		if (chroot(pw->pw_dir) != 0)
-			err(1, "unable to chroot");
+			err(1, "chroot %s", pw->pw_dir);
 		if (chdir("/") != 0)
-			err(1, "unable to chdir");
+			err(1, "chdir %s", pw->pw_dir);
 
 		if (setgroups(1, &pw->pw_gid) == -1)
 			err(1, "setgroups() failed");
@@ -133,7 +133,7 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	if ((execpath = realpath(argv[0], NULL)) == NULL)
 		err(1, "realpath %s", argv[0]);
 	if (chdir("/") != 0)
-		err(1, "chdir");
+		err(1, "chdir /");
 
 	if (!Debug) {
 		close(lockfd);
