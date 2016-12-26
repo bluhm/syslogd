@@ -167,6 +167,7 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	struct stat cf_info, cf_stat;
 	struct addrinfo hints, *res0;
 	struct sigaction sa;
+	sigset_t sigmask;
 
 	if (pledge("stdio rpath wpath cpath dns getpw sendfd id proc exec",
 	    NULL) == -1)
@@ -200,6 +201,10 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 
 	setproctitle("[priv]");
 	logdebug("[priv]: fork+exec done\n");
+
+	sigemptyset(&sigmask);
+	if (sigprocmask(SIG_SETMASK, &sigmask, NULL) == -1)
+		err(1, "sigprocmask priv");
 
 	if (stat(conf, &cf_info) < 0)
 		err(1, "stat config file failed");
