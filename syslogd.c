@@ -333,6 +333,7 @@ void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
 int	loghost_parse(char *, char **, char **, char **);
 int	getmsgbufsize(void);
+void	address_alloc(const char *, const char *, char ***, char ***, int *);
 int	socket_bind(const char *, const char *, const char *, int,
     int *, int *);
 int	unix_socket(char *, int, mode_t);
@@ -432,32 +433,12 @@ main(int argc, char *argv[])
 			path_ctlsock = optarg;
 			break;
 		case 'T':		/* allow tcp and listen on address */
-			if ((p = strdup(optarg)) == NULL)
-				err(1, "strdup listen address");
-			if ((listen_host = reallocarray(listen_host,
-			    nlisten + 1, sizeof(*listen_host))) == NULL)
-				err(1, "listen host %s", optarg);
-			if ((listen_port = reallocarray(listen_port,
-			    nlisten + 1, sizeof(*listen_port))) == NULL)
-				err(1, "listen port %s", optarg);
-			if (loghost_parse(p, NULL, &listen_host[nlisten],
-			    &listen_port[nlisten]) == -1)
-				errx(1, "bad listen address: %s", optarg);
-			nlisten++;
+			address_alloc("listen", optarg, &listen_host,
+			    &listen_port, &nlisten);
 			break;
 		case 'U':		/* allow udp only from address */
-			if ((p = strdup(optarg)) == NULL)
-				err(1, "strdup bind address");
-			if ((bind_host = reallocarray(bind_host, nbind + 1,
-			    sizeof(*bind_host))) == NULL)
-				err(1, "bind host %s", optarg);
-			if ((bind_port = reallocarray(bind_port, nbind + 1,
-			    sizeof(*bind_port))) == NULL)
-				err(1, "bind port %s", optarg);
-			if (loghost_parse(p, NULL, &bind_host[nbind],
-			    &bind_port[nbind]) == -1)
-				errx(1, "bad bind address: %s", optarg);
-			nbind++;
+			address_alloc("bind", optarg, &bind_host, &bind_port,
+			    &nbind);
 			break;
 		case 'u':		/* allow udp input port */
 			SecureMode = 0;
@@ -871,6 +852,24 @@ main(int argc, char *argv[])
 	event_dispatch();
 	/* NOTREACHED */
 	return (0);
+}
+
+void
+address_alloc(const char *name, const char *address, char ***host,
+    char ***port, int *num)
+{
+	char *p;
+
+	/* do not care about memory leak, argv has to be preserved */
+	if ((p = strdup(address)) == NULL)
+		err(1, "strdup %s address", name);
+	if ((*host = reallocarray(*host, *num + 1, sizeof(**host))) == NULL)
+		err(1, "%s host %s", name, address);
+	if ((*port = reallocarray(*port, *num + 1, sizeof(**port))) == NULL)
+		err(1, "%s port %s", name, address);
+	if (loghost_parse(p, NULL, *host + *num, *port + *num) == -1)
+		errx(1, "bad %s address: %s", name, address);
+	(*num)++;
 }
 
 int
