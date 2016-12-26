@@ -97,7 +97,7 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 {
 	int i, socks[2];
 	struct passwd *pw;
-	char childnum[11], **privargv;
+	char *execpath, childnum[11], **privargv;
 
 	/* Create sockets */
 	if (socketpair(AF_LOCAL, SOCK_STREAM, PF_UNSPEC, socks) == -1)
@@ -130,6 +130,8 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	}
 	close(socks[1]);
 
+	if ((execpath = realpath(argv[0], NULL)) == NULL)
+		err(1, "realpath %s", argv[0]);
 	if (chdir("/") != 0)
 		err(1, "chdir");
 
@@ -150,7 +152,8 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 	snprintf(childnum, sizeof(childnum), "%d", child_pid);
 	if ((privargv = reallocarray(NULL, argc + 3, sizeof(char *))) == NULL)
 		err(1, "alloc priv argv failed");
-	for (i = 0; i < argc; i++)
+	privargv[0] = execpath;
+	for (i = 1; i < argc; i++)
 		privargv[i] = argv[i];
 	privargv[i++] = "-P";
 	privargv[i++] = childnum;
