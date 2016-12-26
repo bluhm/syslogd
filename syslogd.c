@@ -351,9 +351,9 @@ main(int argc, char *argv[])
 	char		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
-	int		 fd_ctlsock, fd_klog, fd_sendsys, *fd_bind, fd_listen;
-	int		*fd_unix, nbind;
-	char		**bind_host, **bind_port, *listen_host, *listen_port;
+	int		 fd_ctlsock, fd_klog, fd_sendsys, *fd_bind, *fd_listen;
+	int		*fd_unix, nbind, nlisten;
+	char		**bind_host, **bind_port, **listen_host, **listen_port;
 	char		*tls_hostport, *tls_host, *tls_port;
 
 	if ((path_unix = malloc(sizeof(*path_unix))) == NULL)
@@ -361,9 +361,9 @@ main(int argc, char *argv[])
 	path_unix[0] = _PATH_LOG;
 	nunix = 1;
 
-	bind_host = bind_port = NULL;
-	listen_host = tls_hostport = tls_host = NULL;
-	nbind = 0;
+	bind_host = bind_port = listen_host = listen_port = NULL;
+	tls_hostport = tls_host = NULL;
+	nbind = nlisten = 0;
 
 	while ((ch = getopt(argc, argv, "46a:C:c:dFf:hK:k:m:nP:p:S:s:T:U:uVZ"))
 	    != -1)
@@ -434,9 +434,16 @@ main(int argc, char *argv[])
 		case 'T':		/* allow tcp and listen on address */
 			if ((p = strdup(optarg)) == NULL)
 				err(1, "strdup listen address");
-			if (loghost_parse(p, NULL, &listen_host, &listen_port)
-			    == -1)
+			if ((listen_host = reallocarray(listen_host,
+			    nlisten + 1, sizeof(*listen_host))) == NULL)
+				err(1, "listen host %s", optarg);
+			if ((listen_port = reallocarray(listen_port,
+			    nlisten + 1, sizeof(*listen_port))) == NULL)
+				err(1, "listen port %s", optarg);
+			if (loghost_parse(p, NULL, &listen_host[nlisten],
+			    &listen_port[nlisten]) == -1)
 				errx(1, "bad listen address: %s", optarg);
+			nlisten++;
 			break;
 		case 'U':		/* allow udp only from address */
 			if ((p = strdup(optarg)) == NULL)
@@ -514,7 +521,6 @@ main(int argc, char *argv[])
 	if ((fd_bind = reallocarray(NULL, nbind, sizeof(*fd_bind))) == NULL)
 		err(1, "bind fd");
 	for (i = 0; i < nbind; i++) {
-		fd_bind[i] = -1;
 		if (socket_bind("udp", bind_host[i], bind_port[i], 0,
 		    &fd_bind[i], &fd_bind[i]) == -1) {
 			logerrorx("socket bind udp");
@@ -522,12 +528,16 @@ main(int argc, char *argv[])
 				die(0);
 		}
 	}
-	fd_listen = -1;
-	if (listen_host && socket_bind("tcp", listen_host, listen_port, 0,
-	    &fd_listen, &fd_listen) == -1) {
-		logerrorx("socket listen tcp");
-		if (!Debug)
-			die(0);
+	if ((fd_listen = reallocarray(NULL, nlisten, sizeof(*fd_listen)))
+	    == NULL)
+		err(1, "listen fd");
+	for (i = 0; i < nlisten; i++) {
+		if (socket_bind("tcp", listen_host[i], listen_port[i], 0,
+		    &fd_listen[i], &fd_listen[i]) == -1) {
+			logerrorx("socket listen tcp");
+			if (!Debug)
+				die(0);
+		}
 	}
 	fd_tls = -1;
 	if (tls_host && socket_bind("tls", tls_host, tls_port, 0,
@@ -746,7 +756,8 @@ main(int argc, char *argv[])
 	    (ev_udp = malloc(sizeof(struct event))) == NULL ||
 	    (ev_udp6 = malloc(sizeof(struct event))) == NULL ||
 	    (ev_bind = reallocarray(NULL, nbind, sizeof(*ev_bind))) == NULL ||
-	    (ev_listen = malloc(sizeof(struct event))) == NULL ||
+	    (ev_listen = reallocarray(NULL, nlisten, sizeof(*ev_listen)))
+		== NULL ||
 	    (ev_tls = malloc(sizeof(struct event))) == NULL ||
 	    (ev_unix = reallocarray(NULL, nunix, sizeof(*ev_unix))) == NULL ||
 	    (ev_hup = malloc(sizeof(struct event))) == NULL ||
@@ -769,9 +780,10 @@ main(int argc, char *argv[])
 	event_set(ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, ev_udp6);
 	for (i = 0; i < nbind; i++)
 		event_set(&ev_bind[i], fd_bind[i], EV_READ|EV_PERSIST,
-		    udp_readcb, ev_bind);
-	event_set(ev_listen, fd_listen, EV_READ|EV_PERSIST, tcp_acceptcb,
-	    ev_listen);
+		    udp_readcb, &ev_bind[i]);
+	for (i = 0; i < nlisten; i++)
+		event_set(&ev_listen[i], fd_listen[i], EV_READ|EV_PERSIST,
+		    tcp_acceptcb, &ev_listen[i]);
 	event_set(ev_tls, fd_tls, EV_READ|EV_PERSIST, tcp_acceptcb, ev_tls);
 	for (i = 0; i < nunix; i++)
 		event_set(&ev_unix[i], fd_unix[i], EV_READ|EV_PERSIST,
@@ -826,8 +838,9 @@ main(int argc, char *argv[])
 	for (i = 0; i < nbind; i++)
 		if (fd_bind[i] != -1)
 			event_add(&ev_bind[i], NULL);
-	if (fd_listen != -1)
-		event_add(ev_listen, NULL);
+	for (i = 0; i < nlisten; i++)
+		if (fd_listen[i] != -1)
+			event_add(&ev_listen[i], NULL);
 	if (fd_tls != -1)
 		event_add(ev_tls, NULL);
 	for (i = 0; i < nunix; i++)
