@@ -736,11 +736,11 @@ main(int argc, char *argv[])
 	    (ev_sendsys = malloc(sizeof(struct event))) == NULL ||
 	    (ev_udp = malloc(sizeof(struct event))) == NULL ||
 	    (ev_udp6 = malloc(sizeof(struct event))) == NULL ||
-	    (ev_bind = reallocarray(NULL, nbind, sizeof(*ev_bind))) == NULL ||
-	    (ev_listen = reallocarray(NULL, nlisten, sizeof(*ev_listen)))
+	    (ev_bind = reallocarray(NULL,nbind,sizeof(struct event))) == NULL ||
+	    (ev_listen = reallocarray(NULL,nlisten,sizeof(struct event)))
 		== NULL ||
 	    (ev_tls = malloc(sizeof(struct event))) == NULL ||
-	    (ev_unix = reallocarray(NULL, nunix, sizeof(*ev_unix))) == NULL ||
+	    (ev_unix = reallocarray(NULL,nunix,sizeof(struct event))) == NULL ||
 	    (ev_hup = malloc(sizeof(struct event))) == NULL ||
 	    (ev_int = malloc(sizeof(struct event))) == NULL ||
 	    (ev_quit = malloc(sizeof(struct event))) == NULL ||
