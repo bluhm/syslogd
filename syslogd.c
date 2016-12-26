@@ -351,7 +351,7 @@ main(int argc, char *argv[])
 	char		*p;
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
-	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
+	int		 fd_ctlsock, fd_klog, fd_sendsys, *fd_bind, fd_listen;
 	int		*fd_unix, nbind;
 	char		**bind_host, **bind_port, *listen_host, *listen_port;
 	char		*tls_hostport, *tls_host, *tls_port;
@@ -511,12 +511,16 @@ main(int argc, char *argv[])
 		if (!Debug)
 			die(0);
 	}
-	fd_bind = -1;
-	if (nbind && socket_bind("udp", bind_host[0], bind_port[0], 0,
-	    &fd_bind, &fd_bind) == -1) {
-		logerrorx("socket bind udp");
-		if (!Debug)
-			die(0);
+	if ((fd_bind = reallocarray(NULL, nbind, sizeof(*fd_bind))) == NULL)
+		err(1, "bind fd");
+	for (i = 0; i < nbind; i++) {
+		fd_bind[i] = -1;
+		if (socket_bind("udp", bind_host[i], bind_port[i], 0,
+		    &fd_bind[i], &fd_bind[i]) == -1) {
+			logerrorx("socket bind udp");
+			if (!Debug)
+				die(0);
+		}
 	}
 	fd_listen = -1;
 	if (listen_host && socket_bind("tcp", listen_host, listen_port, 0,
@@ -741,10 +745,10 @@ main(int argc, char *argv[])
 	    (ev_sendsys = malloc(sizeof(struct event))) == NULL ||
 	    (ev_udp = malloc(sizeof(struct event))) == NULL ||
 	    (ev_udp6 = malloc(sizeof(struct event))) == NULL ||
-	    (ev_bind = malloc(sizeof(struct event))) == NULL ||
+	    (ev_bind = reallocarray(NULL, nbind, sizeof(*ev_bind))) == NULL ||
 	    (ev_listen = malloc(sizeof(struct event))) == NULL ||
 	    (ev_tls = malloc(sizeof(struct event))) == NULL ||
-	    (ev_unix = reallocarray(NULL,nunix,sizeof(struct event))) == NULL ||
+	    (ev_unix = reallocarray(NULL, nunix, sizeof(*ev_unix))) == NULL ||
 	    (ev_hup = malloc(sizeof(struct event))) == NULL ||
 	    (ev_int = malloc(sizeof(struct event))) == NULL ||
 	    (ev_quit = malloc(sizeof(struct event))) == NULL ||
@@ -763,7 +767,9 @@ main(int argc, char *argv[])
 	    ev_sendsys);
 	event_set(ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, ev_udp);
 	event_set(ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, ev_udp6);
-	event_set(ev_bind, fd_bind, EV_READ|EV_PERSIST, udp_readcb, ev_bind);
+	for (i = 0; i < nbind; i++)
+		event_set(&ev_bind[i], fd_bind[i], EV_READ|EV_PERSIST,
+		    udp_readcb, ev_bind);
 	event_set(ev_listen, fd_listen, EV_READ|EV_PERSIST, tcp_acceptcb,
 	    ev_listen);
 	event_set(ev_tls, fd_tls, EV_READ|EV_PERSIST, tcp_acceptcb, ev_tls);
@@ -817,8 +823,9 @@ main(int argc, char *argv[])
 		if (fd_udp6 != -1)
 			event_add(ev_udp6, NULL);
 	}
-	if (fd_bind != -1)
-		event_add(ev_bind, NULL);
+	for (i = 0; i < nbind; i++)
+		if (fd_bind[i] != -1)
+			event_add(&ev_bind[i], NULL);
 	if (fd_listen != -1)
 		event_add(ev_listen, NULL);
 	if (fd_tls != -1)
