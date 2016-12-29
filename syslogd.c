@@ -590,16 +590,14 @@ main(int argc, char *argv[])
 		if (NoVerify) {
 			tls_config_insecure_noverifycert(client_config);
 			tls_config_insecure_noverifyname(client_config);
-		} else {
-			if (tls_config_set_ca_file(client_config,
-			    CAfile) == -1) {
-				logerrortlsconf("Load client TLS CA failed",
-				    client_config);
-				/* avoid reading default certs in chroot */
-				tls_config_set_ca_mem(client_config, "", 0);
-			} else
-				logdebug("CAfile %s\n", CAfile);
 		}
+		if (tls_config_set_ca_file(client_config, CAfile) == -1) {
+			logerrortlsconf("Load client TLS CA failed",
+			    client_config);
+			/* avoid reading default certs in chroot */
+			tls_config_set_ca_mem(client_config, "", 0);
+		} else
+			logdebug("CAfile %s\n", CAfile);
 		if (ClientCertfile && ClientKeyfile) {
 			if (tls_config_set_cert_file(client_config,
 			    ClientCertfile) == -1)
