@@ -871,7 +871,7 @@ address_alloc(const char *name, const char *address, char ***host,
 
 	/* do not care about memory leak, argv has to be preserved */
 	if ((p = strdup(address)) == NULL)
-		err(1, "strdup %s address", name);
+		err(1, "%s address %s", name, address);
 	if ((*host = reallocarray(*host, *num + 1, sizeof(**host))) == NULL)
 		err(1, "%s host %s", name, address);
 	if ((*port = reallocarray(*port, *num + 1, sizeof(**port))) == NULL)
