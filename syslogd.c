@@ -362,7 +362,7 @@ main(int argc, char *argv[])
 	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
 	int		*fd_unix;
 
-	/* block signals during initialization */
+	/* block signals until signal handlers are set up */
 	sigemptyset(&sigmask);
 	sigaddset(&sigmask, SIGTERM);
 	sigaddset(&sigmask, SIGHUP);
