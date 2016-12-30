@@ -1,4 +1,4 @@
-/*	$OpenBSD: privsep.c,v 1.65 2016/12/27 19:16:24 bluhm Exp $	*/
+/*	$OpenBSD: privsep.c,v 1.66 2016/12/30 23:21:26 bluhm Exp $	*/
 
 /*
  * Copyright (c) 2003 Anil Madhavapeddy <anil@recoil.org>
