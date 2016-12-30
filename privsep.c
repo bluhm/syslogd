@@ -414,6 +414,10 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 		int status;
 
 		waitpid(child_pid, &status, 0);
+		sigemptyset(&sigmask);
+		sigaddset(&sigmask, SIGHUP);
+		if (sigprocmask(SIG_SETMASK, &sigmask, NULL) == -1)
+			err(1, "sigprocmask exec");
 		execvp(argv[0], argv);
 		err(1, "exec restart '%s' failed", argv[0]);
 	}
