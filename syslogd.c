@@ -364,11 +364,7 @@ main(int argc, char *argv[])
 
 	/* block signals until signal handlers are set up */
 	sigemptyset(&sigmask);
-	sigaddset(&sigmask, SIGTERM);
 	sigaddset(&sigmask, SIGHUP);
-	sigaddset(&sigmask, SIGINT);
-	sigaddset(&sigmask, SIGQUIT);
-	sigaddset(&sigmask, SIGCHLD);
 	if (sigprocmask(SIG_SETMASK, &sigmask, NULL) == -1)
 		err(1, "sigprocmask block");
 
