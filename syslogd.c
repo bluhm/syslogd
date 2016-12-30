@@ -362,7 +362,7 @@ main(int argc, char *argv[])
 	int		 fd_ctlsock, fd_klog, fd_sendsys, fd_bind, fd_listen;
 	int		*fd_unix;
 
-	/* block signals until signal handlers are set up */
+	/* block signal until handler is set up */
 	sigemptyset(&sigmask);
 	sigaddset(&sigmask, SIGHUP);
 	if (sigprocmask(SIG_SETMASK, &sigmask, NULL) == -1)
