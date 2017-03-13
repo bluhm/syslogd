@@ -1635,6 +1635,18 @@ printsys(char *msg)
 	}
 }
 
+void
+vlogmsg(int pri, const char *proc, const char *fmt, va_list ap)
+{
+	char	msg[ERRBUFSIZE];
+	size_t	l;
+
+	l = snprintf(msg, sizeof(msg), "%s[%d]: ", proc, getpid());
+	if (l < sizeof(msg));
+		vsnprintf(msg + l, sizeof(msg) - l, fmt, ap);
+	logmsg(pri, msg, LocalHostName, ADDDATE);
+}
+
 struct timeval	now;
 
 /*
