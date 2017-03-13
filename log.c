@@ -25,6 +25,7 @@
 #include <time.h>
 
 #include "log.h"
+#include "syslogd.h"
 
 static int		 debug;
 static int		 verbose;
@@ -90,7 +91,7 @@ vlog(int pri, const char *fmt, va_list ap)
 		}
 		fflush(stderr);
 	} else
-		vsyslog(pri, fmt, ap);
+		vlogmsg(pri, log_procname, fmt, ap);
 
 	errno = saved_errno;
 }
