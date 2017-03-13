@@ -28,19 +28,18 @@
 
 static int		 debug;
 static int		 verbose;
+static int		 facility;
 static const char	*log_procname;
 
 void
-log_init(int n_debug, int facility)
+log_init(int n_debug, int fac)
 {
 	extern char	*__progname;
 
 	debug = n_debug;
 	verbose = n_debug;
+	facility = fac;
 	log_procinit(__progname);
-
-	if (!debug)
-		openlog(__progname, LOG_PID | LOG_NDELAY, facility);
 
 	tzset();
 }
