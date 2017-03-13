@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
+#include <stdarg.h>
 
 /* Privilege separation */
 void  priv_init(int, int, int, char **);
@@ -49,6 +50,7 @@ extern char *path_ctlsock;
 #define MAXLINE		8192		/* maximum line length */
 #define ERRBUFSIZE	256
 void logdebug(const char *, ...) __attribute__((__format__ (printf, 1, 2)));
+void vlogmsg(int pri, const char *, const char *, va_list);
 extern int Debug;
 extern int Startup;
 
