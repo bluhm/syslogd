@@ -467,16 +467,12 @@ main(int argc, char *argv[])
 	if (Debug)
 		setvbuf(stdout, NULL, _IOLBF, 0);
 
-	if ((nullfd = open(_PATH_DEVNULL, O_RDWR)) == -1) {
-		logerror("Couldn't open /dev/null");
-		die(0);
-	}
+	if ((nullfd = open(_PATH_DEVNULL, O_RDWR)) == -1)
+		fatal("open %s", _PATH_DEVNULL);
 	for (fd = nullfd + 1; fd <= STDERR_FILENO; fd++) {
 		if (fcntl(fd, F_GETFL) == -1 && errno == EBADF)
-			if (dup2(nullfd, fd) == -1) {
-				logerror("dup2");
-				die(0);
-			}
+			if (dup2(nullfd, fd) == -1)
+				fatal("dup2 null");
 	}
 
 	if (PrivChild > 1)
@@ -497,100 +493,83 @@ main(int argc, char *argv[])
 	if (linesize < MAXLINE)
 		linesize = MAXLINE;
 	linesize++;
-	if ((linebuf = malloc(linesize)) == NULL) {
-		logerror("Couldn't allocate line buffer");
-		die(0);
-	}
+	if ((linebuf = malloc(linesize)) == NULL)
+		fatal("allocate line buffer");
 
 	if (socket_bind("udp", NULL, "syslog", SecureMode,
-	    &fd_udp, &fd_udp6) == -1) {
-		logerrorx("socket bind *");
-		if (!Debug)
-			die(0);
-	}
+	    &fd_udp, &fd_udp6) == -1)
+		log_warnx("socket bind * failed");
 	if ((fd_bind = reallocarray(NULL, nbind, sizeof(*fd_bind))) == NULL)
-		err(1, "bind fd");
+		fatal("allocate bind fd");
 	for (i = 0; i < nbind; i++) {
 		if (socket_bind("udp", bind_host[i], bind_port[i], 0,
-		    &fd_bind[i], &fd_bind[i]) == -1) {
-			logerrorx("socket bind udp");
-			if (!Debug)
-				die(0);
-		}
+		    &fd_bind[i], &fd_bind[i]) == -1)
+			log_warnx("socket bind udp failed");
 	}
 	if ((fd_listen = reallocarray(NULL, nlisten, sizeof(*fd_listen)))
 	    == NULL)
-		err(1, "listen fd");
+		fatal("allocate listen fd");
 	for (i = 0; i < nlisten; i++) {
 		if (socket_bind("tcp", listen_host[i], listen_port[i], 0,
-		    &fd_listen[i], &fd_listen[i]) == -1) {
-			logerrorx("socket listen tcp");
-			if (!Debug)
-				die(0);
-		}
+		    &fd_listen[i], &fd_listen[i]) == -1)
+			log_warnx("socket listen tcp failed");
 	}
 	fd_tls = -1;
 	if (tls_host && socket_bind("tls", tls_host, tls_port, 0,
-	    &fd_tls, &fd_tls) == -1) {
-		logerrorx("socket listen tls");
-		if (!Debug)
-			die(0);
-	}
+	    &fd_tls, &fd_tls) == -1)
+		log_warnx("socket listen tls failed");
 
 	if ((fd_unix = reallocarray(NULL, nunix, sizeof(*fd_unix))) == NULL)
-		err(1, "malloc unix");
+		fatal("allocate unix fd");
 	for (i = 0; i < nunix; i++) {
 		fd_unix[i] = unix_socket(path_unix[i], SOCK_DGRAM, 0666);
 		if (fd_unix[i] == -1) {
-			if (i == 0 && !Debug)
-				die(0);
+			if (i == 0)
+				log_warnx("log socket %s failed", path_unix[i]);
 			continue;
 		}
 		double_sockbuf(fd_unix[i], SO_RCVBUF);
 	}
 
 	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1) {
-		logerror("socketpair");
-		die(0);
+		log_warn("socketpair sendsyslog");
+		fd_sendsys = -1;
+	} else {
+		double_sockbuf(pair[0], SO_RCVBUF);
+		double_sockbuf(pair[1], SO_SNDBUF);
+		fd_sendsys = pair[0];
 	}
-	double_sockbuf(pair[0], SO_RCVBUF);
-	double_sockbuf(pair[1], SO_SNDBUF);
-	fd_sendsys = pair[0];
 
 	fd_ctlsock = fd_ctlconn = -1;
 	if (path_ctlsock != NULL) {
 		fd_ctlsock = unix_socket(path_ctlsock, SOCK_STREAM, 0600);
 		if (fd_ctlsock == -1) {
-			log_debug("can't open %s (%d)", path_ctlsock, errno);
-			if (!Debug)
-				die(0);
+			log_warnx("control socket %s failed", path_ctlsock);
 		} else {
-			if (listen(fd_ctlsock, 5) == -1) {
-				logerror("ctlsock listen");
-				die(0);
-			}
+			if (listen(fd_ctlsock, 5) == -1)
+				log_warn("listen control socket");
 		}
 	}
 
-	fd_klog = open(_PATH_KLOG, O_RDONLY, 0);
-	if (fd_klog == -1) {
-		log_debug("can't open %s (%d)", _PATH_KLOG, errno);
-	} else {
+	if ((fd_klog = open(_PATH_KLOG, O_RDONLY, 0)) == -1) {
+		log_warn("open %s", _PATH_KLOG);
+	} else if (fd_sendsys != -1) {
 		if (ioctl(fd_klog, LIOCSFD, &pair[1]) == -1)
-			log_debug("LIOCSFD errno %d", errno);
+			log_warn("ioctl klog LIOCSFD sendsyslog");
 	}
-	close(pair[1]);
+	if (fd_sendsys != -1)
+		close(pair[1]);
 
 	if (tls_init() == -1) {
-		logerrorx("tls_init");
+		log_warn("tls_init");
 	} else {
 		if ((client_config = tls_config_new()) == NULL)
-			logerror("tls_config_new client");
+			log_warn("tls_config_new client");
 		if (tls_hostport) {
 			if ((server_config = tls_config_new()) == NULL)
-				logerror("tls_config_new server");
+				log_warn("tls_config_new server");
 			if ((server_ctx = tls_server()) == NULL) {
-				logerror("tls_server");
+				log_warn("tls_server");
 				close(fd_tls);
 				fd_tls = -1;
 			}
@@ -603,8 +582,8 @@ main(int argc, char *argv[])
 		} else {
 			if (tls_config_set_ca_file(client_config,
 			    CAfile) == -1) {
-				logerrortlsconf("Load client TLS CA failed",
-				    client_config);
+				log_warnx("load client TLS CA: %s",
+				    tls_config_error(client_config));
 				/* avoid reading default certs in chroot */
 				tls_config_set_ca_mem(client_config, "", 0);
 			} else
@@ -613,27 +592,27 @@ main(int argc, char *argv[])
 		if (ClientCertfile && ClientKeyfile) {
 			if (tls_config_set_cert_file(client_config,
 			    ClientCertfile) == -1)
-				logerrortlsconf("Load client TLS cert failed",
-				    client_config);
+				log_warnx("load client TLS cert: %s",
+				    tls_config_error(client_config));
 			else
 				log_debug("ClientCertfile %s", ClientCertfile);
 
 			if (tls_config_set_key_file(client_config,
 			    ClientKeyfile) == -1)
-				logerrortlsconf("Load client TLS key failed",
-				    client_config);
+				log_warnx("load client TLS key: %s",
+				    tls_config_error(client_config));
 			else
 				log_debug("ClientKeyfile %s", ClientKeyfile);
 		} else if (ClientCertfile || ClientKeyfile) {
-			logerrorx("options -c and -k must be used together");
+			log_warnx("options -c and -k must be used together");
 		}
 		if (tls_config_set_protocols(client_config,
 		    TLS_PROTOCOLS_ALL) != 0)
-			logerrortlsconf("Set client TLS protocols failed",
-			    client_config);
+			log_warnx("set client TLS protocols: %s",
+			    tls_config_error(client_config));
 		if (tls_config_set_ciphers(client_config, "all") != 0)
-			logerrortlsconf("Set client TLS ciphers failed",
-			    client_config);
+			log_warnx("set client TLS ciphers: %s",
+			    tls_config_error(client_config));
 	}
 	if (server_config && server_ctx) {
 		const char *names[2];
@@ -646,8 +625,8 @@ main(int argc, char *argv[])
 			    == -1)
 				continue;
 			if (tls_config_set_key_file(server_config, p) == -1) {
-				logerrortlsconf("Load server TLS key failed",
-				    server_config);
+				log_warnx("load server TLS key: %s",
+				    tls_config_error(server_config));
 				free(p);
 				continue;
 			}
@@ -656,8 +635,8 @@ main(int argc, char *argv[])
 			if (asprintf(&p, "/etc/ssl/%s.crt", names[i]) == -1)
 				continue;
 			if (tls_config_set_cert_file(server_config, p) == -1) {
-				logerrortlsconf("Load server TLS cert failed",
-				    server_config);
+				log_warnx("load server TLS cert: %s",
+				    tls_config_error(server_config));
 				free(p);
 				continue;
 			}
@@ -669,8 +648,8 @@ main(int argc, char *argv[])
 		if (ServerCAfile) {
 			if (tls_config_set_ca_file(server_config,
 			    ServerCAfile) == -1) {
-				logerrortlsconf("Load server TLS CA failed",
-				    server_config);
+				log_warnx("load server TLS CA: %s",
+				    tls_config_error(server_config));
 				/* avoid reading default certs in chroot */
 				tls_config_set_ca_mem(server_config, "", 0);
 			} else
@@ -679,13 +658,14 @@ main(int argc, char *argv[])
 		}
 		if (tls_config_set_protocols(server_config,
 		    TLS_PROTOCOLS_ALL) != 0)
-			logerrortlsconf("Set server TLS protocols failed",
-			    server_config);
+			log_warnx("set server TLS protocols: %s",
+			    tls_config_error(server_config));
 		if (tls_config_set_ciphers(server_config, "compat") != 0)
-			logerrortlsconf("Set server TLS ciphers failed",
-			    server_config);
+			log_warnx("Set server TLS ciphers: %s",
+			    tls_config_error(server_config));
 		if (tls_configure(server_ctx, server_config) != 0) {
-			logerrorctx("tls_configure server", server_ctx);
+			log_warnx("tls_configure server: %s",
+			    tls_error(server_ctx));
 			tls_free(server_ctx);
 			server_ctx = NULL;
 			close(fd_tls);
@@ -694,8 +674,6 @@ main(int argc, char *argv[])
 	}
 
 	log_debug("off & running....");
-
-	tzset();
 
 	if (!Debug && !Foreground) {
 		char c;
