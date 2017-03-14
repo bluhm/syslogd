@@ -165,6 +165,25 @@ log_debug(const char *emsg, ...)
 	}
 }
 
+void
+log_debugadd(const char *emsg, ...)
+{
+	va_list	 ap;
+
+	if (debug && verbose) {
+		va_start(ap, emsg);
+		vfprintf(stderr, emsg, ap);
+		va_end(ap);
+	}
+}
+
+void
+log_debugend(void)
+{
+	if (debug && verbose)
+		fflush(stderr);
+}
+
 static void
 vfatalc(int error, const char *emsg, va_list ap)
 {
