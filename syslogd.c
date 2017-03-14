@@ -321,11 +321,6 @@ void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
 void	logevent(int, const char *);
-void	logerror(const char *);
-void	logerrorx(const char *);
-void	logerrorctx(const char *, struct tls *);
-void	logerrortlsconf(const char *, struct tls_config *);
-void	logerror_reason(const char *, const char *);
 void	logmsg(int, char *, char *, int);
 struct filed *find_dup(struct filed *);
 size_t	parsepriority(const char *, int *);
@@ -2165,48 +2160,6 @@ void
 logevent(int severity, const char *msg)
 {
 	log_debug("libevent: [%d] %s", severity, msg);
-}
-
-void
-logerror(const char *message)
-{
-	logerror_reason(message, errno ? strerror(errno) : NULL);
-}
-
-void
-logerrorx(const char *message)
-{
-	logerror_reason(message, NULL);
-}
-
-void
-logerrorctx(const char *message, struct tls *ctx)
-{
-	logerror_reason(message, ctx ? tls_error(ctx) : NULL);
-}
-
-void
-logerrortlsconf(const char *message, struct tls_config *config)
-{
-	logerror_reason(message, config ? tls_config_error(config) : NULL);
-}
-
-void
-logerror_reason(const char *message, const char *reason)
-{
-	char ebuf[ERRBUFSIZE];
-
-	if (reason)
-		(void)snprintf(ebuf, sizeof(ebuf), "syslogd: %s: %s",
-		    message, reason);
-	else
-		(void)snprintf(ebuf, sizeof(ebuf), "syslogd: %s", message);
-	errno = 0;
-	log_debug("%s", ebuf);
-	if (Startup)
-		fprintf(stderr, "%s\n", ebuf);
-	else
-		log_info(LOG_ERR, "%s", ebuf);
 }
 
 __dead void
