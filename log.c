@@ -135,12 +135,12 @@ log_warnx(const char *emsg, ...)
 }
 
 void
-log_info(const char *emsg, ...)
+log_info(int pri, const char *emsg, ...)
 {
 	va_list	 ap;
 
 	va_start(ap, emsg);
-	vlog(LOG_INFO, emsg, ap);
+	vlog(pri, emsg, ap);
 	va_end(ap);
 }
 
