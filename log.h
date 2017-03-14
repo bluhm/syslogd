@@ -24,6 +24,8 @@
 
 void	log_init(int, int);
 void	log_procinit(const char *);
+void	log_setdebug(int);
+int	log_getdebug(void);
 void	log_setverbose(int);
 int	log_getverbose(void);
 void	log_warn(const char *, ...)
