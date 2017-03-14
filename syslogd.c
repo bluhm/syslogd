@@ -1073,7 +1073,7 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	struct sockaddr_storage	 ss;
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
-	char			*peername, ebuf[ERRBUFSIZE];
+	char			*peername;
 	int			 fd;
 
 	sslen = sizeof(ss);
@@ -2172,7 +2172,6 @@ die(int signo)
 {
 	struct filed *f;
 	int was_initialized = Initialized;
-	char ebuf[ERRBUFSIZE];
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
