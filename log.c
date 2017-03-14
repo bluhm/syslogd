@@ -170,7 +170,7 @@ log_debugadd(const char *emsg, ...)
 {
 	va_list	 ap;
 
-	if (debug && verbose) {
+	if (verbose) {
 		va_start(ap, emsg);
 		vfprintf(stderr, emsg, ap);
 		va_end(ap);
@@ -180,7 +180,7 @@ log_debugadd(const char *emsg, ...)
 void
 log_debugend(void)
 {
-	if (debug && verbose) {
+	if (verbose) {
 		fprintf(stderr, "\n");
 		fflush(stderr);
 	}
