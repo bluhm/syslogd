@@ -42,6 +42,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "log.h"
 #include "syslogd.h"
 
 #ifndef nitems
@@ -139,7 +140,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 				    "%s: too many delayed writes", device);
 				goto error;
 			}
-			logdebug("ttymsg delayed write\n");
+			log_debug("ttymsg delayed write");
 			if (iov != localiov) {
 				bcopy(iov, localiov,
 				    iovcnt * sizeof(struct iovec));
