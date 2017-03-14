@@ -147,11 +147,20 @@ log_info(const char *emsg, ...)
 void
 log_debug(const char *emsg, ...)
 {
+	char	*nfmt;
 	va_list	 ap;
 
-	if (verbose) {
+	if (debug && verbose) {
 		va_start(ap, emsg);
-		vlog(LOG_DEBUG, emsg, ap);
+		/* best effort in out of mem situations */
+		if (asprintf(&nfmt, "%s\n", emsg) == -1) {
+			vfprintf(stderr, emsg, ap);
+			fprintf(stderr, "\n");
+		} else {
+			vfprintf(stderr, nfmt, ap);
+			free(nfmt);
+		}
+		fflush(stderr);
 		va_end(ap);
 	}
 }
