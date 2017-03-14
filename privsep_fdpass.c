@@ -32,13 +32,13 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <err.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "log.h"
 #include "syslogd.h"
 
 void
@@ -74,10 +74,10 @@ send_fd(int sock, int fd)
 	msg.msg_iovlen = 1;
 
 	if ((n = sendmsg(sock, &msg, 0)) == -1)
-		warn("%s: sendmsg(%d)", "send_fd", sock);
+		log_warn("%s: sendmsg(%d)", __func__, sock);
 	if (n != sizeof(int))
-		warnx("%s: sendmsg: expected sent 1 got %ld",
-		    "send_fd", (long)n);
+		log_warnx("%s: sendmsg: expected sent 1 got %ld",
+		    __func__, (long)n);
 }
 
 int
@@ -103,24 +103,24 @@ receive_fd(int sock)
 	msg.msg_controllen = sizeof(cmsgbuf.buf);
 
 	if ((n = recvmsg(sock, &msg, 0)) == -1) {
-		warn("%s: recvmsg", "receive_fd");
+		log_warn("%s: recvmsg", __func__);
 		/* receive message failed, but the result is in the socket */
 		if (errno == EMSGSIZE)
 			recv(sock, &result, sizeof(int), MSG_DONTWAIT);
 		return -1;
 	}
 	if (n != sizeof(int))
-		warnx("%s: recvmsg: expected received 1 got %ld",
-		    "receive_fd", (long)n);
+		log_warnx("%s: recvmsg: expected received 1 got %ld",
+		    __func__, (long)n);
 	if (result == 0) {
 		cmsg = CMSG_FIRSTHDR(&msg);
 		if (cmsg == NULL) {
-			warnx("%s: no message header", "receive_fd");
+			log_warnx("%s: no message header", __func__);
 			return (-1);
 		}
 		if (cmsg->cmsg_type != SCM_RIGHTS)
-			warnx("%s: expected type %d got %d", "receive_fd",
-			    SCM_RIGHTS, cmsg->cmsg_type);
+			log_warnx("%s: expected type %d got %d",
+			    __func__, SCM_RIGHTS, cmsg->cmsg_type);
 		fd = (*(int *)CMSG_DATA(cmsg));
 		return fd;
 	} else {
