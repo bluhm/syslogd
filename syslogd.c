@@ -99,6 +99,7 @@
 #define SYSLOG_NAMES
 #include <sys/syslog.h>
 
+#include "log.h"
 #include "syslogd.h"
 #include "evbuffer_tls.h"
 
@@ -462,6 +463,8 @@ main(int argc, char *argv[])
 	if (argc != optind)
 		usage();
 
+	log_init(Debug, LOG_SYSLOG);
+	log_procinit("syslogd");
 	if (Debug)
 		setvbuf(stdout, NULL, _IOLBF, 0);
 
