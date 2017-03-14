@@ -777,10 +777,8 @@ main(int argc, char *argv[])
 
 	/* Allocate ctl socket reply buffer if we have a ctl socket */
 	if (fd_ctlsock != -1 &&
-	    (ctl_reply = malloc(CTL_REPLY_MAXSIZE)) == NULL) {
-		logerror("Couldn't allocate ctlsock reply buffer");
-		die(0);
-	}
+	    (ctl_reply = malloc(CTL_REPLY_MAXSIZE)) == NULL)
+		fatal("allocate control socket reply buffer");
 	reply_text = ctl_reply + CTL_HDR_LEN;
 
 	if (!Debug) {
@@ -874,7 +872,6 @@ socket_bind(const char *proto, const char *host, const char *port,
 {
 	struct addrinfo	 hints, *res, *res0;
 	char		 hostname[NI_MAXHOST], servname[NI_MAXSERV];
-	char		 ebuf[ERRBUFSIZE];
 	int		*fdp, error, reuseaddr;
 
 	*fd = *fd6 = -1;
@@ -894,13 +891,9 @@ socket_bind(const char *proto, const char *host, const char *port,
 	}
 	hints.ai_flags = AI_PASSIVE;
 
-	if ((error = getaddrinfo(host, port, &hints, &res0))) {
-		snprintf(ebuf, sizeof(ebuf), "getaddrinfo "
-		    "proto %s, host %s, port %s: %s",
+	if ((error = getaddrinfo(host, port, &hints, &res0)))
+		fatal("getaddrinfo proto %s, host %s, port %s: %s",
 		    proto, host ? host : "*", port, gai_strerror(error));
-		logerrorx(ebuf);
-		return (-1);
-	}
 
 	for (res = res0; res; res = res->ai_next) {
 		switch (res->ai_family) {
@@ -928,10 +921,9 @@ socket_bind(const char *proto, const char *host, const char *port,
 			hostname[0] = servname[0] = '\0';
 		}
 		if (shutread && shutdown(*fdp, SHUT_RD) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "shutdown SHUT_RD "
+			log_warn("shutdown SHUT_RD "
 			    "protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
-			logerror(ebuf);
 			close(*fdp);
 			*fdp = -1;
 			continue;
@@ -943,29 +935,24 @@ socket_bind(const char *proto, const char *host, const char *port,
 		reuseaddr = 1;
 		if (setsockopt(*fdp, SOL_SOCKET, SO_REUSEADDR, &reuseaddr,
 		    sizeof(reuseaddr)) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "setsockopt SO_REUSEADDR "
+			log_warn("setsockopt SO_REUSEADDR "
 			    "protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
-			logerror(ebuf);
 			close(*fdp);
 			*fdp = -1;
 			continue;
 		}
 		if (bind(*fdp, res->ai_addr, res->ai_addrlen) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "bind "
-			    "protocol %d, address %s, portnum %s",
+			log_warn("bind protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
-			logerror(ebuf);
 			close(*fdp);
 			*fdp = -1;
 			continue;
 		}
 		if (!shutread && res->ai_protocol == IPPROTO_TCP &&
 		    listen(*fdp, 10) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "listen "
-			    "protocol %d, address %s, portnum %s",
+			log_warn("listen protocol %d, address %s, portnum %s",
 			    res->ai_protocol, hostname, servname);
-			logerror(ebuf);
 			close(*fdp);
 			*fdp = -1;
 			continue;
@@ -990,7 +977,7 @@ klog_readcb(int fd, short event, void *arg)
 		linebuf[n] = '\0';
 		printsys(linebuf);
 	} else if (n < 0 && errno != EINTR) {
-		logerror("klog");
+		log_warn("read klog");
 		event_del(ev);
 	}
 }
@@ -1012,7 +999,7 @@ udp_readcb(int fd, short event, void *arg)
 		log_debug("cvthname res: %s", resolve);
 		printline(resolve, linebuf);
 	} else if (n < 0 && errno != EINTR && errno != EWOULDBLOCK)
-		logerror("recvfrom udp");
+		log_warn("recvfrom udp");
 }
 
 void
@@ -1028,7 +1015,7 @@ unix_readcb(int fd, short event, void *arg)
 		linebuf[n] = '\0';
 		printline(LocalHostName, linebuf);
 	} else if (n < 0 && errno != EINTR && errno != EWOULDBLOCK)
-		logerror("recvfrom unix");
+		log_warn("recvfrom unix");
 }
 
 int
@@ -1089,7 +1076,7 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	struct sockaddr_storage	 ss;
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
-	char			*peername, ebuf[ERRBUFSIZE];
+	char			*peername;
 	int			 fd;
 
 	sslen = sizeof(ss);
@@ -1098,7 +1085,7 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 		if (errno != ENFILE && errno != EMFILE &&
 		    errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
-			logerror("accept tcp socket");
+			log_warn("accept tcp socket");
 		return;
 	}
 	log_debug("Accepting tcp connection");
@@ -1113,16 +1100,14 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	}
 	log_debug("Peer addresss and port %s", peername);
 	if ((p = malloc(sizeof(*p))) == NULL) {
-		snprintf(ebuf, sizeof(ebuf), "malloc \"%s\"", peername);
-		logerror(ebuf);
+		log_warn("allocate \"%s\"", peername);
 		close(fd);
 		return;
 	}
 	p->p_fd = fd;
 	if ((p->p_bufev = bufferevent_new(fd, tcp_readcb, NULL, tcp_closecb,
 	    p)) == NULL) {
-		snprintf(ebuf, sizeof(ebuf), "bufferevent \"%s\"", peername);
-		logerror(ebuf);
+		log_warn("bufferevent \"%s\"", peername);
 		free(p);
 		close(fd);
 		return;
@@ -1130,9 +1115,8 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	p->p_ctx = NULL;
 	if (usetls) {
 		if (tls_accept_socket(server_ctx, &p->p_ctx, fd) < 0) {
-			snprintf(ebuf, sizeof(ebuf), "tls_accept_socket \"%s\"",
-			    peername);
-			logerrorctx(ebuf, server_ctx);
+			log_warnx("tls_accept_socket \"%s\": %s",
+			    peername, tls_error(server_ctx));
 			bufferevent_free(p->p_bufev);
 			free(p);
 			close(fd);
@@ -1303,21 +1287,16 @@ int
 tcp_socket(struct filed *f)
 {
 	int	 s;
-	char	 ebuf[ERRBUFSIZE];
 
 	if ((s = socket(f->f_un.f_forw.f_addr.ss_family,
 	    SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP)) == -1) {
-		snprintf(ebuf, sizeof(ebuf), "socket \"%s\"",
-		    f->f_un.f_forw.f_loghost);
-		logerror(ebuf);
+		log_warn("socket \"%s\"", f->f_un.f_forw.f_loghost);
 		return (-1);
 	}
 	set_sockbuf(s);
 	if (connect(s, (struct sockaddr *)&f->f_un.f_forw.f_addr,
 	    f->f_un.f_forw.f_addr.ss_len) == -1 && errno != EINPROGRESS) {
-		snprintf(ebuf, sizeof(ebuf), "connect \"%s\"",
-		    f->f_un.f_forw.f_loghost);
-		logerror(ebuf);
+		log_warn("connect \"%s\"", f->f_un.f_forw.f_loghost);
 		close(s);
 		return (-1);
 	}
@@ -1419,7 +1398,6 @@ tcp_connectcb(int fd, short event, void *arg)
 {
 	struct filed		*f = arg;
 	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
-	char			 ebuf[ERRBUFSIZE];
 	int			 s;
 
 	if ((s = tcp_socket(f)) == -1) {
@@ -1439,23 +1417,21 @@ tcp_connectcb(int fd, short event, void *arg)
 
 	if (f->f_type == F_FORWTLS) {
 		if ((f->f_un.f_forw.f_ctx = tls_client()) == NULL) {
-			snprintf(ebuf, sizeof(ebuf), "tls_client \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			logerror(ebuf);
+			log_warn("tls_client \"%s\"", f->f_un.f_forw.f_loghost);
 			goto error;
 		}
 		if (client_config &&
 		    tls_configure(f->f_un.f_forw.f_ctx, client_config) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "tls_configure \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			logerrorctx(ebuf, f->f_un.f_forw.f_ctx);
+			log_warnx("tls_configure \"%s\": %s",
+			    f->f_un.f_forw.f_loghost,
+			    tls_error(f->f_un.f_forw.f_ctx));
 			goto error;
 		}
 		if (tls_connect_socket(f->f_un.f_forw.f_ctx, s,
 		    f->f_un.f_forw.f_host) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "tls_connect_socket "
-			    "\"%s\"", f->f_un.f_forw.f_loghost);
-			logerrorctx(ebuf, f->f_un.f_forw.f_ctx);
+			log_warnx("tls_connect_socket \"%s\": %s",
+			    f->f_un.f_forw.f_loghost,
+			    tls_error(f->f_un.f_forw.f_ctx));
 			goto error;
 		}
 		log_debug("tcp connect callback: tls context success");
@@ -1940,7 +1916,8 @@ fprintlog(struct filed *f, int flags, char *msg)
 				break;
 			default:
 				f->f_type = F_UNUSED;
-				logerror("sendto");
+				log_warn("sendto \"%s\"",
+				    f->f_un.f_forw.f_loghost);
 				break;
 			}
 		}
@@ -2014,7 +1991,8 @@ fprintlog(struct filed *f, int flags, char *msg)
 			if (e == EAGAIN && f->f_type == F_PIPE) {
 				if (now.tv_sec - f->f_lasterrtime > 120) {
 					f->f_lasterrtime = now.tv_sec;
-					logerror(f->f_un.f_fname);
+					log_warn("writev \"%s\"",
+					    f->f_un.f_fname);
 				}
 				break;
 			}
@@ -2037,7 +2015,8 @@ fprintlog(struct filed *f, int flags, char *msg)
 				retryonce = 1;
 				if (f->f_file < 0) {
 					f->f_type = F_UNUSED;
-					logerror(f->f_un.f_fname);
+					log_warn("priv_open_tty \"%s\"",
+					    f->f_un.f_fname);
 				} else
 					goto again;
 			} else if ((e == EPIPE || e == EBADF) &&
@@ -2046,14 +2025,15 @@ fprintlog(struct filed *f, int flags, char *msg)
 				retryonce = 1;
 				if (f->f_file < 0) {
 					f->f_type = F_UNUSED;
-					logerror(f->f_un.f_fname);
+					log_warn("priv_open_log \"%s\"",
+					    f->f_un.f_fname);
 				} else
 					goto again;
 			} else {
 				f->f_type = F_UNUSED;
 				f->f_file = -1;
 				errno = e;
-				logerror(f->f_un.f_fname);
+				log_warn("writev \"%s\"", f->f_un.f_fname);
 			}
 		} else if (flags & SYNC_FILE)
 			(void)fsync(f->f_file);
@@ -2099,7 +2079,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 	if (reenter++)
 		return;
 	if ((uf = priv_open_utmp()) == NULL) {
-		logerror(_PATH_UTMP);
+		log_warn("priv_open_utmp");
 		reenter = 0;
 		return;
 	}
@@ -2111,7 +2091,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 		utline[sizeof(utline) - 1] = '\0';
 		if (f->f_type == F_WALL) {
 			if ((p = ttymsg(iov, 6, utline)) != NULL)
-				logerrorx(p);
+				log_warnx("%s", p);
 			continue;
 		}
 		/* should we send the message to this user? */
@@ -2121,7 +2101,7 @@ wallmsg(struct filed *f, struct iovec *iov)
 			if (!strncmp(f->f_un.f_uname[i], ut.ut_name,
 			    UT_NAMESIZE)) {
 				if ((p = ttymsg(iov, 6, utline)) != NULL)
-					logerrorx(p);
+					log_warnx("%s", p);
 				break;
 			}
 		}
@@ -2237,7 +2217,6 @@ die(int signo)
 {
 	struct filed *f;
 	int was_initialized = Initialized;
-	char ebuf[ERRBUFSIZE];
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
@@ -2258,13 +2237,9 @@ die(int signo)
 		tcpbuf_dropped = 0;
 	}
 
-	if (signo) {
-		log_debug("syslogd: exiting on signal %d", signo);
-		(void)snprintf(ebuf, sizeof(ebuf), "exiting on signal %d",
-		    signo);
-		logerrorx(ebuf);
-	}
-	log_debug("[unpriv] syslogd child about to exit");
+	if (signo)
+		log_warnx("exiting on signal %d", signo);
+	log_info(LOG_INFO, "exit");
 	exit(0);
 }
 
@@ -2393,10 +2368,8 @@ init(void)
 			SIMPLEQ_INSERT_TAIL(&Files, f, f_next);
 	}
 	free(cline);
-	if (!feof(cf)) {
-		logerror("Unable to read config file");
-		die(0);
-	}
+	if (!feof(cf))
+		fatal("read config file");
 
 	/* Match and initialize the memory buffers */
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
@@ -2417,7 +2390,7 @@ init(void)
 			f->f_un.f_mb.f_rb = ringbuf_init(f->f_un.f_mb.f_len);
 			if (f->f_un.f_mb.f_rb == NULL) {
 				f->f_type = F_UNUSED;
-				logerror("Failed to allocate membuf");
+				log_warn("allocate membuf");
 			}
 		} else {
 			log_debug("Membuf match f:%p, m:%p", f, m);
@@ -2431,7 +2404,7 @@ init(void)
 		m = SIMPLEQ_FIRST(&mb);
 		SIMPLEQ_REMOVE_HEAD(&mb, f_next);
 		if (m->f_un.f_mb.f_rb != NULL) {
-			logerrorx("Mismatched membuf");
+			log_warnx("mismatched membuf");
 			ringbuf_free(m->f_un.f_mb.f_rb);
 		}
 		log_debug("Freeing membuf %p", m);
@@ -2536,17 +2509,15 @@ cfline(char *line, char *progblock, char *hostblock)
 	int i, pri;
 	size_t rb_len;
 	char *bp, *p, *q, *proto, *host, *port, *ipproto;
-	char buf[MAXLINE], ebuf[ERRBUFSIZE];
+	char buf[MAXLINE];
 	struct filed *xf, *f, *d;
 	struct timeval to;
 
 	log_debug("cfline(\"%s\", f, \"%s\", \"%s\")",
 	    line, progblock, hostblock);
 
-	if ((f = calloc(1, sizeof(*f))) == NULL) {
-		logerror("Couldn't allocate struct filed");
-		die(0);
-	}
+	if ((f = calloc(1, sizeof(*f))) == NULL)
+		fatal("allocate struct filed");
 	for (i = 0; i <= LOG_NFACILITIES; i++)
 		f->f_pmask[i] = INTERNAL_NOPRI;
 
@@ -2592,9 +2563,7 @@ cfline(char *line, char *progblock, char *hostblock)
 
 			pri = decode(buf, prioritynames);
 			if (pri < 0) {
-				(void)snprintf(ebuf, sizeof ebuf,
-				    "unknown priority name \"%s\"", buf);
-				logerrorx(ebuf);
+				log_warnx("unknown priority name \"%s\"", buf);
 				free(f);
 				return (NULL);
 			}
@@ -2611,10 +2580,8 @@ cfline(char *line, char *progblock, char *hostblock)
 			else {
 				i = decode(buf, facilitynames);
 				if (i < 0) {
-					(void)snprintf(ebuf, sizeof(ebuf),
-					    "unknown facility name \"%s\"",
-					    buf);
-					logerrorx(ebuf);
+					log_warnx("unknown facility name "
+					    "\"%s\"", buf);
 					free(f);
 					return (NULL);
 				}
@@ -2636,15 +2603,12 @@ cfline(char *line, char *progblock, char *hostblock)
 		if ((strlcpy(f->f_un.f_forw.f_loghost, p,
 		    sizeof(f->f_un.f_forw.f_loghost)) >=
 		    sizeof(f->f_un.f_forw.f_loghost))) {
-			snprintf(ebuf, sizeof(ebuf), "loghost too long \"%s\"",
-			    p);
-			logerrorx(ebuf);
+			log_warnx("loghost too long \"%s\"", p);
 			break;
 		}
 		if (loghost_parse(++p, &proto, &host, &port) == -1) {
-			snprintf(ebuf, sizeof(ebuf), "bad loghost \"%s\"",
+			log_warnx("bad loghost \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerrorx(ebuf);
 			break;
 		}
 		if (proto == NULL)
@@ -2658,16 +2622,14 @@ cfline(char *line, char *progblock, char *hostblock)
 			ipproto = proto;
 		} else if (strcmp(proto, "udp4") == 0) {
 			if (fd_udp == -1) {
-				snprintf(ebuf, sizeof(ebuf), "no udp4 \"%s\"",
+				log_warnx("no udp4 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
-				logerrorx(ebuf);
 				break;
 			}
 		} else if (strcmp(proto, "udp6") == 0) {
 			if (fd_udp6 == -1) {
-				snprintf(ebuf, sizeof(ebuf), "no udp6 \"%s\"",
+				log_warnx("no udp6 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
-				logerrorx(ebuf);
 				break;
 			}
 		} else if (strcmp(proto, "tcp") == 0 ||
@@ -2680,32 +2642,28 @@ cfline(char *line, char *progblock, char *hostblock)
 		} else if (strcmp(proto, "tls6") == 0) {
 			ipproto = "tcp6";
 		} else {
-			snprintf(ebuf, sizeof(ebuf), "bad protocol \"%s\"",
+			log_warnx("bad protocol \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerrorx(ebuf);
 			break;
 		}
 		if (strlen(host) >= NI_MAXHOST) {
-			snprintf(ebuf, sizeof(ebuf), "host too long \"%s\"",
+			log_warnx("host too long \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerrorx(ebuf);
 			break;
 		}
 		if (port == NULL)
 			port = strncmp(proto, "tls", 3) == 0 ?
 			    "syslog-tls" : "syslog";
 		if (strlen(port) >= NI_MAXSERV) {
-			snprintf(ebuf, sizeof(ebuf), "port too long \"%s\"",
+			log_warnx("port too long \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerrorx(ebuf);
 			break;
 		}
 		if (priv_getaddrinfo(ipproto, host, port,
 		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
-			snprintf(ebuf, sizeof(ebuf), "bad hostname \"%s\"",
+			log_warnx("bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			logerrorx(ebuf);
 			break;
 		}
 		f->f_file = -1;
@@ -2722,10 +2680,8 @@ cfline(char *line, char *progblock, char *hostblock)
 		} else if (strncmp(ipproto, "tcp", 3) == 0) {
 			if ((f->f_un.f_forw.f_bufev = bufferevent_new(-1,
 			    tcp_dropcb, tcp_writecb, tcp_errorcb, f)) == NULL) {
-				snprintf(ebuf, sizeof(ebuf),
-				    "bufferevent \"%s\"",
+				log_warn("bufferevent \"%s\"",
 				    f->f_un.f_forw.f_loghost);
-				logerror(ebuf);
 				break;
 			}
 			if (strncmp(proto, "tls", 3) == 0) {
@@ -2760,13 +2716,17 @@ cfline(char *line, char *progblock, char *hostblock)
 			free(f);
 			return (NULL);
 		}
-		if (strcmp(p, ctty) == 0)
+		if (strcmp(p, ctty) == 0) {
 			f->f_file = priv_open_tty(p);
-		else
+			if (f->f_file < 0)
+				log_warn("priv_open_tty \"%s\"", p);
+		} else {
 			f->f_file = priv_open_log(p);
+			if (f->f_file < 0)
+				log_warn("priv_open_log \"%s\"", p);
+		}
 		if (f->f_file < 0) {
 			f->f_type = F_UNUSED;
-			logerror(p);
 			break;
 		}
 		if (isatty(f->f_file)) {
@@ -2802,7 +2762,7 @@ cfline(char *line, char *progblock, char *hostblock)
 		if (*p == '\0' || (errno == ERANGE && rb_len == ULONG_MAX) ||
 		    *q != ':' || rb_len == 0) {
 			f->f_type = F_UNUSED;
-			logerror(p);
+			log_warnx("strtoul \"%s\"", p);
 			break;
 		}
 		q++;
@@ -2821,7 +2781,7 @@ cfline(char *line, char *progblock, char *hostblock)
 		/* Error on missing or non-unique name, or bad buffer length */
 		if (i == 0 || rb_len > MAX_MEMBUF || xf != NULL) {
 			f->f_type = F_UNUSED;
-			logerrorx(p);
+			log_warnx("find_dup \"%s\"", p);
 			break;
 		}
 
@@ -2954,7 +2914,6 @@ int
 unix_socket(char *path, int type, mode_t mode)
 {
 	struct sockaddr_un s_un;
-	char ebuf[512];
 	int fd, optval;
 	mode_t old_umask;
 
@@ -2962,13 +2921,12 @@ unix_socket(char *path, int type, mode_t mode)
 	s_un.sun_family = AF_UNIX;
 	if (strlcpy(s_un.sun_path, path, sizeof(s_un.sun_path)) >=
 	    sizeof(s_un.sun_path)) {
-		snprintf(ebuf, sizeof(ebuf), "socket path too long: %s", path);
-		logerrorx(ebuf);
+		log_warnx("socket path too long \"%s\"", path);
 		return (-1);
 	}
 
 	if ((fd = socket(AF_UNIX, type, 0)) == -1) {
-		logerror("socket");
+		log_warn("socket unix \"%s\"", path);
 		return (-1);
 	}
 
@@ -2977,7 +2935,7 @@ unix_socket(char *path, int type, mode_t mode)
 		    errno == EPROTOTYPE) {
 			close(fd);
 			errno = EISCONN;
-			logerror("connect");
+			log_warn("connect unix \"%s\"", path);
 			return (-1);
 		}
 	}
@@ -2986,8 +2944,7 @@ unix_socket(char *path, int type, mode_t mode)
 
 	unlink(path);
 	if (bind(fd, (struct sockaddr *)&s_un, sizeof(s_un)) == -1) {
-		snprintf(ebuf, sizeof(ebuf), "cannot bind %s", path);
-		logerror(ebuf);
+		log_warn("bind unix \"%s\"", path);
 		umask(old_umask);
 		close(fd);
 		return (-1);
@@ -2996,8 +2953,7 @@ unix_socket(char *path, int type, mode_t mode)
 	umask(old_umask);
 
 	if (chmod(path, mode) == -1) {
-		snprintf(ebuf, sizeof(ebuf), "cannot chmod %s", path);
-		logerror(ebuf);
+		log_warn("chmod unix \"%s\"", path);
 		close(fd);
 		unlink(path);
 		return (-1);
@@ -3006,7 +2962,7 @@ unix_socket(char *path, int type, mode_t mode)
 	optval = MAXLINE + PATH_MAX;
 	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &optval, sizeof(optval))
 	    == -1)
-		logerror("setsockopt unix");
+		log_warn("setsockopt unix \"%s\"", path);
 
 	return (fd);
 }
@@ -3019,7 +2975,7 @@ double_sockbuf(int fd, int optname)
 
 	len = sizeof(oldsize);
 	if (getsockopt(fd, SOL_SOCKET, optname, &oldsize, &len) == -1)
-		logerror("getsockopt bufsize");
+		log_warn("getsockopt bufsize");
 	len = sizeof(newsize);
 	newsize =  MAXLINE + 128;  /* data + control */
 	/* allow 8 full length messages */
@@ -3027,7 +2983,7 @@ double_sockbuf(int fd, int optname)
 		if (newsize <= oldsize)
 			continue;
 		if (setsockopt(fd, SOL_SOCKET, optname, &newsize, len) == -1)
-			logerror("setsockopt bufsize");
+			log_warn("setsockopt bufsize %d", newsize);
 	}
 }
 
@@ -3037,9 +2993,9 @@ set_sockbuf(int fd)
 	int size = 65536;
 
 	if (setsockopt(fd, SOL_SOCKET, SO_SNDBUF, &size, sizeof(size)) == -1)
-		logerror("setsockopt sndbufsize");
+		log_warn("setsockopt sndbufsize %d", size);
 	if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, sizeof(size)) == -1)
-		logerror("setsockopt rcvbufsize");
+		log_warn("setsockopt rcvbufsize %d", size);
 }
 
 void
@@ -3048,7 +3004,7 @@ ctlconn_cleanup(void)
 	struct filed *f;
 
 	if (close(fd_ctlconn) == -1)
-		logerror("close ctlconn");
+		log_warn("close control socket");
 	fd_ctlconn = -1;
 	event_del(ev_ctlread);
 	event_del(ev_ctlwrite);
@@ -3072,7 +3028,7 @@ ctlsock_acceptcb(int fd, short event, void *arg)
 		if (errno != ENFILE && errno != EMFILE &&
 		    errno != EINTR && errno != EWOULDBLOCK &&
 		    errno != ECONNABORTED)
-			logerror("accept ctlsock");
+			log_warn("accept control socket");
 		return;
 	}
 	log_debug("Accepting control connection");
@@ -3131,7 +3087,7 @@ ctlconn_readcb(int fd, short event, void *arg)
 			goto retry;
 		if (errno == EWOULDBLOCK)
 			return;
-		logerror("ctlconn read");
+		log_warn("read control socket");
 		/* FALLTHROUGH */
 	case 0:
 		ctlconn_cleanup();
@@ -3143,14 +3099,14 @@ ctlconn_readcb(int fd, short event, void *arg)
 		return;
 
 	if (ntohl(ctl_cmd.version) != CTL_VERSION) {
-		logerrorx("Unknown client protocol version");
+		log_warnx("unknown client protocol version");
 		ctlconn_cleanup();
 		return;
 	}
 
 	/* Ensure that logname is \0 terminated */
 	if (memchr(ctl_cmd.logname, '\0', sizeof(ctl_cmd.logname)) == NULL) {
-		logerrorx("Corrupt ctlsock command");
+		log_warnx("corrupt control socket command");
 		ctlconn_cleanup();
 		return;
 	}
@@ -3218,7 +3174,7 @@ ctlconn_readcb(int fd, short event, void *arg)
 		strlcat(reply_text, "\n", MAX_MEMBUF);
 		break;
 	default:
-		logerrorx("Unsupported ctlsock command");
+		log_warnx("unsupported control socket command");
 		ctlconn_cleanup();
 		return;
 	}
@@ -3248,7 +3204,7 @@ ctlconn_writecb(int fd, short event, void *arg)
 	if (!(ctl_state == CTL_WRITING_REPLY ||
 	    ctl_state == CTL_WRITING_CONT_REPLY)) {
 		/* Shouldn't be here! */
-		logerrorx("ctlconn_write with bad ctl_state");
+		log_warnx("control socket write with bad state");
 		ctlconn_cleanup();
 		return;
 	}
@@ -3263,7 +3219,7 @@ ctlconn_writecb(int fd, short event, void *arg)
 		if (errno == EWOULDBLOCK)
 			return;
 		if (errno != EPIPE)
-			logerror("ctlconn write");
+			log_warn("write control socket");
 		/* FALLTHROUGH */
 	case 0:
 		ctlconn_cleanup();
