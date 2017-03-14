@@ -791,7 +791,7 @@ main(int argc, char *argv[])
 
 	init();
 
-	log_setdebug(Debug);
+	log_setdebug(0);
 	Startup = 0;
 
 	/* Allocate ctl socket reply buffer if we have a ctl socket */

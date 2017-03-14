@@ -162,7 +162,7 @@ log_debug(const char *emsg, ...)
 	char	*nfmt;
 	va_list	 ap;
 
-	if (debug && verbose) {
+	if (verbose) {
 		va_start(ap, emsg);
 		/* best effort in out of mem situations */
 		if (asprintf(&nfmt, "%s\n", emsg) == -1) {
