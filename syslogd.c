@@ -315,7 +315,6 @@ void	 ctlconn_cleanup(void);
 struct filed *cfline(char *, char *, char *);
 void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
-void	die(int);
 void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
@@ -2236,7 +2235,7 @@ logerror_reason(const char *message, const char *reason)
 		log_info(LOG_ERR, "%s", ebuf);
 }
 
-void
+__dead void
 die(int signo)
 {
 	struct filed *f;
