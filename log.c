@@ -53,6 +53,18 @@ log_procinit(const char *procname)
 }
 
 void
+log_setdebug(int d)
+{
+	debug = d;
+}
+
+int
+log_getdebug(void)
+{
+	return (debug);
+}
+
+void
 log_setverbose(int v)
 {
 	verbose = v;
