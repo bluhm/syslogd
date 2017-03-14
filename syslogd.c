@@ -2194,7 +2194,7 @@ die(int signo)
 
 	if (signo)
 		log_warnx("exiting on signal %d", signo);
-	log_debug("syslogd: exiting");
+	log_debug("syslogd: exited");
 	exit(0);
 }
 
