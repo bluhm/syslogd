@@ -855,7 +855,7 @@ main(int argc, char *argv[])
 	to.tv_usec = 0;
 	evtimer_add(ev_mark, &to);
 
-	logmsg(LOG_SYSLOG|LOG_INFO, "syslogd: start", LocalHostName, ADDDATE);
+	log_info(LOG_INFO, "start");
 	log_debug("syslogd: started");
 
 	sigemptyset(&sigmask);
@@ -1054,7 +1054,6 @@ reserve_accept4(int lfd, int event, struct event *ev,
     struct sockaddr *sa, socklen_t *salen, int flags)
 {
 	struct timeval	 to = { 1, 0 };
-	char		 ebuf[ERRBUFSIZE];
 	int		 afd;
 
 	if (event & EV_TIMEOUT) {
@@ -1073,9 +1072,7 @@ reserve_accept4(int lfd, int event, struct event *ev,
 		afd = accept4(lfd, sa, salen, flags);
 
 	if (afd == -1 && (errno == ENFILE || errno == EMFILE)) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: accept deferred: %s",
-		    strerror(errno));
-		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+		log_info(LOG_WARNING, "accept deferred: %s", strerror(errno));
 		/*
 		 * Disable the listen event and convert it to a timeout.
 		 * Pass the listen file descriptor to the callback.
@@ -1175,9 +1172,8 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	p->p_peername = peername;
 	bufferevent_enable(p->p_bufev, EV_READ);
 
-	snprintf(ebuf, sizeof(ebuf), "syslogd: %s logger \"%s\" accepted",
+	log_info(LOG_INFO, "%s logger \"%s\" accepted",
 	    p->p_ctx ? "tls" : "tcp", peername);
-	logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
 }
 
 /*
@@ -1301,19 +1297,14 @@ void
 tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 {
 	struct peer		*p = arg;
-	char			 ebuf[ERRBUFSIZE];
 
 	if (event & EVBUFFER_EOF) {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: %s logger \"%s\" "
-		    "connection close", p->p_ctx ? "tls" : "tcp",
-		    p->p_peername);
-		logmsg(LOG_SYSLOG|LOG_INFO, ebuf, LocalHostName, ADDDATE);
+		log_info(LOG_INFO, "%s logger \"%s\" connection close",
+		    p->p_ctx ? "tls" : "tcp", p->p_peername);
 	} else {
-		snprintf(ebuf, sizeof(ebuf), "syslogd: %s logger \"%s\" "
-		    "connection error: %s", p->p_ctx ? "tls" : "tcp",
-		    p->p_peername,
+		log_info(LOG_NOTICE, "%s logger \"%s\" connection error: %s",
+		    p->p_ctx ? "tls" : "tcp", p->p_peername,
 		    p->p_ctx ? tls_error(p->p_ctx) : strerror(errno));
-		logmsg(LOG_SYSLOG|LOG_NOTICE, ebuf, LocalHostName, ADDDATE);
 	}
 
 	if (p->p_peername != hostname_unknown)
@@ -1367,7 +1358,6 @@ void
 tcp_writecb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
-	char		 ebuf[ERRBUFSIZE];
 
 	/*
 	 * Successful write, connection to server is good, reset wait time.
@@ -1377,13 +1367,11 @@ tcp_writecb(struct bufferevent *bufev, void *arg)
 
 	if (f->f_un.f_forw.f_dropped > 0 &&
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) < MAX_TCPBUF) {
-		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: dropped %d message%s to loghost \"%s\"",
+		log_info(LOG_WARNING, "dropped %d message%s to loghost \"%s\"",
 		    f->f_un.f_forw.f_dropped,
 		    f->f_un.f_forw.f_dropped == 1 ? "" : "s",
 		    f->f_un.f_forw.f_loghost);
 		f->f_un.f_forw.f_dropped = 0;
-		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 	}
 }
 
@@ -1396,12 +1384,11 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	char		 ebuf[ERRBUFSIZE];
 
 	if (event & EVBUFFER_EOF)
-		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: loghost \"%s\" connection close",
+		snprintf(ebuf, sizeof(ebuf), "loghost \"%s\" connection close",
 		    f->f_un.f_forw.f_loghost);
 	else
 		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: loghost \"%s\" connection error: %s",
+		    "loghost \"%s\" connection error: %s",
 		    f->f_un.f_forw.f_loghost, f->f_un.f_forw.f_ctx ?
 		    tls_error(f->f_un.f_forw.f_ctx) : strerror(errno));
 	log_debug("%s", ebuf);
@@ -1441,7 +1428,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	tcp_connect_retry(bufev, f);
 
 	/* Log the connection error to the fresh buffer after reconnecting. */
-	logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
+	log_info(LOG_WARNING, "%s", ebuf);
 }
 
 void
@@ -2202,20 +2189,15 @@ mark_timercb(int unused, short event, void *arg)
 void
 init_signalcb(int signum, short event, void *arg)
 {
-	char	 ebuf[ERRBUFSIZE];
-
 	init();
 
-	logmsg(LOG_SYSLOG|LOG_INFO, "syslogd: restart",
-	    LocalHostName, ADDDATE);
+	log_info(LOG_INFO, "restart");
 	log_debug("syslogd: restarted");
 
 	if (tcpbuf_dropped > 0) {
-		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: dropped %d message%s to remote loghost",
+		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
 		    tcpbuf_dropped, tcpbuf_dropped == 1 ? "" : "s");
 		tcpbuf_dropped = 0;
-		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 	}
 }
 
@@ -2264,7 +2246,7 @@ logerror_reason(const char *message, const char *reason)
 	if (Startup)
 		fprintf(stderr, "%s\n", ebuf);
 	else
-		logmsg(LOG_SYSLOG|LOG_ERR, ebuf, LocalHostName, ADDDATE);
+		log_info(LOG_ERR, "%s", ebuf);
 }
 
 __dead void
@@ -2288,11 +2270,9 @@ die(int signo)
 	Initialized = was_initialized;
 
 	if (tcpbuf_dropped > 0) {
-		snprintf(ebuf, sizeof(ebuf),
-		    "syslogd: dropped %d message%s to remote loghost",
+		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
 		    tcpbuf_dropped, tcpbuf_dropped == 1 ? "" : "s");
 		tcpbuf_dropped = 0;
-		logmsg(LOG_SYSLOG|LOG_WARNING, ebuf, LocalHostName, ADDDATE);
 	}
 
 	if (signo) {
@@ -2972,8 +2952,7 @@ markit(void)
 	(void)gettimeofday(&now, NULL);
 	MarkSeq += TIMERINTVL;
 	if (MarkSeq >= MarkInterval) {
-		logmsg(LOG_INFO, "-- MARK --",
-		    LocalHostName, ADDDATE|MARK);
+		logmsg(LOG_INFO, "-- MARK --", LocalHostName, ADDDATE|MARK);
 		MarkSeq = 0;
 	}
 
