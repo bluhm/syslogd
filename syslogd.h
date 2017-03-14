@@ -51,6 +51,7 @@ extern char *path_ctlsock;
 #define ERRBUFSIZE	256
 void logdebug(const char *, ...) __attribute__((__format__ (printf, 1, 2)));
 void vlogmsg(int pri, const char *, const char *, va_list);
+__dead void die(int);
 extern int Debug;
 extern int Startup;
 
