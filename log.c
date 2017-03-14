@@ -171,8 +171,10 @@ log_debugadd(const char *emsg, ...)
 void
 log_debugend(void)
 {
-	if (debug && verbose)
+	if (debug && verbose) {
+		fprintf(stderr, "\n");
 		fflush(stderr);
+	}
 }
 
 static void
