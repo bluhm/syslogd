@@ -112,9 +112,9 @@ vlog(int pri, const char *fmt, va_list ap)
 void
 log_warn(const char *emsg, ...)
 {
-	char		*nfmt;
-	va_list		 ap;
-	int		 saved_errno = errno;
+	char	*nfmt;
+	va_list	 ap;
+	int	 saved_errno = errno;
 
 	/* best effort to even work in out of memory situations */
 	if (emsg == NULL)
@@ -133,7 +133,6 @@ log_warn(const char *emsg, ...)
 		}
 		va_end(ap);
 	}
-
 	errno = saved_errno;
 }
 
@@ -160,43 +159,44 @@ log_info(int pri, const char *emsg, ...)
 void
 log_debug(const char *emsg, ...)
 {
-	char	*nfmt;
+	char	 ebuf[ERRBUFSIZE];
 	va_list	 ap;
+	int	 saved_errno = errno;
 
 	if (verbose) {
 		va_start(ap, emsg);
-		/* best effort in out of mem situations */
-		if (asprintf(&nfmt, "%s\n", emsg) == -1) {
-			vfprintf(stderr, emsg, ap);
-			fprintf(stderr, "\n");
-		} else {
-			vfprintf(stderr, nfmt, ap);
-			free(nfmt);
-		}
+		vsnprintf(ebuf, sizeof(ebuf), emsg, ap);
+		fprintf(stderr, "%s\n", ebuf);
 		fflush(stderr);
 		va_end(ap);
 	}
+	errno = saved_errno;
 }
 
 void
 log_debugadd(const char *emsg, ...)
 {
 	va_list	 ap;
+	int	 saved_errno = errno;
 
 	if (verbose) {
 		va_start(ap, emsg);
 		vfprintf(stderr, emsg, ap);
 		va_end(ap);
 	}
+	errno = saved_errno;
 }
 
 void
 log_debugend(void)
 {
+	int	 saved_errno = errno;
+
 	if (verbose) {
 		fprintf(stderr, "\n");
 		fflush(stderr);
 	}
+	errno = saved_errno;
 }
 
 static void
