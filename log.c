@@ -108,7 +108,8 @@ vlog(int pri, const char *fmt, va_list ap)
 void
 log_warn(const char *emsg, ...)
 {
-	char	*nfmt;
+	char	 ebuf[ERRBUFSIZE];
+	size_t	 l;
 	va_list	 ap;
 	int	 saved_errno = errno;
 
@@ -117,16 +118,11 @@ log_warn(const char *emsg, ...)
 		logit(LOG_ERR, "%s", strerror(saved_errno));
 	else {
 		va_start(ap, emsg);
-
-		if (asprintf(&nfmt, "%s: %s", emsg,
-		    strerror(saved_errno)) == -1) {
-			/* we tried it... */
-			vlog(LOG_ERR, emsg, ap);
-			logit(LOG_ERR, "%s", strerror(saved_errno));
-		} else {
-			vlog(LOG_ERR, nfmt, ap);
-			free(nfmt);
-		}
+		l = vsnprintf(ebuf, sizeof(ebuf), emsg, ap);
+		if (l < sizeof(ebuf))
+			snprintf(ebuf+l, sizeof(ebuf)-l, ": %s",
+			    strerror(saved_errno));
+		logit(LOG_ERR, "%s", ebuf);
 		va_end(ap);
 	}
 	errno = saved_errno;
