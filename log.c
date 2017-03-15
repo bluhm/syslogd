@@ -192,23 +192,23 @@ log_debugend(void)
 }
 
 static void
-vfatalc(int code, const char *emsg, va_list ap)
+vfatalc(int error, const char *emsg, va_list ap)
 {
-	static char	s[BUFSIZ];
+	char		 ebuf[ERRBUFSIZE];
 	const char	*sep;
 
 	if (emsg != NULL) {
-		(void)vsnprintf(s, sizeof(s), emsg, ap);
+		(void)vsnprintf(ebuf, sizeof(ebuf), emsg, ap);
 		sep = ": ";
 	} else {
-		s[0] = '\0';
+		ebuf[0] = '\0';
 		sep = "";
 	}
-	if (code)
+	if (error)
 		logit(LOG_CRIT, "fatal in %s: %s%s%s",
-		    log_procname, s, sep, strerror(code));
+		    log_procname, ebuf, sep, strerror(error));
 	else
-		logit(LOG_CRIT, "fatal in %s%s%s", log_procname, sep, s);
+		logit(LOG_CRIT, "fatal in %s%s%s", log_procname, sep, ebuf);
 }
 
 void
