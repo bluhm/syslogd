@@ -89,19 +89,15 @@ logit(int pri, const char *fmt, ...)
 void
 vlog(int pri, const char *fmt, va_list ap)
 {
-	char	*nfmt;
+	char	 ebuf[ERRBUFSIZE];
+	size_t	 l;
 	int	 saved_errno = errno;
 
 	if (debug) {
-		/* best effort in out of mem situations */
-		if (asprintf(&nfmt, "%s: %s\n", log_procname, fmt) == -1) {
-			fprintf(stderr, "%s: ", log_procname);
-			vfprintf(stderr, fmt, ap);
-			fprintf(stderr, "\n");
-		} else {
-			vfprintf(stderr, nfmt, ap);
-			free(nfmt);
-		}
+		l = snprintf(ebuf, sizeof(ebuf), "%s: ", log_procname);
+		if (l < sizeof(ebuf))
+			vsnprintf(ebuf+l, sizeof(ebuf)-l, fmt, ap);
+		fprintf(stderr, "%s\n", ebuf);
 		fflush(stderr);
 	} else
 		vlogmsg(pri, log_procname, fmt, ap);
