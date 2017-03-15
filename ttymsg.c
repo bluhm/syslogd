@@ -134,7 +134,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			if (tty_delayed >= TTYMAXDELAY) {
 				log_warnx("tty device \"%s\": %s",
 				    device, "too many delayed writes");
-				return;
+				break;
 			}
 			log_debug("ttymsg delayed write");
 			if (iov != localiov) {
@@ -145,7 +145,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			if ((td = malloc(sizeof(*td))) == NULL) {
 				log_warn("allocate delay tty device \"%s\"",
 				    device);
-				return;
+				break;
 			}
 			td->td_length = 0;
 			if (left > MAXLINE)
