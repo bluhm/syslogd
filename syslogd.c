@@ -110,7 +110,7 @@ const char ctty[] = _PATH_CONSOLE;
 
 
 /*
- * Flags to logmsg().
+ * Flags to logline().
  */
 
 #define IGN_CONS	0x001	/* don't print on console */
@@ -321,7 +321,7 @@ void	markit(void);
 void	fprintlog(struct filed *, int, char *);
 void	init(void);
 void	logevent(int, const char *);
-void	logmsg(int, char *, char *, int);
+void	logline(int, int, char *, char *);
 struct filed *find_dup(struct filed *);
 size_t	parsepriority(const char *, int *);
 void	printline(char *, char *);
@@ -1554,7 +1554,7 @@ printline(char *hname, char *msg)
 	}
 	line[MAXLINE] = *q = '\0';
 
-	logmsg(pri, line, hname, 0);
+	logline(pri, 0, hname, line);
 }
 
 /*
@@ -1585,7 +1585,7 @@ printsys(char *msg)
 		while (*p && (c = *p++) != '\n' && q < &line[sizeof(line) - 4])
 			q = vis(q, c, 0, 0);
 
-		logmsg(pri, line, LocalHostName, flags);
+		logline(pri, flags, LocalHostName, line);
 	}
 }
 
@@ -1598,7 +1598,7 @@ vlogmsg(int pri, const char *proc, const char *fmt, va_list ap)
 	l = snprintf(msg, sizeof(msg), "%s[%d]: ", proc, getpid());
 	if (l < sizeof(msg));
 		vsnprintf(msg + l, sizeof(msg) - l, fmt, ap);
-	logmsg(pri, msg, LocalHostName, ADDDATE);
+	logline(pri, ADDDATE, LocalHostName, msg);
 }
 
 struct timeval	now;
@@ -1608,14 +1608,14 @@ struct timeval	now;
  * the priority.
  */
 void
-logmsg(int pri, char *msg, char *from, int flags)
+logline(int pri, int flags, char *from, char *msg)
 {
 	struct filed *f;
 	int fac, msglen, prilev, i;
 	char timestamp[33];
 	char prog[NAME_MAX+1];
 
-	log_debug("logmsg: pri 0%o, flags 0x%x, from %s, msg %s",
+	log_debug("logline: pri 0%o, flags 0x%x, from %s, msg %s",
 	    pri, flags, from, msg);
 
 	/*
@@ -2845,7 +2845,7 @@ markit(void)
 	(void)gettimeofday(&now, NULL);
 	MarkSeq += TIMERINTVL;
 	if (MarkSeq >= MarkInterval) {
-		logmsg(LOG_INFO, "-- MARK --", LocalHostName, ADDDATE|MARK);
+		logline(LOG_INFO, ADDDATE|MARK, LocalHostName, "-- MARK --");
 		MarkSeq = 0;
 	}
 
