@@ -137,7 +137,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			if (tty_delayed >= TTYMAXDELAY) {
 				(void) snprintf(ebuf, sizeof(ebuf),
 				    "%s: too many delayed writes", device);
-				return (ebuf);
+				goto error;
 			}
 			logdebug("ttymsg delayed write\n");
 			if (iov != localiov) {
@@ -148,7 +148,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			if ((td = malloc(sizeof(*td))) == NULL) {
 				(void) snprintf(ebuf, sizeof(ebuf),
 				    "%s: malloc: %s", device, strerror(errno));
-				return (ebuf);
+				goto error;
 			}
 			td->td_length = 0;
 			if (left > MAXLINE)
@@ -176,9 +176,10 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 		 */
 		if (errno == ENODEV || errno == EIO)
 			break;
-		(void) close(fd);
 		(void) snprintf(ebuf, sizeof(ebuf),
 		    "%s: %s", device, strerror(errno));
+ error:
+		(void) close(fd);
 		return (ebuf);
 	}
 
