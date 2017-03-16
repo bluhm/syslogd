@@ -20,8 +20,9 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include <stdarg.h>
 #include <sys/cdefs.h>
+
+#include <stdarg.h>
 
 void	log_init(int, int);
 void	log_procinit(const char *);
