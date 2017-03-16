@@ -169,26 +169,28 @@ void
 log_debugadd(const char *emsg, ...)
 {
 	va_list	 ap;
-	int	 saved_errno = errno;
+	int	 saved_errno;
 
 	if (verbose) {
+		saved_errno = errno;
 		va_start(ap, emsg);
 		vfprintf(stderr, emsg, ap);
 		va_end(ap);
+		errno = saved_errno;
 	}
-	errno = saved_errno;
 }
 
 void
 log_debugend(void)
 {
-	int	 saved_errno = errno;
+	int	 saved_errno;
 
 	if (verbose) {
+		saved_errno = errno;
 		fprintf(stderr, "\n");
 		fflush(stderr);
+		errno = saved_errno;
 	}
-	errno = saved_errno;
 }
 
 static void
