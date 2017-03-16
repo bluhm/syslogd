@@ -154,16 +154,17 @@ log_debug(const char *emsg, ...)
 {
 	char	 ebuf[ERRBUFSIZE];
 	va_list	 ap;
-	int	 saved_errno = errno;
+	int	 saved_errno;
 
 	if (verbose) {
+		saved_errno = errno;
 		va_start(ap, emsg);
 		vsnprintf(ebuf, sizeof(ebuf), emsg, ap);
 		fprintf(stderr, "%s\n", ebuf);
 		fflush(stderr);
 		va_end(ap);
+		errno = saved_errno;
 	}
-	errno = saved_errno;
 }
 
 static void
