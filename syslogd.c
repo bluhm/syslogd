@@ -698,8 +698,6 @@ main(int argc, char *argv[])
 
 	logdebug("off & running....\n");
 
-	tzset();
-
 	if (!Debug && !Foreground) {
 		char c;
 
