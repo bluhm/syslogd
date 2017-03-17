@@ -1944,7 +1944,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	switch (f->f_type) {
 	case F_UNUSED:
-		log_debugend();
+		log_debug("%s", "");
 		break;
 
 	case F_FORWUDP:
@@ -2014,7 +2014,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			break;
 		}
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_WRITE);
-		log_debugend();
+		log_debug("%s", "");
 		break;
 
 	case F_CONSOLE:
@@ -2091,14 +2091,14 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_USERS:
 	case F_WALL:
-		log_debugend();
+		log_debug("%s", "");
 		v->iov_base = "\r\n";
 		v->iov_len = 2;
 		wallmsg(f, iov);
 		break;
 
 	case F_MEMBUF:
-		log_debugend();
+		log_debug("%s", "");
 		snprintf(line, sizeof(line), "%.32s %s %s",
 		    (char *)iov[0].iov_base, (char *)iov[2].iov_base,
 		    (char *)iov[4].iov_base);
