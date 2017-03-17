@@ -2979,7 +2979,7 @@ markit(void)
 
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		if (f->f_prevcount && now.tv_sec >= REPEATTIME(f)) {
-			log_debug("flush %s: repeated %d times, %d sec.",
+			log_debug("flush %s: repeated %d times, %d sec",
 			    TypeNames[f->f_type], f->f_prevcount,
 			    repeatinterval[f->f_repeatcount]);
 			fprintlog(f, 0, (char *)NULL);
