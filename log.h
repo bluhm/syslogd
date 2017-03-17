@@ -40,7 +40,6 @@ void	log_debug(const char *, ...)
 	    __attribute__((__format__ (printf, 1, 2)));
 void	log_debugadd(const char *, ...)
 	    __attribute__((__format__ (printf, 1, 2)));
-void	log_debugend(void);
 void	logit(int, const char *, ...)
 	    __attribute__((__format__ (printf, 2, 3)));
 void	vlog(int, const char *, va_list)
