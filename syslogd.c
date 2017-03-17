@@ -560,8 +560,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	fd_klog = open(_PATH_KLOG, O_RDONLY, 0);
-	if (fd_klog == -1) {
+	if ((fd_klog = open(_PATH_KLOG, O_RDONLY, 0)) == -1) {
 		logdebug("can't open %s (%d)\n", _PATH_KLOG, errno);
 	} else {
 		if (ioctl(fd_klog, LIOCSFD, &pair[1]) == -1)
