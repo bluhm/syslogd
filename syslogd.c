@@ -555,8 +555,11 @@ main(int argc, char *argv[])
 		if (fd_ctlsock == -1) {
 			logdebug("can't open %s (%d)\n", path_ctlsock, errno);
 		} else {
-			if (listen(fd_ctlsock, 5) == -1)
+			if (listen(fd_ctlsock, 5) == -1) {
 				logerror("ctlsock listen");
+				close(fd_ctlsock);
+				fd_ctlsock = -1;
+			}
 		}
 	}
 
