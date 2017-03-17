@@ -201,21 +201,6 @@ log_debugadd(const char *emsg, ...)
 	}
 }
 
-void
-log_debugend(void)
-{
-	int	 saved_errno;
-
-	if (verbose) {
-		saved_errno = errno;
-		fprintf(stderr, "%s\n", debug_ebuf);
-		fflush(stderr);
-		errno = saved_errno;
-	}
-	debug_ebuf[0] = '\0';
-	debug_length = 0;
-}
-
 static void
 vfatalc(int error, const char *emsg, va_list ap)
 {
