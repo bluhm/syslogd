@@ -886,9 +886,11 @@ socket_bind(const char *proto, const char *host, const char *port,
 	}
 	hints.ai_flags = AI_PASSIVE;
 
-	if ((error = getaddrinfo(host, port, &hints, &res0)))
-		fatal("getaddrinfo proto %s, host %s, port %s: %s",
+	if ((error = getaddrinfo(host, port, &hints, &res0))) {
+		log_warnx("getaddrinfo proto %s, host %s, port %s: %s",
 		    proto, host ? host : "*", port, gai_strerror(error));
+		return (-1);
+	}
 
 	for (res = res0; res; res = res->ai_next) {
 		switch (res->ai_family) {
