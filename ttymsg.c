@@ -115,7 +115,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 				break;
 			left -= wret;
 			if (iov != localiov) {
-				bcopy(iov, localiov,
+				memmove(localiov, iov,
 				    iovcnt * sizeof(struct iovec));
 				iov = localiov;
 			}
@@ -141,7 +141,7 @@ ttymsg(struct iovec *iov, int iovcnt, char *utline)
 			}
 			logdebug("ttymsg delayed write\n");
 			if (iov != localiov) {
-				bcopy(iov, localiov,
+				memmove(localiov, iov,
 				    iovcnt * sizeof(struct iovec));
 				iov = localiov;
 			}
