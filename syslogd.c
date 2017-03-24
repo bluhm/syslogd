@@ -565,11 +565,12 @@ main(int argc, char *argv[])
 
 	if ((fd_klog = open(_PATH_KLOG, O_RDONLY, 0)) == -1) {
 		logdebug("can't open %s (%d)\n", _PATH_KLOG, errno);
-	} else {
+	} else if (fd_sendsys != -1) {
 		if (ioctl(fd_klog, LIOCSFD, &pair[1]) == -1)
 			logdebug("LIOCSFD errno %d\n", errno);
 	}
-	close(pair[1]);
+	if (fd_sendsys != -1)
+		close(pair[1]);
 
 	if (tls_init() == -1) {
 		logerrorx("tls_init");
