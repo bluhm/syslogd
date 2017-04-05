@@ -53,7 +53,6 @@ extern char *path_ctlsock;
 void vlogmsg(int pri, const char *, const char *, va_list);
 __dead void die(int);
 extern int Debug;
-extern int Startup;
 
 struct ringbuf {
 	char *buf;
