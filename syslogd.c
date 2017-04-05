@@ -3085,8 +3085,7 @@ ctlconn_cleanup(void)
 {
 	struct filed *f;
 
-	if (close(fd_ctlconn) == -1)
-		logerror("close ctlconn");
+	close(fd_ctlconn);
 	fd_ctlconn = -1;
 	event_del(ev_ctlread);
 	event_del(ev_ctlwrite);
