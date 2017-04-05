@@ -202,7 +202,6 @@ int	nunix;			/* Number of Unix domain sockets requested */
 char	**path_unix;		/* Paths to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Foreground;		/* run in foreground, instead of daemonizing */
-int	Startup = 1;		/* startup flag */
 char	LocalHostName[HOST_NAME_MAX+1];	/* our hostname */
 char	*LocalDomain;		/* our local domain name */
 int	Initialized = 0;	/* set when we have initialized ourselves */
@@ -768,7 +767,6 @@ main(int argc, char *argv[])
 	init();
 
 	log_setdebug(0);
-	Startup = 0;
 
 	/* Allocate ctl socket reply buffer if we have a ctl socket */
 	if (fd_ctlsock != -1 &&
