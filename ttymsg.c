@@ -1,4 +1,4 @@
-/*	$OpenBSD: ttymsg.c,v 1.14 2017/04/05 11:31:45 bluhm Exp $	*/
+/*	$OpenBSD: ttymsg.c,v 1.15 2017/04/05 21:55:31 bluhm Exp $	*/
 /*	$NetBSD: ttymsg.c,v 1.3 1994/11/17 07:17:55 jtc Exp $	*/
 
 /*
