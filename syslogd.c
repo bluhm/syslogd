@@ -2148,13 +2148,12 @@ init_signalcb(int signum, short event, void *arg)
 	init();
 
 	log_info(LOG_INFO, "restart");
-	log_debug("syslogd: restarted");
-
 	if (tcpbuf_dropped > 0) {
 		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
 		    tcpbuf_dropped, tcpbuf_dropped == 1 ? "" : "s");
 		tcpbuf_dropped = 0;
 	}
+	log_debug("syslogd: restarted");
 }
 
 void
