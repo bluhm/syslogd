@@ -1134,7 +1134,7 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	p->p_peername = peername;
 	bufferevent_enable(p->p_bufev, EV_READ);
 
-	log_info(LOG_INFO, "%s logger \"%s\" accepted",
+	log_info(LOG_DEBUG, "%s logger \"%s\" accepted",
 	    p->p_ctx ? "tls" : "tcp", peername);
 }
 
@@ -1261,7 +1261,7 @@ tcp_closecb(struct bufferevent *bufev, short event, void *arg)
 	struct peer		*p = arg;
 
 	if (event & EVBUFFER_EOF) {
-		log_info(LOG_INFO, "%s logger \"%s\" connection close",
+		log_info(LOG_DEBUG, "%s logger \"%s\" connection close",
 		    p->p_ctx ? "tls" : "tcp", p->p_peername);
 	} else {
 		log_info(LOG_NOTICE, "%s logger \"%s\" connection error: %s",
