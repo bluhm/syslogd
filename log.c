@@ -109,7 +109,7 @@ vlog(int pri, const char *fmt, va_list ap)
 		fprintf(stderr, "%s\n", ebuf);
 		fflush(stderr);
 	} else
-		vlogmsg(pri, log_procname, fmt, ap);
+		vlogmsg(facility|pri, log_procname, fmt, ap);
 
 	errno = saved_errno;
 }
