@@ -2145,10 +2145,9 @@ mark_timercb(int unused, short event, void *arg)
 void
 init_signalcb(int signum, short event, void *arg)
 {
-	log_info(LOG_INFO, "restart");
-
 	init();
 
+	log_info(LOG_INFO, "restart");
 	if (tcpbuf_dropped > 0) {
 		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
 		    tcpbuf_dropped, tcpbuf_dropped == 1 ? "" : "s");
