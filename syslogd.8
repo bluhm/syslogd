@@ -140,8 +140,9 @@ bind it to the specified address.
 A port number may be specified using the
 .Ar host : Ns Ar port
 syntax.
-The parameter is also used to find a suitable server key and
-certificate in
+The first
+.Ar listen_address
+is also used to find a suitable server key and certificate in
 .Pa /etc/ssl/ .
 .It Fl s Ar reporting_socket
 Specify path to an
@@ -180,7 +181,7 @@ in UTC.
 .El
 .Pp
 The options
-.Fl a , T ,
+.Fl a , S, T ,
 and
 .Fl U
 can be given more than once to specify multiple input sources.
