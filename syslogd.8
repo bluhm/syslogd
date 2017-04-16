@@ -39,7 +39,7 @@
 .Sh SYNOPSIS
 .Nm syslogd
 .Bk -words
-.Op Fl 46dFhnuVZ
+.Op Fl 46dFhnruVZ
 .Op Fl a Ar path
 .Op Fl C Ar CAfile
 .Op Fl c Ar cert_file
@@ -129,6 +129,10 @@ the symbolic local host name.
 Specify the pathname of an alternate log socket to be used instead;
 the default is
 .Pa /dev/log .
+.It Fl r
+Suppress the message repeated summary and print every line immediately.
+If given once, only message piped to another program or forwarded
+to a remote loghost are affected.
 .It Fl S Ar listen_address
 Create a TLS listen socket for receiving encrypted messages and
 bind it to the specified address.
