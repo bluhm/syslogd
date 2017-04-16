@@ -1772,8 +1772,8 @@ logline(int pri, int flags, char *from, char *msg)
 		 * suppress duplicate lines to this file
 		 */
 		if ((Repeat == 0 || (Repeat == 1 &&
-		    (f->f_type == F_PIPE || f->f_type == F_FORWUDP ||
-		    f->f_type == F_FORWTCP || f->f_type == F_FORWTLS))) &&
+		    (f->f_type != F_PIPE && f->f_type != F_FORWUDP &&
+		    f->f_type != F_FORWTCP && f->f_type != F_FORWTLS))) &&
 		    (flags & MARK) == 0 && msglen == f->f_prevlen &&
 		    !strcmp(msg, f->f_prevline) &&
 		    !strcmp(from, f->f_prevhost)) {
