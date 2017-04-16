@@ -351,7 +351,7 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 	int		 fd_ctlsock, fd_klog, fd_sendsys, *fd_bind, *fd_listen;
-	int		 *fd_tls, *fd_unix, nbind, nlisten, ntls;
+	int		*fd_tls, *fd_unix, nbind, nlisten, ntls;
 	char		**bind_host, **bind_port, **listen_host, **listen_port;
 	char		*tls_hostport, **tls_host, **tls_port;
 
