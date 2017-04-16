@@ -747,7 +747,8 @@ main(int argc, char *argv[])
 		== NULL ||
 	    (ev_listen = reallocarray(NULL, nlisten, sizeof(struct event)))
 		== NULL ||
-	    (ev_tls = reallocarray(NULL, ntls, sizeof(struct event))) == NULL ||
+	    (ev_tls = reallocarray(NULL, ntls, sizeof(struct event)))
+		== NULL ||
 	    (ev_unix = reallocarray(NULL, nunix, sizeof(struct event)))
 		== NULL ||
 	    (ev_hup = malloc(sizeof(struct event))) == NULL ||
