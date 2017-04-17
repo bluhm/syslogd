@@ -130,9 +130,9 @@ Specify the pathname of an alternate log socket to be used instead;
 the default is
 .Pa /dev/log .
 .It Fl r
-Suppress the "last message repeated" summary and print every line
-immediately when piping to another program or forwarding to a remote
-loghost.
+Print duplicated lines immediately and suppress the "last message
+repeated" summary when piping to another program or forwarding to
+a remote loghost.
 If given twice, this is done for all log actions.
 .It Fl S Ar listen_address
 Create a TLS listen socket for receiving encrypted messages and
