@@ -131,10 +131,9 @@ the default is
 .Pa /dev/log .
 .It Fl r
 Suppress the "last message repeated" summary and print every line
-immediately.
-If given once, only messages piped to another program or forwarded
-to a remote loghost are affected.
-If given twice, nothing is summarized.
+immediately when piping to another program or forwarding to a remote
+loghost.
+If given twice, this is done for all log actions.
 .It Fl S Ar listen_address
 Create a TLS listen socket for receiving encrypted messages and
 bind it to the specified address.
