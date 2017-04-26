@@ -28,7 +28,6 @@
 #include "log.h"
 #include "syslogd.h"
 
-static int		 debug;
 static int		 verbose;
 static int		 facility;
 static const char	*log_procname;
@@ -40,7 +39,6 @@ log_init(int n_debug, int fac)
 {
 	extern char	*__progname;
 
-	debug = n_debug;
 	verbose = n_debug;
 	facility = fac;
 	log_procinit(__progname);
@@ -86,18 +84,9 @@ logit(int pri, const char *fmt, ...)
 void
 vlog(int pri, const char *fmt, va_list ap)
 {
-	char	 ebuf[ERRBUFSIZE];
-	size_t	 l;
 	int	 saved_errno = errno;
 
-	if (debug) {
-		l = snprintf(ebuf, sizeof(ebuf), "%s: ", log_procname);
-		if (l < sizeof(ebuf))
-			vsnprintf(ebuf+l, sizeof(ebuf)-l, fmt, ap);
-		fprintf(stderr, "%s\n", ebuf);
-		fflush(stderr);
-	} else
-		vlogmsg(facility|pri, log_procname, fmt, ap);
+	vlogmsg(facility|pri, log_procname, fmt, ap);
 
 	errno = saved_errno;
 }
