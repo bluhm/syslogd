@@ -465,7 +465,6 @@ main(int argc, char *argv[])
 
 	log_init(Debug, LOG_SYSLOG);
 	log_procinit("syslogd");
-	log_setdebug(1);
 	if (Debug)
 		setvbuf(stdout, NULL, _IOLBF, 0);
 
@@ -790,8 +789,6 @@ main(int argc, char *argv[])
 	evtimer_set(ev_mark, mark_timercb, ev_mark);
 
 	init();
-
-	log_setdebug(0);
 
 	/* Allocate ctl socket reply buffer if we have a ctl socket */
 	if (fd_ctlsock != -1 &&
