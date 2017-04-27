@@ -1783,15 +1783,14 @@ logline(int pri, int flags, char *from, char *msg)
 	/* log the message to the particular outputs */
 	if (!Initialized) {
 		f = &consfile;
-		if (f->f_file < 0)
-			f->f_file = priv_open_tty(ctty);
-
-		if (f->f_file >= 0) {
+		if (f->f_type == F_CONSOLE) {
 			strlcpy(f->f_lasttime, timestamp,
 			    sizeof(f->f_lasttime));
 			strlcpy(f->f_prevhost, from,
 			    sizeof(f->f_prevhost));
 			fprintlog(f, flags, msg);
+			/* May be set to F_UNUSED, try again next time. */
+			f->f_type = F_CONSOLE;
 		}
 		return;
 	}
