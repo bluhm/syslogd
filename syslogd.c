@@ -1784,11 +1784,8 @@ logline(int pri, int flags, char *from, char *msg)
 	/* log the message to the particular outputs */
 	if (!Initialized) {
 		f = &consfile;
-		if (f->f_file < 0 || !isatty(f->f_file)) {
-			if (f->f_file >= 0)
-				close(f->f_file);
+		if (f->f_file < 0)
 			f->f_file = priv_open_tty(ctty);
-		}
 
 		if (f->f_file >= 0) {
 			strlcpy(f->f_lasttime, timestamp,
