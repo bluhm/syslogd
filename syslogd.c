@@ -483,6 +483,10 @@ main(int argc, char *argv[])
 	consfile.f_type = F_CONSOLE;
 	(void)strlcpy(consfile.f_un.f_fname, ctty,
 	    sizeof(consfile.f_un.f_fname));
+	consfile.f_file = open(consfile.f_un.f_fname, O_WRONLY|O_NONBLOCK, 0);
+	if (consfile.f_file == -1)
+		log_warn("open %s", consfile.f_un.f_fname);
+
 	(void)gethostname(LocalHostName, sizeof(LocalHostName));
 	if ((p = strchr(LocalHostName, '.')) != NULL) {
 		*p++ = '\0';
