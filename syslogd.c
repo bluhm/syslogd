@@ -1767,7 +1767,11 @@ logline(int pri, int flags, char *from, char *msg)
 	/* log the message to the particular outputs */
 	if (!Initialized) {
 		f = &consfile;
-		f->f_file = priv_open_tty(ctty);
+		if (f->f_file < 0 || !isatty(f->f_file)) {
+			if (f->f_file >= 0)
+				close(f->f_file);
+			f->f_file = priv_open_tty(ctty);
+		}
 
 		if (f->f_file >= 0) {
 			strlcpy(f->f_lasttime, timestamp,
@@ -1775,8 +1779,6 @@ logline(int pri, int flags, char *from, char *msg)
 			strlcpy(f->f_prevhost, from,
 			    sizeof(f->f_prevhost));
 			fprintlog(f, flags, msg);
-			(void)close(f->f_file);
-			f->f_file = -1;
 		}
 		return;
 	}
