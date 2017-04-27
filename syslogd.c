@@ -204,6 +204,7 @@ int	Debug;			/* debug flag */
 int	Foreground;		/* run in foreground, instead of daemonizing */
 char	LocalHostName[HOST_NAME_MAX+1];	/* our hostname */
 char	*LocalDomain;		/* our local domain name */
+int	Started = 0;		/* set after privsep */
 int	Initialized = 0;	/* set when we have initialized ourselves */
 
 int	MarkInterval = 20 * 60;	/* interval between marks in seconds */
@@ -729,6 +730,8 @@ main(int argc, char *argv[])
 
 	if (pledge("stdio unix inet recvfd", NULL) == -1)
 		err(1, "pledge");
+
+	Started = 1;
 
 	/* Process is now unprivileged and inside a chroot */
 	if (Debug)
@@ -1624,6 +1627,10 @@ vlogmsg(int pri, const char *proc, const char *fmt, va_list ap)
 	l = snprintf(msg, sizeof(msg), "%s[%d]: ", proc, getpid());
 	if (l < sizeof(msg))
 		vsnprintf(msg + l, sizeof(msg) - l, fmt, ap);
+	if (!Started) {
+		fprintf(stderr, "%s\n", msg);
+		return;
+	}
 	logline(pri, ADDDATE, LocalHostName, msg);
 }
 
