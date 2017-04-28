@@ -2204,9 +2204,7 @@ __dead void
 die(int signo)
 {
 	struct filed *f;
-	int was_initialized = Initialized;
 
-	Initialized = 0;		/* Don't log SIGCHLDs */
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
@@ -2217,7 +2215,6 @@ die(int signo)
 			f->f_un.f_forw.f_dropped = 0;
 		}
 	}
-	Initialized = was_initialized;
 
 	if (tcpbuf_dropped > 0) {
 		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
