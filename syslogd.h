@@ -48,7 +48,6 @@ extern int nunix;
 extern char **path_unix;
 extern char *path_ctlsock;
 
-#define MAXLINE		8192		/* maximum line length */
 #define ERRBUFSIZE	256
 void vlogmsg(int pri, const char *, const char *, va_list);
 __dead void die(int);
