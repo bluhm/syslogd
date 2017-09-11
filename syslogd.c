@@ -274,7 +274,7 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 char	*linebuf;
 int	 linesize;
 
-int		 fd_ctlconn, fd_udp, fd_udp6;
+int		 fd_ctlconn, fd_udp, fd_udp6, use_udp, use_udp6;
 struct event	*ev_ctlaccept, *ev_ctlread, *ev_ctlwrite;
 
 struct peer {
@@ -821,10 +821,14 @@ main(int argc, char *argv[])
 	if (fd_sendsys != -1)
 		event_add(ev_sendsys, NULL);
 	if (!SecureMode) {
-		if (fd_udp != -1)
+		if (fd_udp != -1) {
+			use_udp = 1;
 			event_add(ev_udp, NULL);
-		if (fd_udp6 != -1)
+		}
+		if (fd_udp6 != -1) {
+			use_udp6 = 1;
 			event_add(ev_udp6, NULL);
+		}
 	}
 	for (i = 0; i < nbind; i++)
 		if (fd_bind[i] != -1)
@@ -2404,6 +2408,19 @@ init(void)
 	/* close the configuration file */
 	(void)fclose(cf);
 
+	/*
+	 * If generic UDP file descriptors are used neither for receiving nor 
+	 * for sending, close them.  People were confused by *.514 in netstat.
+	 */
+	if (fd_udp != -1 && use_udp) {
+		close(fd_udp);
+		fd_udp = -1;
+	}
+	if (fd_udp6 != -1 && use_udp6) {
+		close(fd_udp6);
+		fd_udp6 = -1;
+	}
+
 	Initialized = 1;
 
 	if (Debug) {
@@ -2659,9 +2676,11 @@ cfline(char *line, char *progblock, char *hostblock)
 		if (strncmp(proto, "udp", 3) == 0) {
 			switch (f->f_un.f_forw.f_addr.ss_family) {
 			case AF_INET:
+				use_udp = 1;
 				f->f_file = fd_udp;
 				break;
 			case AF_INET6:
+				use_udp6 = 1;
 				f->f_file = fd_udp6;
 				break;
 			}
