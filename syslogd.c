@@ -828,8 +828,8 @@ main(int argc, char *argv[])
 	} else {
 		/*
 		 * If generic UDP file descriptors are used neither
-		 * for receiving nor for sending, close them.  People
-		 * were confused by *.514 in netstat.
+		 * for receiving nor for sending, close them.  Then
+		 * there is no useless *.514 in netstat.
 		 */
 		if (fd_udp != -1 && !send_udp) {
 			close(fd_udp);
