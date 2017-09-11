@@ -2412,11 +2412,11 @@ init(void)
 	 * If generic UDP file descriptors are used neither for receiving nor 
 	 * for sending, close them.  People were confused by *.514 in netstat.
 	 */
-	if (fd_udp != -1 && use_udp) {
+	if (fd_udp != -1 && !use_udp) {
 		close(fd_udp);
 		fd_udp = -1;
 	}
-	if (fd_udp6 != -1 && use_udp6) {
+	if (fd_udp6 != -1 && !use_udp6) {
 		close(fd_udp6);
 		fd_udp6 = -1;
 	}
