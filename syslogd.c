@@ -2051,6 +2051,17 @@ fprintlog(struct filed *f, int flags, char *msg)
 				break;
 			}
 
+			if ((e == EIO || e == ENOSPC) && f->f_type == F_FILE) {
+				if (f->f_dropped++ == 0) {
+					f->f_type = F_UNUSED;
+					errno = e;
+					log_warn("writev \"%s\"",
+					    f->f_un.f_fname);
+					f->f_type = F_FILE;
+				}
+				break;
+			}
+
 			/*
 			 * Check for errors on TTY's or program pipes.
 			 * Errors happen due to loss of tty or died programs.
@@ -2085,13 +2096,6 @@ fprintlog(struct filed *f, int flags, char *msg)
 					    f->f_un.f_fname);
 				} else
 					goto again;
-			} else if ((e == EIO || e == ENOSPC) &&
-			    f->f_type == F_FILE) {
-				if (f->f_dropped++ == 0) {
-					errno = e;
-					log_warn("writev \"%s\"",
-					    f->f_un.f_fname);
-				}
 			} else {
 				f->f_type = F_UNUSED;
 				f->f_file = -1;
