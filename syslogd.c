@@ -1653,6 +1653,7 @@ vlogmsg(int pri, const char *proc, const char *fmt, va_list ap)
 		vsnprintf(msg + l, sizeof(msg) - l, fmt, ap);
 	if (!Started) {
 		fprintf(stderr, "%s\n", msg);
+		init_dropped++;
 		return;
 	}
 	logline(pri, ADDDATE, LocalHostName, msg);
