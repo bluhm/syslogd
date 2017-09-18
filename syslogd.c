@@ -337,8 +337,7 @@ void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
 void	markit(void);
 void	fprintlog(struct filed *, int, char *);
-void	dropped_init_warn(void);
-void	dropped_tcpbuf_warn(void);
+void	dropped_warn(int *, const char *);
 void	init(void);
 void	logevent(int, const char *);
 void	logline(int, int, char *, char *);
@@ -2228,7 +2227,8 @@ init_signalcb(int signum, short event, void *arg)
 {
 	init();
 	log_info(LOG_INFO, "restart");
-	dropped_tcpbuf_warn();
+
+	dropped_warn(&tcpbuf_dropped, "to remote loghost");
 	log_debug("syslogd: restarted");
 }
 
@@ -2239,31 +2239,17 @@ logevent(int severity, const char *msg)
 }
 
 void
-dropped_init_warn(void)
+dropped_warn(int *count_dropped, const char *what)
 {
 	int dropped;
 
-	if (init_dropped == 0)
+	if (*count_dropped == 0)
 		return;
 
-	dropped = init_dropped;
-	init_dropped = 0;
-	log_info(LOG_WARNING, "dropped %d message%s during initialization",
-	    dropped, dropped == 1 ? "" : "s");
-}
-
-void
-dropped_tcpbuf_warn(void)
-{
-	int dropped;
-
-	if (tcpbuf_dropped == 0)
-		return;
-
-	dropped = tcpbuf_dropped;
-	tcpbuf_dropped = 0;
-	log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
-	    dropped, dropped == 1 ? "" : "s");
+	dropped = *count_dropped;
+	*count_dropped = 0;
+	log_info(LOG_WARNING, "dropped %d message%s %s",
+	    dropped, dropped == 1 ? "" : "s", what);
 }
 
 __dead void
@@ -2284,8 +2270,8 @@ die(int signo)
 		}
 	}
 	Initialized = was_initialized;
-	dropped_init_warn();
-	dropped_tcpbuf_warn();
+	dropped_warn(&init_dropped, "during initialization");
+	dropped_warn(&tcpbuf_dropped, "to remote loghost");
 
 	if (signo)
 		log_info(LOG_ERR, "exiting on signal %d", signo);
@@ -2366,7 +2352,7 @@ init(void)
 		SIMPLEQ_INSERT_TAIL(&Files,
 		    cfline("*.PANIC\t*", "*", "*"), f_next);
 		Initialized = 1;
-		dropped_init_warn();
+		dropped_warn(&init_dropped, "during initialization");
 		return;
 	}
 
@@ -2467,7 +2453,7 @@ init(void)
 	(void)fclose(cf);
 
 	Initialized = 1;
-	dropped_init_warn();
+	dropped_warn(&init_dropped, "during initialization");
 
 	if (Debug) {
 		SIMPLEQ_FOREACH(f, &Files, f_next) {
