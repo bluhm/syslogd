@@ -226,6 +226,7 @@ const char *ClientCertfile = NULL;
 const char *ClientKeyfile = NULL;
 const char *ServerCAfile = NULL;
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
+int	file_dropped = 0;	/* messages dropped due to file system full */
 int	init_dropped = 0;	/* messages dropped during initialization */
 
 #define CTL_READING_CMD		1
@@ -2268,9 +2269,14 @@ die(int signo)
 			    tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
 			f->f_dropped = 0;
 		}
+		if (f->f_type == F_FILE) {
+			file_dropped += f->f_dropped;
+			f->f_dropped = 0;
+		}
 	}
 	Initialized = was_initialized;
 	dropped_warn(&init_dropped, "during initialization");
+	dropped_warn(&file_dropped, "to file");
 	dropped_warn(&tcpbuf_dropped, "to remote loghost");
 
 	if (signo)
