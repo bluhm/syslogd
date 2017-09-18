@@ -2237,15 +2237,15 @@ logevent(int severity, const char *msg)
 }
 
 void
-dropped_warn(int *count_dropped, const char *what)
+dropped_warn(int *count, const char *what)
 {
 	int dropped;
 
-	if (*count_dropped == 0)
+	if (*count == 0)
 		return;
 
-	dropped = *count_dropped;
-	*count_dropped = 0;
+	dropped = *count;
+	*count = 0;
 	log_info(LOG_WARNING, "dropped %d message%s %s",
 	    dropped, dropped == 1 ? "" : "s", what);
 }
