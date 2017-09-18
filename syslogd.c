@@ -2063,7 +2063,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			if (e == EAGAIN && f->f_type == F_PIPE) {
 				if (now.tv_sec - f->f_lasterrtime > 120) {
 					f->f_lasterrtime = now.tv_sec;
-					log_warn("writev \"%s\"",
+					log_warn("write to pipe \"%s\"",
 					    f->f_un.f_fname);
 				}
 				break;
@@ -2073,7 +2073,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 				if (f->f_dropped++ == 0) {
 					f->f_type = F_UNUSED;
 					errno = e;
-					log_warn("writev \"%s\"",
+					log_warn("write to file \"%s\"",
 					    f->f_un.f_fname);
 					f->f_type = F_FILE;
 				}
