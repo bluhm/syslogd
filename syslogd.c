@@ -142,7 +142,6 @@ struct filed {
 			struct tls		*f_ctx;
 			char			*f_host;
 			int			 f_reconnectwait;
-			int			 f_dropped;
 		} f_forw;		/* forwarding address */
 		char	f_fname[PATH_MAX];
 		struct {
@@ -161,6 +160,7 @@ struct filed {
 	int	f_prevcount;			/* repetition cnt of prevline */
 	unsigned int f_repeatcount;		/* number of "repeated" msgs */
 	int	f_quick;			/* abort when matched */
+	int	f_dropped;			/* warn, dropped message */
 	time_t	f_lasterrtime;			/* last error was reported */
 };
 
@@ -1371,11 +1371,11 @@ tcp_writecb(struct bufferevent *bufev, void *arg)
 	log_debug("loghost \"%s\" successful write", f->f_un.f_forw.f_loghost);
 	f->f_un.f_forw.f_reconnectwait = 0;
 
-	if (f->f_un.f_forw.f_dropped > 0 &&
+	if (f->f_dropped > 0 &&
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) < MAX_TCPBUF) {
 		snprintf(ebuf, sizeof(ebuf), "to loghost \"%s\"",
 		    f->f_un.f_forw.f_loghost);
-		dropped_warn(&f->f_un.f_forw.f_dropped, ebuf);
+		dropped_warn(&f->f_dropped, ebuf);
 	}
 }
 
@@ -1426,7 +1426,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 			evbuffer_drain(bufev->output, -1);
 		log_debug("loghost \"%s\" dropped partial message",
 		    f->f_un.f_forw.f_loghost);
-		f->f_un.f_forw.f_dropped++;
+		f->f_dropped++;
 	}
 
 	tcp_connect_retry(bufev, f);
@@ -1982,7 +1982,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) >=
 		    MAX_TCPBUF) {
 			log_debug(" (dropped)");
-			f->f_un.f_forw.f_dropped++;
+			f->f_dropped++;
 			break;
 		}
 		/*
@@ -1998,7 +1998,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    IncludeHostname ? " " : "");
 		if (l < 0) {
 			log_debug(" (dropped snprintf)");
-			f->f_un.f_forw.f_dropped++;
+			f->f_dropped++;
 			break;
 		}
 		l = evbuffer_add_printf(f->f_un.f_forw.f_bufev->output,
@@ -2010,7 +2010,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    (char *)iov[4].iov_base);
 		if (l < 0) {
 			log_debug(" (dropped evbuffer_add_printf)");
-			f->f_un.f_forw.f_dropped++;
+			f->f_dropped++;
 			break;
 		}
 		bufferevent_enable(f->f_un.f_forw.f_bufev, EV_WRITE);
@@ -2244,9 +2244,9 @@ die(int signo)
 		if (f->f_prevcount)
 			fprintlog(f, 0, (char *)NULL);
 		if (f->f_type == F_FORWTLS || f->f_type == F_FORWTCP) {
-			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
+			tcpbuf_dropped += f->f_dropped +
 			    tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
-			f->f_un.f_forw.f_dropped = 0;
+			f->f_dropped = 0;
 		}
 	}
 	Initialized = was_initialized;
@@ -2301,7 +2301,7 @@ init(void)
 			free(f->f_un.f_forw.f_host);
 			/* FALLTHROUGH */
 		case F_FORWTCP:
-			tcpbuf_dropped += f->f_un.f_forw.f_dropped +
+			tcpbuf_dropped += f->f_dropped +
 			     tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
 			bufferevent_free(f->f_un.f_forw.f_bufev);
 			/* FALLTHROUGH */
