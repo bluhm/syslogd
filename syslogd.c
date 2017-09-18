@@ -1378,6 +1378,7 @@ void
 tcp_writecb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
+	int		 dropped;
 
 	/*
 	 * Successful write, connection to server is good, reset wait time.
@@ -1387,11 +1388,11 @@ tcp_writecb(struct bufferevent *bufev, void *arg)
 
 	if (f->f_un.f_forw.f_dropped > 0 &&
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) < MAX_TCPBUF) {
-		log_info(LOG_WARNING, "dropped %d message%s to loghost \"%s\"",
-		    f->f_un.f_forw.f_dropped,
-		    f->f_un.f_forw.f_dropped == 1 ? "" : "s",
-		    f->f_un.f_forw.f_loghost);
+		dropped = f->f_un.f_forw.f_dropped;
 		f->f_un.f_forw.f_dropped = 0;
+		log_info(LOG_WARNING, "dropped %d message%s to loghost \"%s\"",
+		    dropped, dropped == 1 ? "" : "s",
+		    f->f_un.f_forw.f_loghost);
 	}
 }
 
@@ -2220,13 +2221,16 @@ mark_timercb(int unused, short event, void *arg)
 void
 init_signalcb(int signum, short event, void *arg)
 {
+	int dropped;
+
 	init();
 	log_info(LOG_INFO, "restart");
 
 	if (tcpbuf_dropped > 0) {
-		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
-		    tcpbuf_dropped, tcpbuf_dropped == 1 ? "" : "s");
+		dropped = tcpbuf_dropped;
 		tcpbuf_dropped = 0;
+		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
+		    dropped, dropped == 1 ? "" : "s");
 	}
 	log_debug("syslogd: restarted");
 }
@@ -2241,6 +2245,7 @@ __dead void
 die(int signo)
 {
 	struct filed *f;
+	int dropped;
 	int was_initialized = Initialized;
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
@@ -2257,9 +2262,10 @@ die(int signo)
 	Initialized = was_initialized;
 
 	if (tcpbuf_dropped > 0) {
-		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
-		    tcpbuf_dropped, tcpbuf_dropped == 1 ? "" : "s");
+		dropped = tcpbuf_dropped;
 		tcpbuf_dropped = 0;
+		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
+		    dropped, dropped == 1 ? "" : "s");
 	}
 
 	if (signo)
