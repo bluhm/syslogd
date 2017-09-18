@@ -226,6 +226,7 @@ const char *ClientCertfile = NULL;
 const char *ClientKeyfile = NULL;
 const char *ServerCAfile = NULL;
 int	tcpbuf_dropped = 0;	/* count messages dropped from TCP or TLS */
+int	init_dropped = 0;	/* messages dropped during initialization */
 
 #define CTL_READING_CMD		1
 #define CTL_WRITING_REPLY	2
@@ -320,6 +321,8 @@ void	cvthname(struct sockaddr *, char *, size_t);
 int	decode(const char *, const CODE *);
 void	markit(void);
 void	fprintlog(struct filed *, int, char *);
+void	dropped_init_warn(void);
+void	dropped_tcpbuf_warn(void);
 void	init(void);
 void	logevent(int, const char *);
 void	logline(int, int, char *, char *);
@@ -1794,6 +1797,7 @@ logline(int pri, int flags, char *from, char *msg)
 			/* May be set to F_UNUSED, try again next time. */
 			f->f_type = F_CONSOLE;
 		}
+		init_dropped++;
 		return;
 	}
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
@@ -2203,17 +2207,9 @@ mark_timercb(int unused, short event, void *arg)
 void
 init_signalcb(int signum, short event, void *arg)
 {
-	int dropped;
-
 	init();
 	log_info(LOG_INFO, "restart");
-
-	if (tcpbuf_dropped > 0) {
-		dropped = tcpbuf_dropped;
-		tcpbuf_dropped = 0;
-		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
-		    dropped, dropped == 1 ? "" : "s");
-	}
+	dropped_tcpbuf_warn();
 	log_debug("syslogd: restarted");
 }
 
@@ -2223,11 +2219,38 @@ logevent(int severity, const char *msg)
 	log_debug("libevent: [%d] %s", severity, msg);
 }
 
+void
+dropped_init_warn(void)
+{
+	int dropped;
+
+	if (init_dropped == 0)
+		return;
+
+	dropped = init_dropped;
+	init_dropped = 0;
+	log_info(LOG_WARNING, "dropped %d message%s during initialization",
+	    dropped, dropped == 1 ? "" : "s");
+}
+
+void
+dropped_tcpbuf_warn(void)
+{
+	int dropped;
+
+	if (tcpbuf_dropped == 0)
+		return;
+
+	dropped = tcpbuf_dropped;
+	tcpbuf_dropped = 0;
+	log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
+	    dropped, dropped == 1 ? "" : "s");
+}
+
 __dead void
 die(int signo)
 {
 	struct filed *f;
-	int dropped;
 	int was_initialized = Initialized;
 
 	Initialized = 0;		/* Don't log SIGCHLDs */
@@ -2242,13 +2265,8 @@ die(int signo)
 		}
 	}
 	Initialized = was_initialized;
-
-	if (tcpbuf_dropped > 0) {
-		dropped = tcpbuf_dropped;
-		tcpbuf_dropped = 0;
-		log_info(LOG_WARNING, "dropped %d message%s to remote loghost",
-		    dropped, dropped == 1 ? "" : "s");
-	}
+	dropped_init_warn();
+	dropped_tcpbuf_warn();
 
 	if (signo)
 		log_info(LOG_ERR, "exiting on signal %d", signo);
@@ -2329,6 +2347,7 @@ init(void)
 		SIMPLEQ_INSERT_TAIL(&Files,
 		    cfline("*.PANIC\t*", "*", "*"), f_next);
 		Initialized = 1;
+		dropped_init_warn();
 		return;
 	}
 
@@ -2429,6 +2448,7 @@ init(void)
 	(void)fclose(cf);
 
 	Initialized = 1;
+	dropped_init_warn();
 
 	if (Debug) {
 		SIMPLEQ_FOREACH(f, &Files, f_next) {
