@@ -2041,16 +2041,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (writev(f->f_file, iov, 6) < 0) {
 			int e = errno;
 
-			/* pipe is non-blocking. log and drop message if full */
-			if (e == EAGAIN && f->f_type == F_PIPE) {
-				if (now.tv_sec - f->f_lasterrtime > 120) {
-					f->f_lasterrtime = now.tv_sec;
-					log_warn("write to pipe \"%s\"",
-					    f->f_un.f_fname);
-				}
-				break;
-			}
-
+			/* allow to recover from file system full */
 			if ((e == EIO || e == ENOSPC) && f->f_type == F_FILE) {
 				if (f->f_dropped++ == 0) {
 					f->f_type = F_UNUSED;
@@ -2058,6 +2049,16 @@ fprintlog(struct filed *f, int flags, char *msg)
 					log_warn("write to file \"%s\"",
 					    f->f_un.f_fname);
 					f->f_type = F_FILE;
+				}
+				break;
+			}
+
+			/* pipe is non-blocking. log and drop message if full */
+			if (e == EAGAIN && f->f_type == F_PIPE) {
+				if (now.tv_sec - f->f_lasterrtime > 120) {
+					f->f_lasterrtime = now.tv_sec;
+					log_warn("write to pipe \"%s\"",
+					    f->f_un.f_fname);
 				}
 				break;
 			}
