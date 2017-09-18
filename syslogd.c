@@ -1380,7 +1380,7 @@ void
 tcp_writecb(struct bufferevent *bufev, void *arg)
 {
 	struct filed	*f = arg;
-	int		 dropped;
+	char		 ebuf[ERRBUFSIZE];
 
 	/*
 	 * Successful write, connection to server is good, reset wait time.
@@ -1390,11 +1390,9 @@ tcp_writecb(struct bufferevent *bufev, void *arg)
 
 	if (f->f_un.f_forw.f_dropped > 0 &&
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) < MAX_TCPBUF) {
-		dropped = f->f_un.f_forw.f_dropped;
-		f->f_un.f_forw.f_dropped = 0;
-		log_info(LOG_WARNING, "dropped %d message%s to loghost \"%s\"",
-		    dropped, dropped == 1 ? "" : "s",
+		snprintf(ebuf, sizeof(ebuf), "to loghost \"%s\"",
 		    f->f_un.f_forw.f_loghost);
+		dropped_warn(&f->f_un.f_forw.f_dropped, ebuf);
 	}
 }
 
