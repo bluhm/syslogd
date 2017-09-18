@@ -1877,6 +1877,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 	struct iovec *v;
 	int l, retryonce;
 	char line[LOG_MAXLINE + 1], repbuf[80], greetings[500];
+	char ebuf[ERRBUFSIZE];
 
 	v = iov;
 	if (f->f_type == F_WALL) {
@@ -2084,14 +2085,28 @@ fprintlog(struct filed *f, int flags, char *msg)
 					    f->f_un.f_fname);
 				} else
 					goto again;
+			} else if ((e == EIO || e == ENOSPC) &&
+			    f->f_type == F_FILE) {
+				if (f->f_dropped++ == 0) {
+					errno = e;
+					log_warn("writev \"%s\"",
+					    f->f_un.f_fname);
+				}
 			} else {
 				f->f_type = F_UNUSED;
 				f->f_file = -1;
 				errno = e;
 				log_warn("writev \"%s\"", f->f_un.f_fname);
 			}
-		} else if (flags & SYNC_FILE)
-			(void)fsync(f->f_file);
+		} else {
+			if (flags & SYNC_FILE)
+				(void)fsync(f->f_file);
+			if (f->f_dropped && f->f_type == F_FILE) {
+				snprintf(ebuf, sizeof(ebuf), "to file \"%s\"",
+				    f->f_un.f_fname);
+				dropped_warn(&f->f_dropped, ebuf);
+			}
+		}
 		break;
 
 	case F_USERS:
