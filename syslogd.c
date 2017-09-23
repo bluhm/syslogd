@@ -2247,6 +2247,7 @@ init_signalcb(int signum, short event, void *arg)
 	init();
 	log_info(LOG_INFO, "restart");
 
+	dropped_warn(&file_dropped, "to file");
 	dropped_warn(&tcpbuf_dropped, "to remote loghost");
 	log_debug("syslogd: restarted");
 }
@@ -2350,6 +2351,10 @@ init(void)
 			bufferevent_free(f->f_un.f_forw.f_bufev);
 			/* FALLTHROUGH */
 		case F_FILE:
+			if (f->f_type == F_FILE) {
+				file_dropped += f->f_dropped;
+				f->f_dropped = 0;
+			}
 		case F_TTY:
 		case F_CONSOLE:
 		case F_PIPE:
