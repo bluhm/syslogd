@@ -566,6 +566,7 @@ main(int argc, char *argv[])
 	if ((fd_klog = open(_PATH_KLOG, O_RDONLY, 0)) == -1) {
 		log_warn("open %s", _PATH_KLOG);
 	} else if (fd_sendsys != -1) {
+		/* Use /dev/klog to register sendsyslogd(2) receiver. */
 		if (ioctl(fd_klog, LIOCSFD, &pair[1]) == -1)
 			log_warn("ioctl klog LIOCSFD sendsyslog");
 	}
