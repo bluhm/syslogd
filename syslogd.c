@@ -1957,6 +1957,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    (struct sockaddr *)&f->f_un.f_forw.f_addr,
 		    f->f_un.f_forw.f_addr.ss_len) != l) {
 			switch (errno) {
+			case EADDRNOTAVAIL:
 			case EHOSTDOWN:
 			case EHOSTUNREACH:
 			case ENETDOWN:
