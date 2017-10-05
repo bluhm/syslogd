@@ -2,7 +2,7 @@
 /*	$NetBSD: ttymsg.c,v 1.3 1994/11/17 07:17:55 jtc Exp $	*/
 
 /*
- * Copyright (c) 2014-2017 Alexander Bluhm <bluhm@openbsd.org>
+ * Copyright (c) 2014-2017 Alexander Bluhm <bluhm@genua.de>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
