@@ -550,7 +550,8 @@ main(int argc, char *argv[])
 	if ((fd_unix = reallocarray(NULL, nunix, sizeof(*fd_unix))) == NULL)
 		fatal("allocate unix fd");
 	for (i = 0; i < nunix; i++) {
-		fd_unix[i] = unix_socket(path_unix[i], SOCK_DGRAM, 0666);
+		fd_unix[i] = unix_socket(path_unix[i],
+		    SOCK_DGRAM | SOCK_NONBLOCK, 0666);
 		if (fd_unix[i] == -1) {
 			if (i == 0)
 				log_warnx("log socket %s failed", path_unix[i]);
@@ -559,7 +560,8 @@ main(int argc, char *argv[])
 		double_sockbuf(fd_unix[i], SO_RCVBUF);
 	}
 
-	if (socketpair(AF_UNIX, SOCK_DGRAM, PF_UNSPEC, pair) == -1) {
+	if (socketpair(AF_UNIX, SOCK_DGRAM | SOCK_NONBLOCK, PF_UNSPEC, pair)
+	    == -1) {
 		log_warn("socketpair sendsyslog");
 		fd_sendsys = -1;
 	} else {
@@ -1065,18 +1067,20 @@ udp_readcb(int fd, short event, void *arg)
 void
 unix_readcb(int fd, short event, void *arg)
 {
-	struct sockaddr_un	 sa;
-	socklen_t		 salen;
 	ssize_t			 n;
+	int			 i;
 
-	salen = sizeof(sa);
-	n = recvfrom(fd, linebuf, LOG_MAXLINE, 0, (struct sockaddr *)&sa,
-	    &salen);
-	if (n > 0) {
-		linebuf[n] = '\0';
-		printline(LocalHostName, linebuf);
-	} else if (n < 0 && errno != EINTR && errno != EWOULDBLOCK)
-		log_warn("recvfrom unix");
+	for (i = 0; i < 1000; i++) {
+		n = recv(fd, linebuf, LOG_MAXLINE, 0);
+		if (n > 0) {
+			linebuf[n] = '\0';
+			printline(LocalHostName, linebuf);
+		} else {
+			if (n < 0 && errno != EINTR && errno != EWOULDBLOCK)
+				log_warn("recvfrom unix");
+			break;
+		}
+	}
 }
 
 int
