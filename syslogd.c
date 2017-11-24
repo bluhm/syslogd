@@ -2061,7 +2061,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			int e = errno;
 
 			/* allow to recover from file system full */
-			if ((e == EIO || e == ENOSPC) && f->f_type == F_FILE) {
+			if (e == ENOSPC && f->f_type == F_FILE) {
 				if (f->f_dropped++ == 0) {
 					f->f_type = F_UNUSED;
 					errno = e;
