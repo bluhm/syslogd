@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.253 2017/10/23 17:16:35 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.254 2017/11/24 23:11:42 bluhm Exp $	*/
 
 /*
  * Copyright (c) 2014-2017 Alexander Bluhm <bluhm@genua.de>
