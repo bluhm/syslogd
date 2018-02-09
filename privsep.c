@@ -136,6 +136,13 @@ priv_init(int lockfd, int nullfd, int nremove, char *path_remove[],
 		execpath = argv[0];
 	else if ((execpath = realpath(argv[0], NULL)) == NULL)
 		err(1, "realpath %s", argv[0]);
+	for (i = 0; i < nremove; i++) {
+		char *tmp;
+
+		if ((tmp = realpath(path_remove[i], NULL)) == NULL)
+			err(1, "remove path %s", path_remove[i]);
+		path_remove[i] = tmp;
+	}
 	if (chdir("/") != 0)
 		err(1, "chdir /");
 
