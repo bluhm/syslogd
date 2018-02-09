@@ -24,8 +24,8 @@
 #include <stdarg.h>
 
 /* Privilege separation */
-void  priv_init(int, int, int, char **);
-__dead void priv_exec(char *, int, int, int, char **);
+void  priv_init(int, int, int, char **, int, char **);
+__dead void priv_exec(char *, int, int, int, char**, int, char **);
 int   priv_open_tty(const char *);
 int   priv_open_log(const char *);
 FILE *priv_open_utmp(void);
@@ -43,11 +43,6 @@ void ttymsg(struct iovec *, int, char *);
 /* File descriptor send/recv */
 void send_fd(int, int);
 int  receive_fd(int);
-
-/* The list of domain sockets */
-extern int nunix;
-extern char **path_unix;
-extern char *path_ctlsock;
 
 #define ERRBUFSIZE	256
 void vlogmsg(int pri, const char *, const char *, va_list);

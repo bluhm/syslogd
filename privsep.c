@@ -94,7 +94,8 @@ static void must_write(int, void *, size_t);
 static int  may_read(int, void *, size_t);
 
 void
-priv_init(int lockfd, int nullfd, int argc, char *argv[])
+priv_init(int lockfd, int nullfd, int nremove, char *path_remove[],
+    int argc, char *argv[])
 {
 	int i, socks[2];
 	struct passwd *pw;
@@ -153,11 +154,16 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 		err(1, "closefrom 4 failed");
 
 	snprintf(childnum, sizeof(childnum), "%d", child_pid);
-	if ((privargv = reallocarray(NULL, argc + 3, sizeof(char *))) == NULL)
+	if ((privargv = reallocarray(NULL, argc + 2 * nremove + 3,
+	    sizeof(char *))) == NULL)
 		err(1, "alloc priv argv failed");
 	privargv[0] = execpath;
 	for (i = 1; i < argc; i++)
 		privargv[i] = argv[i];
+	while (nremove > 0) {
+		privargv[i++] = "-R";
+		privargv[i++] = path_remove[--nremove];
+	}
 	privargv[i++] = "-P";
 	privargv[i++] = childnum;
 	privargv[i++] = NULL;
@@ -166,7 +172,8 @@ priv_init(int lockfd, int nullfd, int argc, char *argv[])
 }
 
 __dead void
-priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
+priv_exec(char *conf, int numeric, int child, int nremove, char *path_remove[],
+    int argc, char *argv[])
 {
 	int i, fd, sock, cmd, addr_len, result, restart;
 	size_t path_len, protoname_len, hostname_len, servname_len;
@@ -406,10 +413,8 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	close(sock);
 
 	/* Unlink any domain sockets that have been opened */
-	for (i = 0; i < nunix; i++)
-		(void)unlink(path_unix[i]);
-	if (path_ctlsock != NULL)
-		(void)unlink(path_ctlsock);
+	for (i = 0; i < nremove; i++)
+		(void)unlink(path_remove[i]);
 
 	if (restart) {
 		int status;

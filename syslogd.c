@@ -214,8 +214,6 @@ char	*TypeNames[] = {
 SIMPLEQ_HEAD(filed_list, filed) Files;
 struct	filed consfile;
 
-int	nunix;			/* Number of Unix domain sockets requested */
-char	**path_unix;		/* Paths to Unix domain sockets */
 int	Debug;			/* debug flag */
 int	Foreground;		/* run in foreground, instead of daemonizing */
 char	LocalHostName[HOST_NAME_MAX+1];	/* our hostname */
@@ -232,7 +230,6 @@ int	NoDNS = 0;		/* when true, refrain from doing DNS lookups */
 int	ZuluTime = 0;		/* display date and time in UTC ISO format */
 int	IncludeHostname = 0;	/* include RFC 3164 hostnames when forwarding */
 int	Family = PF_UNSPEC;	/* protocol family, may disable IPv4 or IPv6 */
-char	*path_ctlsock = NULL;	/* Path to control socket */
 
 struct	tls *server_ctx;
 struct	tls_config *client_config, *server_config;
@@ -371,7 +368,9 @@ main(int argc, char *argv[])
 	int		 ch, i;
 	int		 lockpipe[2] = { -1, -1}, pair[2], nullfd, fd;
 	int		 fd_ctlsock, fd_klog, fd_sendsys, *fd_bind, *fd_listen;
-	int		*fd_tls, *fd_unix, nbind, nlisten, ntls;
+	int		*fd_tls, *fd_unix;
+	int		 nunix, nremove, nbind, nlisten, ntls;
+	char		*path_ctlsock, **path_unix, **path_remove;
 	char		**bind_host, **bind_port, **listen_host, **listen_port;
 	char		*tls_hostport, **tls_host, **tls_port;
 
@@ -381,10 +380,13 @@ main(int argc, char *argv[])
 	if (sigprocmask(SIG_SETMASK, &sigmask, NULL) == -1)
 		err(1, "sigprocmask block");
 
+	path_ctlsock = NULL;
 	if ((path_unix = malloc(sizeof(*path_unix))) == NULL)
 		err(1, "malloc %s", _PATH_LOG);
 	path_unix[0] = _PATH_LOG;
 	nunix = 1;
+	path_remove = NULL;
+	nremove = 0;
 
 	bind_host = listen_host = tls_host = NULL;
 	bind_port = listen_port = tls_port = NULL;
@@ -392,7 +394,7 @@ main(int argc, char *argv[])
 	nbind = nlisten = ntls = 0;
 
 	while ((ch = getopt(argc, argv,
-	    "46a:C:c:dFf:hK:k:m:nP:p:rS:s:T:U:uVZ")) != -1) {
+	    "46a:C:c:dFf:hK:k:m:nP:p:R:rS:s:T:U:uVZ")) != -1) {
 		switch (ch) {
 		case '4':		/* disable IPv6 */
 			Family = PF_INET;
@@ -447,6 +449,12 @@ main(int argc, char *argv[])
 		case 'p':		/* path */
 			path_unix[0] = optarg;
 			break;
+		case 'R':		/* used internally, remove at exit */
+			if ((path_remove = reallocarray(path_remove,
+			    nremove + 1, sizeof(*path_remove))) == NULL)
+				err(1, "remove path %s", optarg);
+			path_remove[nremove++] = optarg;
+			break;
 		case 'r':
 			Repeat++;
 			break;
@@ -497,7 +505,8 @@ main(int argc, char *argv[])
 	}
 
 	if (PrivChild > 1)
-		priv_exec(ConfFile, NoDNS, PrivChild, argc, argv);
+		priv_exec(ConfFile, NoDNS, PrivChild, nremove, path_remove,
+		    argc, argv);
 
 	consfile.f_type = F_CONSOLE;
 	(void)strlcpy(consfile.f_un.f_fname, ctty,
@@ -547,6 +556,10 @@ main(int argc, char *argv[])
 			log_warnx("socket listen tls failed");
 	}
 
+	nremove = 0;
+	if ((path_remove = reallocarray(path_remove, nunix + 1,
+	    sizeof(*path_remove))) == NULL)
+		fatal("allocate remove path");
 	if ((fd_unix = reallocarray(NULL, nunix, sizeof(*fd_unix))) == NULL)
 		fatal("allocate unix fd");
 	for (i = 0; i < nunix; i++) {
@@ -556,6 +569,7 @@ main(int argc, char *argv[])
 				log_warnx("log socket %s failed", path_unix[i]);
 			continue;
 		}
+		path_remove[nremove++] = path_unix[i];
 		double_sockbuf(fd_unix[i], SO_RCVBUF);
 	}
 
@@ -574,6 +588,7 @@ main(int argc, char *argv[])
 		if (fd_ctlsock == -1) {
 			log_warnx("control socket %s failed", path_ctlsock);
 		} else {
+			path_remove[nremove++] = path_ctlsock;
 			if (listen(fd_ctlsock, 5) == -1) {
 				log_warn("listen control socket");
 				close(fd_ctlsock);
@@ -750,7 +765,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Privilege separation begins here */
-	priv_init(lockpipe[1], nullfd, argc, argv);
+	priv_init(lockpipe[1], nullfd, nremove, path_remove, argc, argv);
 
 	if (pledge("stdio unix inet recvfd", NULL) == -1)
 		err(1, "pledge");
