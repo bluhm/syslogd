@@ -3014,14 +3014,12 @@ unix_socket(char *path, int type, mode_t mode)
 		return (-1);
 	}
 
-	if (Debug) {
-		if (connect(fd, (struct sockaddr *)&s_un, sizeof(s_un)) == 0 ||
-		    errno == EPROTOTYPE) {
-			close(fd);
-			errno = EISCONN;
-			log_warn("connect unix \"%s\"", path);
-			return (-1);
-		}
+	if (connect(fd, (struct sockaddr *)&s_un, sizeof(s_un)) == 0 ||
+	    errno == EPROTOTYPE || errno == ENOTSOCK) {
+		close(fd);
+		errno = EISCONN;
+		log_warn("connect unix \"%s\"", path);
+		return (-1);
 	}
 
 	old_umask = umask(0177);
