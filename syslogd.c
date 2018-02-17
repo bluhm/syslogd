@@ -715,6 +715,7 @@ main(int argc, char *argv[])
 			tls_host = tls_port = NULL;
 			ntls = 0;
 		}
+		explicit_bzero(names, sizeof(names));
 	}
 
 	log_debug("off & running....");
@@ -747,6 +748,7 @@ main(int argc, char *argv[])
 			fprintf(fp, "%ld\n", (long)getpid());
 			(void) fclose(fp);
 		}
+		explicit_bzero(&fp, sizeof(void *));
 	}
 
 	/* Privilege separation begins here */
@@ -904,6 +906,7 @@ main(int argc, char *argv[])
 	 * We do not need these pointers while processing the event loop.
 	 * Be paranoid and remove them from stack.
 	 */
+	explicit_bzero(&argv, sizeof(void *));
 	explicit_bzero(&ev_klog, sizeof(void *));
 	explicit_bzero(&ev_sendsys, sizeof(void *));
 	explicit_bzero(&ev_udp, sizeof(void *));
