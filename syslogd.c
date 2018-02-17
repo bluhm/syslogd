@@ -900,6 +900,37 @@ main(int argc, char *argv[])
 	if (sigprocmask(SIG_SETMASK, &sigmask, NULL) == -1)
 		err(1, "sigprocmask unblock");
 
+	/*
+	 * We do not need these pointers while processing the event loop.
+	 * Be paranoid and remove them from stack.
+	 */
+	explicit_bzero(&ev_klog, sizeof(void *));
+	explicit_bzero(&ev_sendsys, sizeof(void *));
+	explicit_bzero(&ev_udp, sizeof(void *));
+	explicit_bzero(&ev_udp6, sizeof(void *));
+	explicit_bzero(&ev_bind, sizeof(void *));
+	explicit_bzero(&ev_listen, sizeof(void *));
+	explicit_bzero(&ev_tls, sizeof(void *));
+	explicit_bzero(&ev_unix, sizeof(void *));
+	explicit_bzero(&ev_hup, sizeof(void *));
+	explicit_bzero(&ev_int, sizeof(void *));
+	explicit_bzero(&ev_quit, sizeof(void *));
+	explicit_bzero(&ev_term, sizeof(void *));
+	explicit_bzero(&ev_mark, sizeof(void *));
+	explicit_bzero(&errstr, sizeof(void *));
+	explicit_bzero(&p, sizeof(void *));
+	explicit_bzero(&fd_bind, sizeof(void *));
+	explicit_bzero(&fd_listen, sizeof(void *));
+	explicit_bzero(&fd_tls, sizeof(void *));
+	explicit_bzero(&fd_unix, sizeof(void *));
+	explicit_bzero(&bind_host, sizeof(void *));
+	explicit_bzero(&bind_port, sizeof(void *));
+	explicit_bzero(&listen_host, sizeof(void *));
+	explicit_bzero(&listen_port, sizeof(void *));
+	explicit_bzero(&tls_hostport, sizeof(void *));
+	explicit_bzero(&tls_host, sizeof(void *));
+	explicit_bzero(&tls_port, sizeof(void *));
+
 	event_dispatch();
 	/* NOTREACHED */
 	return (0);
