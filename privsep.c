@@ -93,11 +93,12 @@ static void must_read(int, void *, size_t);
 static void must_write(int, void *, size_t);
 static int  may_read(int, void *, size_t);
 
+static struct passwd *pw;
+
 void
 priv_init(int lockfd, int nullfd, int argc, char *argv[])
 {
 	int i, socks[2];
-	struct passwd *pw;
 	char *execpath, childnum[11], **privargv;
 
 	/* Create sockets */
@@ -440,7 +441,6 @@ static int
 open_pipe(char *cmd)
 {
 	char *argp[] = {"sh", "-c", NULL, NULL};
-	struct passwd *pw;
 	int fd[2];
 	int bsize, flags;
 	pid_t pid;
@@ -490,13 +490,10 @@ open_pipe(char *cmd)
 	    &bsize, sizeof(bsize)) == -1)
 		bsize /= 2;
 
-	if ((pw = getpwnam("_syslogd")) == NULL)
-		errx(1, "unknown user _syslogd");
 	if (setgroups(1, &pw->pw_gid) == -1 ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) == -1 ||
 	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) == -1)
 		err(1, "failure dropping privs");
-	endpwent();
 
 	if (dup2(fd[0], STDIN_FILENO) == -1)
 		err(1, "dup2 failed");
