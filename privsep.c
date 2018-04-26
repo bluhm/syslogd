@@ -179,6 +179,7 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	struct sigaction sa;
 	sigset_t sigmask;
 
+	/* Redo the password lookup after re-exec of the privsep parent. */
 	pw = getpwnam("_syslogd");
 	if (pw == NULL)
 		errx(1, "unknown user _syslogd");
