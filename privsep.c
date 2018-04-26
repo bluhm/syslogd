@@ -93,11 +93,12 @@ static void must_read(int, void *, size_t);
 static void must_write(int, void *, size_t);
 static int  may_read(int, void *, size_t);
 
+struct passwd *pw;
+
 void
 priv_init(int lockfd, int nullfd, int argc, char *argv[])
 {
 	int i, socks[2];
-	struct passwd *pw;
 	char *execpath, childnum[11], **privargv;
 
 	/* Create sockets */
@@ -178,7 +179,18 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	struct sigaction sa;
 	sigset_t sigmask;
 
-	if (pledge("stdio rpath wpath cpath dns getpw sendfd id proc exec",
+	if (pledgepath(conf, O_RDONLY) == -1)
+		err(1, "pledgepath");
+	if (pledgepath(_PATH_UTMP, O_RDONLY) == -1)
+		err(1, "pledgepath");
+	if (pledgepath("/dev", O_RDWR) == -1)
+		err(1, "pledgepath");
+	if (pledgepath("/var", O_RDWR) == -1)
+		err(1, "pledgepath");
+	if (pledgepath("/bin/sh", O_EXEC) == -1)
+		err(1, "pledgepath");
+
+	if (pledge("stdio paths rpath wpath cpath dns sendfd id proc exec",
 	    NULL) == -1)
 		err(1, "pledge priv");
 
@@ -306,6 +318,9 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 			break;
 
 		case PRIV_DONE_CONFIG_PARSE:
+			if (pledge("stdio rpath wpath cpath dns sendfd id proc exec",
+			    NULL) == -1)
+				err(1, "pledge done config");
 			log_debug("[priv]: msg PRIV_DONE_CONFIG_PARSE "
 			    "received");
 			increase_state(STATE_RUNNING);
@@ -490,13 +505,10 @@ open_pipe(char *cmd)
 	    &bsize, sizeof(bsize)) == -1)
 		bsize /= 2;
 
-	if ((pw = getpwnam("_syslogd")) == NULL)
-		errx(1, "unknown user _syslogd");
 	if (setgroups(1, &pw->pw_gid) == -1 ||
 	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) == -1 ||
 	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) == -1)
 		err(1, "failure dropping privs");
-	endpwent();
 
 	if (dup2(fd[0], STDIN_FILENO) == -1)
 		err(1, "dup2 failed");
@@ -552,6 +564,8 @@ check_log_name(char *lognam, size_t logsize)
 			err(1, "check_log_name() malloc");
 		strlcpy(lg->path, lognam, PATH_MAX);
 		TAILQ_INSERT_TAIL(&lognames, lg, next);
+		if (pledgepath(lognam, O_WRONLY) == -1)
+			errx(1, "pledgepath");
 		break;
 	case STATE_RUNNING:
 		TAILQ_FOREACH(lg, &lognames, next)
