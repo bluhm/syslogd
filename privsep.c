@@ -179,6 +179,10 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	struct sigaction sa;
 	sigset_t sigmask;
 
+	pw = getpwnam("_syslogd");
+	if (pw == NULL)
+		errx(1, "unknown user _syslogd");
+
 	if (pledge("stdio rpath wpath cpath dns getpw sendfd id proc exec",
 	    NULL) == -1)
 		err(1, "pledge priv");
