@@ -184,7 +184,25 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	if (pw == NULL)
 		errx(1, "unknown user _syslogd");
 
-	if (pledge("stdio rpath wpath cpath dns sendfd id proc exec",
+	if (unveil(conf, "r") == -1)
+		err(1, "unveil");
+	if (unveil(_PATH_UTMP, "r") == -1)
+		err(1, "unveil");
+	if (unveil("/dev", "rw") == -1)
+		err(1, "unveil");
+
+	/* for pipes */
+	if (unveil("/bin/sh", "x") == -1)
+		err(1, "unveil");
+
+	/* For HUP / re-exec */
+	if (unveil("/usr/sbin/syslogd", "x") == -1)
+		err(1, "unveil");
+	if (argv[0][0] == '/')
+		if (unveil(argv[0], "x") == -1)
+			err(1, "unveil");
+
+	if (pledge("stdio unveil rpath wpath cpath dns sendfd id proc exec",
 	    NULL) == -1)
 		err(1, "pledge priv");
 
@@ -312,6 +330,9 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 			break;
 
 		case PRIV_DONE_CONFIG_PARSE:
+			if (pledge("stdio rpath wpath cpath dns sendfd id proc exec",
+			    NULL) == -1)
+				err(1, "pledge done config");
 			log_debug("[priv]: msg PRIV_DONE_CONFIG_PARSE "
 			    "received");
 			increase_state(STATE_RUNNING);
@@ -554,6 +575,10 @@ check_log_name(char *lognam, size_t logsize)
 			err(1, "check_log_name() malloc");
 		strlcpy(lg->path, lognam, PATH_MAX);
 		TAILQ_INSERT_TAIL(&lognames, lg, next);
+		if (lognam[0] != '|') {
+			if (unveil(lognam, "w") == -1)
+				goto bad_path;
+		}
 		break;
 	case STATE_RUNNING:
 		TAILQ_FOREACH(lg, &lognames, next)
