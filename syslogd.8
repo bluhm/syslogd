@@ -159,15 +159,18 @@ syntax.
 Create a UDP socket for receiving messages and bind it to the
 specified address.
 This can be used, for example, with a pf divert-to rule to receive
-packets when syslogd is bound to localhost.
+packets when
+.Nm
+is bound to localhost.
 A port number may be specified using the
 .Ar host : Ns Ar port
 syntax.
 .It Fl u
 Select the historical
 .Dq insecure
-mode, in which syslogd will
-accept input from the UDP port.
+mode, in which
+.Nm
+will accept input from the UDP port.
 Some software wants this, but you can be subjected to a variety of
 attacks over the network, including attackers remotely filling logs.
 .It Fl V
