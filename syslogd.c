@@ -2277,9 +2277,7 @@ __dead void
 die(int signo)
 {
 	struct filed *f;
-	int was_initialized = Initialized;
 
-	Initialized = 0;		/* Don't log SIGCHLDs */
 	SIMPLEQ_FOREACH(f, &Files, f_next) {
 		/* flush any pending output */
 		if (f->f_prevcount)
@@ -2294,7 +2292,6 @@ die(int signo)
 			f->f_dropped = 0;
 		}
 	}
-	Initialized = was_initialized;
 	dropped_warn(&init_dropped, "during initialization");
 	dropped_warn(&file_dropped, "to file");
 	dropped_warn(&tcpbuf_dropped, "to remote loghost");
