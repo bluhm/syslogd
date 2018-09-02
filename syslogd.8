@@ -197,8 +197,8 @@ The configured logfiles already have to exist
 with the correct permissions.
 When receiving a
 .Dv SIGHUP
-signal, it closes all open logfiles and TCP and TLS connections
-and re-runs this initialization sequence.
+signal, it closes all open logfiles and outgoing TCP and TLS
+connections and re-runs this initialization sequence.
 Sending this signal is required both after editing the configuration
 file and after log rotation.
 .Pp
