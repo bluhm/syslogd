@@ -188,25 +188,26 @@ and
 .Fl U
 can be given more than once to specify multiple input sources.
 .Pp
+When starting up,
 .Nm
 reads its configuration file,
-.Xr syslog.conf 5 ,
-when it starts up and whenever it
-receives a
+.Xr syslogd.conf 5 ,
+and opens the configured logfiles and TCP and TLS connections.
+The configured logfiles already have to exist
+with the correct permissions.
+When receiving a
 .Dv SIGHUP
-signal.
-It creates the file
+signal, it closes all open logfiles and TCP and TLS connections
+and re-runs this initialization sequence.
+Sending this signal is required both after editing the configuration
+file and after log rotation.
+.Pp
+.Nm
+creates the file
 .Pa /var/run/syslog.pid
 and stores its process ID there.
 The PID can be used to kill or reconfigure
-.Nm .
-After log file rotation it is necessary to send a
-.Dv SIGHUP .
-Then
-.Nm
-closes each old log file and starts writing into the new file, which
-must have been created by the rotator with correct permissions.
-Also outgoing TCP or TLS connections are closed and reopened.
+.Nm syslogd .
 .Pp
 .Nm
 opens a UDP socket, as specified
