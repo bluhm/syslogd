@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.256 2018/08/31 19:06:08 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.258 2019/01/13 10:42:51 schwarze Exp $	*/
 
 /*
  * Copyright (c) 2014-2017 Alexander Bluhm <bluhm@genua.de>
@@ -880,7 +880,7 @@ main(int argc, char *argv[])
 
 	signal_add(ev_hup, NULL);
 	signal_add(ev_term, NULL);
-	if (Debug) {
+	if (Debug || Foreground) {
 		signal_add(ev_int, NULL);
 		signal_add(ev_quit, NULL);
 	} else {
@@ -1796,7 +1796,8 @@ logline(int pri, int flags, char *from, char *msg)
 		msglen--;
 	}
 	for (i = 0; i < NAME_MAX; i++) {
-		if (!isalnum((unsigned char)msg[i]) && msg[i] != '-')
+		if (!isalnum((unsigned char)msg[i]) &&
+		    msg[i] != '-' && msg[i] != '.' && msg[i] != '_')
 			break;
 		prog[i] = msg[i];
 	}
