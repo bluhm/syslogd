@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.258 2019/01/13 10:42:51 schwarze Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.259 2019/01/18 15:44:14 bluhm Exp $	*/
 
 /*
  * Copyright (c) 2014-2017 Alexander Bluhm <bluhm@genua.de>
@@ -3054,7 +3054,7 @@ double_sockbuf(int fd, int optname, int bigsize)
 		log_warn("getsockopt bufsize");
 	len = sizeof(newsize);
 	newsize =  LOG_MAXLINE + 128;  /* data + control */
-	/* allow 8 full length messages */
+	/* allow 8 full length messages, that is 66560 bytes */
 	for (i = 0; i < 4; i++, newsize *= 2) {
 		if (newsize <= oldsize)
 			continue;
