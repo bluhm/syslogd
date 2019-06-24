@@ -1666,11 +1666,15 @@ void
 vlogmsg(int pri, const char *proc, const char *fmt, va_list ap)
 {
 	char	msg[ERRBUFSIZE];
-	size_t	l;
+	int	l;
 
 	l = snprintf(msg, sizeof(msg), "%s[%d]: ", proc, getpid());
-	if (l < sizeof(msg))
-		vsnprintf(msg + l, sizeof(msg) - l, fmt, ap);
+	if (l < 0 || (size_t)l >= sizeof(msg))
+		l = 0;
+	l = vsnprintf(msg + l, sizeof(msg) - l, fmt, ap);
+	if (l < 0)
+		strlcpy(msg, fmt, sizeof(msg));
+
 	if (!Started) {
 		fprintf(stderr, "%s\n", msg);
 		init_dropped++;
@@ -1908,8 +1912,12 @@ fprintlog(struct filed *f, int flags, char *msg)
 		l = snprintf(greetings, sizeof(greetings),
 		    "\r\n\7Message from syslogd@%s at %.24s ...\r\n",
 		    f->f_prevhost, ctime(&now.tv_sec));
-		if (l < 0 || (size_t)l >= sizeof(greetings))
-			l = strlen(greetings);
+		if (l < 0)
+			l = strlcpy(greetings,
+			    "\r\n\7Message from syslogd ...\r\n",
+			    sizeof(greetings));
+		if ((size_t)l >= sizeof(greetings))
+			l = sizeof(greetings) - 1;
 		v->iov_base = greetings;
 		v->iov_len = l;
 		v++;
@@ -1953,8 +1961,11 @@ fprintlog(struct filed *f, int flags, char *msg)
 	} else if (f->f_prevcount > 1) {
 		l = snprintf(repbuf, sizeof(repbuf),
 		    "last message repeated %d times", f->f_prevcount);
-		if (l < 0 || (size_t)l >= sizeof(repbuf))
-			l = strlen(repbuf);
+		if (l < 0)
+			strlcpy(repbuf, "last message repeated",
+			    sizeof(repbuf));
+		if ((size_t)l >= sizeof(repbuf))
+			l = sizeof(repbuf) - 1;
 		v->iov_base = repbuf;
 		v->iov_len = l;
 	} else {
@@ -1978,8 +1989,12 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    IncludeHostname ? LocalHostName : "",
 		    IncludeHostname ? " " : "",
 		    (char *)iov[4].iov_base);
-		if (l < 0 || (size_t)l > MINIMUM(MAX_UDPMSG, sizeof(line)))
-			l = MINIMUM(MAX_UDPMSG, sizeof(line));
+		if (l < 0)
+			l = strlcpy(line, iov[4].iov_base, sizeof(line));
+		if ((size_t)l >= sizeof(line))
+			l = sizeof(line) - 1;
+		if ((size_t)l >= MAX_UDPMSG + 1)
+			l = MAX_UDPMSG;
 		if (sendto(f->f_file, line, l, 0,
 		    (struct sockaddr *)&f->f_un.f_forw.f_addr,
 		    f->f_un.f_forw.f_addr.ss_len) != l) {
