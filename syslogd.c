@@ -1639,9 +1639,14 @@ printsys(char *msg)
 	int c, pri, flags;
 	char *lp, *p, *q, line[LOG_MAXLINE + 1];
 	size_t prilen;
+	int l;
 
-	(void)snprintf(line, sizeof line, "%s: ", _PATH_UNIX);
-	lp = line + strlen(line);
+	l = snprintf(line, sizeof(line), "%s: ", _PATH_UNIX);
+	if (l < 0 || (size_t)l >= sizeof(line)) {
+		line[0] = '\0';
+		l = 0;
+	}
+	lp = line + l;
 	for (p = msg; *p != '\0'; ) {
 		flags = SYNC_FILE | ADDDATE;	/* fsync file after write */
 		pri = DEFSPRI;
@@ -2164,9 +2169,11 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_MEMBUF:
 		log_debug("%s", "");
-		snprintf(line, sizeof(line), "%.32s %s %s",
+		l = snprintf(line, sizeof(line), "%.32s %s %s",
 		    (char *)iov[0].iov_base, (char *)iov[2].iov_base,
 		    (char *)iov[4].iov_base);
+		if (l < 0)
+			l = strlcpy(line, iov[4].iov_base, sizeof(line));
 		if (ringbuf_append_line(f->f_un.f_mb.f_rb, line) == 1)
 			f->f_un.f_mb.f_overflow = 1;
 		if (f->f_un.f_mb.f_attached)
