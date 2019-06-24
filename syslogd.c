@@ -1962,7 +1962,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		l = snprintf(repbuf, sizeof(repbuf),
 		    "last message repeated %d times", f->f_prevcount);
 		if (l < 0)
-			strlcpy(repbuf, "last message repeated",
+			l = strlcpy(repbuf, "last message repeated",
 			    sizeof(repbuf));
 		if ((size_t)l >= sizeof(repbuf))
 			l = sizeof(repbuf) - 1;
