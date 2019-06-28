@@ -1642,7 +1642,7 @@ printsys(char *msg)
 	int l;
 
 	l = snprintf(line, sizeof(line), "%s: ", _PATH_UNIX);
-	if (l < 0 || l >= (int)sizeof(line)) {
+	if (l < 0 || l >= sizeof(line)) {
 		line[0] = '\0';
 		l = 0;
 	}
@@ -1674,7 +1674,7 @@ vlogmsg(int pri, const char *proc, const char *fmt, va_list ap)
 	int	l;
 
 	l = snprintf(msg, sizeof(msg), "%s[%d]: ", proc, getpid());
-	if (l < 0 || l >= (int)sizeof(msg))
+	if (l < 0 || l >= sizeof(msg))
 		l = 0;
 	l = vsnprintf(msg + l, sizeof(msg) - l, fmt, ap);
 	if (l < 0)
@@ -1921,7 +1921,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			l = strlcpy(greetings,
 			    "\r\n\7Message from syslogd ...\r\n",
 			    sizeof(greetings));
-		if (l >= (int)sizeof(greetings))
+		if (l >= sizeof(greetings))
 			l = sizeof(greetings) - 1;
 		v->iov_base = greetings;
 		v->iov_len = l;
@@ -1969,7 +1969,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (l < 0)
 			l = strlcpy(repbuf, "last message repeated",
 			    sizeof(repbuf));
-		if (l >= (int)sizeof(repbuf))
+		if (l >= sizeof(repbuf))
 			l = sizeof(repbuf) - 1;
 		v->iov_base = repbuf;
 		v->iov_len = l;
@@ -1996,7 +1996,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		    (char *)iov[4].iov_base);
 		if (l < 0)
 			l = strlcpy(line, iov[4].iov_base, sizeof(line));
-		if (l >= (int)sizeof(line))
+		if (l >= sizeof(line))
 			l = sizeof(line) - 1;
 		if (l >= MAX_UDPMSG + 1)
 			l = MAX_UDPMSG;
