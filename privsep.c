@@ -434,12 +434,6 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 
 	close(sock);
 
-	/* Unlink any domain sockets that have been opened */
-	for (i = 0; i < nunix; i++)
-		(void)unlink(path_unix[i]);
-	if (path_ctlsock != NULL)
-		(void)unlink(path_ctlsock);
-
 	if (restart) {
 		int status;
 
