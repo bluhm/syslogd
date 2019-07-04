@@ -44,11 +44,6 @@ void ttymsg(struct iovec *, int, char *);
 void send_fd(int, int);
 int  receive_fd(int);
 
-/* The list of domain sockets */
-extern int nunix;
-extern char **path_unix;
-extern char *path_ctlsock;
-
 #define ERRBUFSIZE	256
 void vlogmsg(int pri, const char *, const char *, va_list);
 __dead void die(int);
