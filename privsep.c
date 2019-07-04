@@ -190,6 +190,8 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 		err(1, "unveil");
 	if (unveil(_PATH_DEV, "rw") == -1)
 		err(1, "unveil");
+	if (unveil(_PATH_LOGPID, "c") == -1)
+		err(1, "unveil");
 
 	/* for pipes */
 	if (unveil(_PATH_BSHELL, "x") == -1)
