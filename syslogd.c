@@ -2416,6 +2416,7 @@ init(void)
 	s = 0;
 	strlcpy(progblock, "*", sizeof(progblock));
 	strlcpy(hostblock, "*", sizeof(hostblock));
+	send_udp = send_udp6 = 0;
 	while (getline(&cline, &s, cf) != -1) {
 		/*
 		 * check for end-of-section, comments, strip off trailing
@@ -2755,6 +2756,9 @@ cfline(char *line, char *progblock, char *hostblock)
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			log_warnx("bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
+			/* DNS lookup may work after SIGHUP, keep sockets */
+			if (strncmp(proto, "udp", 3) == 0)
+				send_udp = send_udp6 = 1;
 			break;
 		}
 		f->f_file = -1;
