@@ -2757,8 +2757,12 @@ cfline(char *line, char *progblock, char *hostblock)
 			log_warnx("bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
 			/* DNS lookup may work after SIGHUP, keep sockets */
-			if (strncmp(proto, "udp", 3) == 0)
+			if (strcmp(proto, "udp") == 0)
 				send_udp = send_udp6 = 1;
+			else if (strcmp(proto, "udp4") == 0)
+				send_udp = 1;
+			else if (strcmp(proto, "udp6") == 0)
+				send_udp6 = 1;
 			break;
 		}
 		f->f_file = -1;
