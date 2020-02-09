@@ -853,20 +853,6 @@ main(int argc, char *argv[])
 			event_add(ev_udp, NULL);
 		if (fd_udp6 != -1)
 			event_add(ev_udp6, NULL);
-	} else {
-		/*
-		 * If generic UDP file descriptors are used neither
-		 * for receiving nor for sending, close them.  Then
-		 * there is no useless *.514 in netstat.
-		 */
-		if (fd_udp != -1 && !send_udp) {
-			close(fd_udp);
-			fd_udp = -1;
-		}
-		if (fd_udp6 != -1 && !send_udp6) {
-			close(fd_udp6);
-			fd_udp6 = -1;
-		}
 	}
 	for (i = 0; i < nbind; i++)
 		if (fd_bind[i] != -1)
@@ -2508,6 +2494,22 @@ init(void)
 
 	Initialized = 1;
 	dropped_warn(&init_dropped, "during initialization");
+
+	if (SecureMode) {
+		/*
+		 * If generic UDP file descriptors are used neither
+		 * for receiving nor for sending, close them.  Then
+		 * there is no useless *.514 in netstat.
+		 */
+		if (fd_udp != -1 && !send_udp) {
+			close(fd_udp);
+			fd_udp = -1;
+		}
+		if (fd_udp6 != -1 && !send_udp6) {
+			close(fd_udp6);
+			fd_udp6 = -1;
+		}
+	}
 
 	if (Debug) {
 		SIMPLEQ_FOREACH(f, &Files, f_next) {
