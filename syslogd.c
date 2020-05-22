@@ -2707,13 +2707,15 @@ cfline(char *line, char *progblock, char *hostblock)
 		}
 		if (proto == NULL)
 			proto = "udp";
-		ipproto = proto;
 		if (strcmp(proto, "udp") == 0) {
 			if (fd_udp == -1)
 				proto = "udp6";
 			if (fd_udp6 == -1)
 				proto = "udp4";
-			ipproto = proto;
+		}
+		ipproto = proto;
+		if (strcmp(proto, "udp") == 0) {
+			;
 		} else if (strcmp(proto, "udp4") == 0) {
 			if (fd_udp == -1) {
 				log_warnx("no udp4 \"%s\"",
