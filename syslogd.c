@@ -2715,14 +2715,16 @@ cfline(char *line, char *progblock, char *hostblock)
 		}
 		ipproto = proto;
 		if (strcmp(proto, "udp") == 0) {
-			;
+			send_udp = send_udp6 = 1;
 		} else if (strcmp(proto, "udp4") == 0) {
+			send_udp = 1;
 			if (fd_udp == -1) {
 				log_warnx("no udp4 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				break;
 			}
 		} else if (strcmp(proto, "udp6") == 0) {
+			send_udp6 = 1;
 			if (fd_udp6 == -1) {
 				log_warnx("no udp6 \"%s\"",
 				    f->f_un.f_forw.f_loghost);
@@ -2760,24 +2762,15 @@ cfline(char *line, char *progblock, char *hostblock)
 		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
 			log_warnx("bad hostname \"%s\"",
 			    f->f_un.f_forw.f_loghost);
-			/* DNS lookup may work after SIGHUP, keep sockets */
-			if (strcmp(proto, "udp") == 0)
-				send_udp = send_udp6 = 1;
-			else if (strcmp(proto, "udp4") == 0)
-				send_udp = 1;
-			else if (strcmp(proto, "udp6") == 0)
-				send_udp6 = 1;
 			break;
 		}
 		f->f_file = -1;
 		if (strncmp(proto, "udp", 3) == 0) {
 			switch (f->f_un.f_forw.f_addr.ss_family) {
 			case AF_INET:
-				send_udp = 1;
 				f->f_file = fd_udp;
 				break;
 			case AF_INET6:
-				send_udp6 = 1;
 				f->f_file = fd_udp6;
 				break;
 			}
