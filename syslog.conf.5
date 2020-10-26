@@ -227,6 +227,18 @@ Selected messages are appended to the file.
 A pipe to another program (beginning with a leading pipe symbol).
 The given program is started and presented the selected messages
 on its standard input.
+.Pp
+A special program is
+.Cm agentx ,
+which exports messages via an AgentX compatible
+.Pq snmp
+daemon.
+Messages can be found under the syslogMsgMib subtree                                                                                                          
+.Pq mib-2.192 .
+The
+.Cm agentx
+program can only be specified ones per configuration.
+.Pp
 If the program exits,
 .Xr syslogd 8
 tries to restart it.
@@ -342,7 +354,8 @@ mail,news.err						/var/log/spoolerr
 .Sh SEE ALSO
 .Xr syslog 3 ,
 .Xr syslogc 8 ,
-.Xr syslogd 8
+.Xr syslogd 8 ,
+.Xr syslogd.agentx 8
 .Sh HISTORY
 The
 .Nm

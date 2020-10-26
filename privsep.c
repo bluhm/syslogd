@@ -21,9 +21,11 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 
+#include <ctype.h>
 #include <err.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <limits.h>
 #include <netdb.h>
 #include <paths.h>
@@ -85,6 +87,7 @@ static TAILQ_HEAD(, logname) lognames;
 static void check_log_name(char *, size_t);
 static int open_file(char *);
 static int open_pipe(char *);
+static int open_agentx(char *);
 static void check_tty_name(char *, size_t);
 static void increase_state(int);
 static void sig_pass_to_chld(int);
@@ -94,6 +97,7 @@ static void must_write(int, void *, size_t);
 static int  may_read(int, void *, size_t);
 
 static struct passwd *pw;
+static struct group *axgr;
 
 void
 priv_init(int lockfd, int nullfd, int argc, char *argv[])
@@ -183,6 +187,9 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 	pw = getpwnam("_syslogd");
 	if (pw == NULL)
 		errx(1, "unknown user _syslogd");
+	axgr = getgrnam("_agentx");
+	if (axgr == NULL)
+		errx(1, "unknown group _agentx");
 
 	if (unveil(conf, "r") == -1)
 		err(1, "unveil");
@@ -195,6 +202,9 @@ priv_exec(char *conf, int numeric, int child, int argc, char *argv[])
 
 	/* for pipes */
 	if (unveil(_PATH_BSHELL, "x") == -1)
+		err(1, "unveil");
+	/* for agentx */
+	if (unveil("/usr/libexec/syslogd.agentx", "x") == -1)
 		err(1, "unveil");
 
 	/* For HUP / re-exec */
@@ -512,16 +522,70 @@ open_pipe(char *cmd)
 	    &bsize, sizeof(bsize)) == -1)
 		bsize /= 2;
 
-	if (setgroups(1, &pw->pw_gid) == -1 ||
-	    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) == -1 ||
-	    setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) == -1)
+	if (strncmp(cmd, "agentx", 6) == 0 &&
+	    cmd[6] == ' ' || cmd[6] == '\0') {
+		if (setgroups(1, &axgr->gr_gid) == -1 ||
+		    setresgid(axgr->gr_gid, axgr->gr_gid, axgr->gr_gid) == -1)
+			err(1, "failure dropping privs");
+	} else {
+		if (setgroups(1, &pw->pw_gid) == -1 ||
+		    setresgid(pw->pw_gid, pw->pw_gid, pw->pw_gid) == -1)
+			err(1, "failure dropping privs");
+	}
+	if (setresuid(pw->pw_uid, pw->pw_uid, pw->pw_uid) == -1)
 		err(1, "failure dropping privs");
 
 	if (dup2(fd[0], STDIN_FILENO) == -1)
 		err(1, "dup2 failed");
 	closefrom(STDERR_FILENO + 1);
+
+	if (strncmp(cmd, "agentx", 6) == 0 &&
+	    cmd[6] == ' ' || cmd[6] == '\0') {
+		cmd += 6;
+		while (cmd[0] == ' ')
+			cmd++;
+		return open_agentx(cmd);
+	}
+
 	if (execv("/bin/sh", argp) == -1)
 		err(1, "execv %s", cmd);
+	/* NOTREACHED */
+	return (-1);
+}
+
+static int
+open_agentx(char *cmd)
+{
+	char **argp;
+	char *ptr;
+	size_t i;
+
+	for (i = 1, ptr = cmd; ptr[0] != '\0'; ptr++) {
+		if (isspace(ptr[0])) {
+			while (isspace(ptr[0]))
+				ptr++;
+			if (ptr[0] == '\0')
+				break;
+			i++;
+		}
+	}
+	argp = calloc(i + 1, sizeof(*argp));
+	argp[0] = "syslogd.agentx";
+	if (cmd[0] != '\0')
+		argp[1] = cmd;
+	for (i = 2, ptr = cmd; ptr[0] != '\0'; ptr++) {
+		if (isspace(ptr[0])) {
+			ptr[0] = '\0';
+			while (isspace(ptr[0]))
+				ptr++;
+			if (ptr[0] == '\0')
+				break;
+			argp[i++] = ptr;
+		}
+	}
+
+	if (execv("/usr/libexec/syslogd.agentx", argp) == -1)
+		err(1, "execv %s", argp[0]);
 	/* NOTREACHED */
 	return (-1);
 }

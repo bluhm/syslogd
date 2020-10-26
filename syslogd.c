@@ -2065,6 +2065,17 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (f->f_type != F_FILE && f->f_type != F_PIPE) {
 			v->iov_base = "\r\n";
 			v->iov_len = 2;
+		} else if (f->f_type == F_PIPE &&
+		    strncmp(f->f_un.f_fname, "|agentx", 7) == 0 &&
+		    (isspace(f->f_un.f_fname[7]) ||
+		    f->f_un.f_fname[7] == '\0')) {
+			l = snprintf(line, sizeof(line), "<%d> %.32s %s %s\n",
+			    f->f_prevpri, (char *)iov[0].iov_base,
+			    LocalHostName, (char *)iov[4].iov_base);
+			iov[0].iov_base = line;
+			iov[0].iov_len = l;
+			iov[1].iov_len = iov[2].iov_len = iov[3].iov_len = 0;
+			iov[4].iov_len = iov[5].iov_len = 0;
 		} else {
 			v->iov_base = "\n";
 			v->iov_len = 1;
