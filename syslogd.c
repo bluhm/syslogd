@@ -891,6 +891,10 @@ main(int argc, char *argv[])
 	if (sigprocmask(SIG_SETMASK, &sigmask, NULL) == -1)
 		err(1, "sigprocmask unblock");
 
+	/* Send message via libc, flushes log stash in kernel. */
+	openlog("syslogd", LOG_PID, LOG_SYSLOG);
+	syslog(LOG_INFO, "running");
+
 	event_dispatch();
 	/* NOTREACHED */
 	return (0);
