@@ -134,6 +134,7 @@ const char ctty[] = _PATH_CONSOLE;
 #define SYNC_FILE	0x002	/* do fsync on file after printing */
 #define ADDDATE		0x004	/* add a date to the message */
 #define MARK		0x008	/* this message is a mark */
+#define KERNDATE	0x010	/* the kernel has added uptime */
 
 /*
  * This structure represents the files that will have log
@@ -289,6 +290,7 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 
 char	*linebuf;
 int	 linesize;
+struct	 timeval now, boottime;
 
 int		 fd_ctlconn, fd_udp, fd_udp6, send_udp, send_udp6;
 struct event	*ev_ctlaccept, *ev_ctlread, *ev_ctlwrite;
@@ -305,6 +307,7 @@ char hostname_unknown[] = "???";
 
 void	 klog_readcb(int, short, void *);
 void	 udp_readcb(int, short, void *);
+void	 sendsys_readcb(int, short, void *);
 void	 unix_readcb(int, short, void *);
 int	 reserve_accept4(int, int, struct event *,
     void (*)(int, short, void *), struct sockaddr *, socklen_t *, int);
@@ -339,15 +342,17 @@ void	fprintlog(struct filed *, int, char *);
 void	dropped_warn(int *, const char *);
 void	init(void);
 void	logevent(int, const char *);
-void	logline(int, int, char *, char *);
+void	logline(int, int, struct timeval *, char *, char *);
 struct filed *find_dup(struct filed *);
+size_t	parsekerntime(const char *, struct timeval *);
 size_t	parsepriority(const char *, int *);
-void	printline(char *, char *);
+void	printline(int, char *, char *);
 void	printsys(char *);
 void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
 int	loghost_parse(char *, char **, char **, char **);
 int	getmsgbufsize(void);
+int	getboottime(void);
 void	address_alloc(const char *, const char *, char ***, char ***, int *);
 int	socket_bind(const char *, const char *, const char *, int,
     int *, int *);
@@ -796,7 +801,7 @@ main(int argc, char *argv[])
 	event_set(ev_ctlwrite, fd_ctlconn, EV_WRITE|EV_PERSIST,
 	    ctlconn_writecb, ev_ctlwrite);
 	event_set(ev_klog, fd_klog, EV_READ|EV_PERSIST, klog_readcb, ev_klog);
-	event_set(ev_sendsys, fd_sendsys, EV_READ|EV_PERSIST, unix_readcb,
+	event_set(ev_sendsys, fd_sendsys, EV_READ|EV_PERSIST, sendsys_readcb,
 	    ev_sendsys);
 	event_set(ev_udp, fd_udp, EV_READ|EV_PERSIST, udp_readcb, ev_udp);
 	event_set(ev_udp6, fd_udp6, EV_READ|EV_PERSIST, udp_readcb, ev_udp6);
@@ -1054,9 +1059,22 @@ udp_readcb(int fd, short event, void *arg)
 		linebuf[n] = '\0';
 		cvthname((struct sockaddr *)&sa, resolve, sizeof(resolve));
 		log_debug("cvthname res: %s", resolve);
-		printline(resolve, linebuf);
+		printline(0, resolve, linebuf);
 	} else if (n == -1 && errno != EINTR && errno != EWOULDBLOCK)
 		log_warn("recvfrom udp");
+}
+
+void
+sendsys_readcb(int fd, short event, void *arg)
+{
+	ssize_t			 n;
+
+	n = recvfrom(fd, linebuf, LOG_MAXLINE, 0, NULL, 0);
+	if (n > 0) {
+		linebuf[n] = '\0';
+		printline(KERNDATE, LocalHostName, linebuf);
+	} else if (n == -1 && errno != EINTR && errno != EWOULDBLOCK)
+		log_warn("recvfrom sendsyslog");
 }
 
 void
@@ -1071,7 +1089,7 @@ unix_readcb(int fd, short event, void *arg)
 	    &salen);
 	if (n > 0) {
 		linebuf[n] = '\0';
-		printline(LocalHostName, linebuf);
+		printline(0, LocalHostName, linebuf);
 	} else if (n == -1 && errno != EINTR && errno != EWOULDBLOCK)
 		log_warn("recvfrom unix");
 }
@@ -1306,13 +1324,13 @@ tcp_readcb(struct bufferevent *bufev, void *arg)
 			linebuf[MINIMUM(len, LOG_MAXLINE)] = '\0';
 			msg = linebuf;
 		}
-		printline(p->p_hostname, msg);
+		printline(0, p->p_hostname, msg);
 		evbuffer_drain(bufev->input, len);
 	}
 	/* Maximum frame has 5 digits, 1 space, MAXLINE chars, 1 new line. */
 	if (EVBUFFER_LENGTH(bufev->input) >= 5 + 1 + LOG_MAXLINE + 1) {
 		log_debug(", use %zu bytes", EVBUFFER_LENGTH(bufev->input));
-		printline(p->p_hostname, EVBUFFER_DATA(bufev->input));
+		printline(0, p->p_hostname, EVBUFFER_DATA(bufev->input));
 		evbuffer_drain(bufev->input, -1);
 	} else if (EVBUFFER_LENGTH(bufev->input) > 0)
 		log_debug(", buffer %zu bytes", EVBUFFER_LENGTH(bufev->input));
@@ -1560,6 +1578,26 @@ usage(void)
 }
 
 /*
+ * Kernel prepends getmicrouptime(9) with space in front of log messages.  
+ * It is called at beginnning of sendsyslog(2) and has 6 digits precision.
+ */
+size_t
+parsekerntime(const char *msg, struct timeval *logtime)
+{
+	struct timeval uptime;
+	int timelen, timenum;
+
+	timenum = sscanf(msg, "%lld.%06ld %n",
+	    &uptime.tv_sec, &uptime.tv_usec, &timelen);
+	if (timenum != 2)
+		return (0);
+	if (!getboottime())
+		return (0);
+	timeradd(&boottime, &uptime, logtime);
+	return (timelen);
+}
+
+/*
  * Parse a priority code of the form "<123>" into pri, and return the
  * length of the priority code including the surrounding angle brackets.
  */
@@ -1591,14 +1629,22 @@ parsepriority(const char *msg, int *pri)
  * on the appropriate log files.
  */
 void
-printline(char *hname, char *msg)
+printline(int flags, char *hname, char *msg)
 {
+	struct timeval logtime;
 	int pri;
 	char *p, *q, line[LOG_MAXLINE + 4 + 1];  /* message, encoding, NUL */
 
 	/* test for special codes */
-	pri = DEFUPRI;
 	p = msg;
+	timerclear(&logtime);
+	pri = DEFUPRI;
+	if (flags & KERNDATE) {
+		p += parsekerntime(p, &logtime);
+		if (!timerisset(&logtime))
+			flags &=~ KERNDATE;
+	}
+	pri = DEFUPRI;
 	p += parsepriority(p, &pri);
 	if (pri &~ (LOG_FACMASK|LOG_PRIMASK))
 		pri = DEFUPRI;
@@ -1619,7 +1665,7 @@ printline(char *hname, char *msg)
 	}
 	line[LOG_MAXLINE] = *q = '\0';
 
-	logline(pri, 0, hname, line);
+	logline(pri, flags, &logtime, hname, line);
 }
 
 /*
@@ -1655,7 +1701,7 @@ printsys(char *msg)
 		while (*p && (c = *p++) != '\n' && q < &line[sizeof(line) - 4])
 			q = vis(q, c, 0, 0);
 
-		logline(pri, flags, LocalHostName, line);
+		logline(pri, flags, NULL, LocalHostName, line);
 	}
 }
 
@@ -1677,21 +1723,20 @@ vlogmsg(int pri, const char *proc, const char *fmt, va_list ap)
 		init_dropped++;
 		return;
 	}
-	logline(pri, ADDDATE, LocalHostName, msg);
+	logline(pri, ADDDATE, NULL, LocalHostName, msg);
 }
-
-struct timeval	now;
 
 /*
  * Log a message to the appropriate log files, users, etc. based on
  * the priority.
  */
 void
-logline(int pri, int flags, char *from, char *msg)
+logline(int pri, int flags, struct timeval *kerntime, char *from, char *msg)
 {
 	struct filed *f;
+	struct timeval *logtime;
 	int fac, msglen, prilev, i;
-	char timestamp[33];
+	char timestamp[sizeof("2003-08-24T05:14:15.000003-07:00")];
 	char prog[NAME_MAX+1];
 
 	log_debug("logline: pri 0%o, flags 0x%x, from %s, msg %s",
@@ -1768,21 +1813,25 @@ logline(int pri, int flags, char *from, char *msg)
 	}
 
 	(void)gettimeofday(&now, NULL);
+	logtime = (flags & KERNDATE) ? kerntime : &now;
 	if (flags & ADDDATE) {
 		if (ZuluTime) {
 			struct tm *tm;
 			size_t l;
 
-			tm = gmtime(&now.tv_sec);
+			tm = gmtime(&logtime->tv_sec);
 			l = strftime(timestamp, sizeof(timestamp), "%FT%T", tm);
 			/*
-			 * Use only millisecond precision as some time has
-			 * passed since syslog(3) was called.
+			 * Use millisecond precision for gettimeofday(2) as
+			 * some time has passed since syslog(3) was called.
+			 * Kernel time is more precise, use microseconds.
 			 */
 			snprintf(timestamp + l, sizeof(timestamp) - l,
-			    ".%03ldZ", now.tv_usec / 1000);
+			    ".%0*ldZ", (flags & KERNDATE) ? 6 : 3,
+			    (flags & KERNDATE) ? logtime->tv_usec :
+			    logtime->tv_usec / 1000);
 		} else
-			strlcpy(timestamp, ctime(&now.tv_sec) + 4, 16);
+			strlcpy(timestamp, ctime(&logtime->tv_sec) + 4, 16);
 	}
 
 	/* extract facility and priority level */
@@ -2961,12 +3010,28 @@ getmsgbufsize(void)
 
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_MSGBUFSIZE;
-	size = sizeof msgbufsize;
+	size = sizeof(msgbufsize);
 	if (sysctl(mib, 2, &msgbufsize, &size, NULL, 0) == -1) {
-		log_debug("couldn't get kern.msgbufsize");
+		log_warn("sysctl kern.msgbufsize");
 		return (0);
 	}
 	return (msgbufsize);
+}
+
+int
+getboottime(void)
+{
+	int mib[2];
+	size_t size;
+
+	mib[0] = CTL_KERN;
+	mib[1] = KERN_BOOTTIME;
+	size = sizeof(boottime);
+	if (sysctl(mib, 2, &boottime, &size, NULL, 0) == -1) {
+		log_warn("sysctl kern.boottime");
+		return (0);
+	}
+	return (1);
 }
 
 /*
@@ -3000,7 +3065,8 @@ markit(void)
 	(void)gettimeofday(&now, NULL);
 	MarkSeq += TIMERINTVL;
 	if (MarkSeq >= MarkInterval) {
-		logline(LOG_INFO, ADDDATE|MARK, LocalHostName, "-- MARK --");
+		logline(LOG_INFO, ADDDATE|MARK, NULL, LocalHostName,
+		    "-- MARK --");
 		MarkSeq = 0;
 	}
 
