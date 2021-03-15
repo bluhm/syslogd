@@ -134,7 +134,7 @@ const char ctty[] = _PATH_CONSOLE;
 #define SYNC_FILE	0x002	/* do fsync on file after printing */
 #define ADDDATE		0x004	/* add a date to the message */
 #define MARK		0x008	/* this message is a mark */
-#define KERNDATE	0x010	/* the kernel has added uptime */
+#define KERNDATE	0x010	/* the kernel has added log time */
 
 /*
  * This structure represents the files that will have log
@@ -290,7 +290,7 @@ size_t	ctl_reply_offset = 0;	/* Number of bytes of reply written so far */
 
 char	*linebuf;
 int	 linesize;
-struct	 timeval now, boottime;
+struct	 timeval now;
 
 int		 fd_ctlconn, fd_udp, fd_udp6, send_udp, send_udp6;
 struct event	*ev_ctlaccept, *ev_ctlread, *ev_ctlwrite;
@@ -352,7 +352,6 @@ void	usage(void);
 void	wallmsg(struct filed *, struct iovec *);
 int	loghost_parse(char *, char **, char **, char **);
 int	getmsgbufsize(void);
-int	getboottime(void);
 void	address_alloc(const char *, const char *, char ***, char ***, int *);
 int	socket_bind(const char *, const char *, const char *, int,
     int *, int *);
@@ -1578,22 +1577,20 @@ usage(void)
 }
 
 /*
- * Kernel prepends getmicrouptime(9) with space in front of log messages.  
+ * Kernel prepends getmicrotime(9) with space in front of log messages.  
  * It is called at beginnning of sendsyslog(2) and has 6 digits precision.
  */
 size_t
 parsekerntime(const char *msg, struct timeval *logtime)
 {
-	struct timeval uptime;
+	struct timeval time;
 	int timelen, timenum;
 
 	timenum = sscanf(msg, "%lld.%06ld %n",
-	    &uptime.tv_sec, &uptime.tv_usec, &timelen);
+	    &time.tv_sec, &time.tv_usec, &timelen);
 	if (timenum != 2)
 		return (0);
-	if (!getboottime())
-		return (0);
-	timeradd(&boottime, &uptime, logtime);
+	*logtime = time;
 	return (timelen);
 }
 
@@ -3016,22 +3013,6 @@ getmsgbufsize(void)
 		return (0);
 	}
 	return (msgbufsize);
-}
-
-int
-getboottime(void)
-{
-	int mib[2];
-	size_t size;
-
-	mib[0] = CTL_KERN;
-	mib[1] = KERN_BOOTTIME;
-	size = sizeof(boottime);
-	if (sysctl(mib, 2, &boottime, &size, NULL, 0) == -1) {
-		log_warn("sysctl kern.boottime");
-		return (0);
-	}
-	return (1);
 }
 
 /*
