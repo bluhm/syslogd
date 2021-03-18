@@ -1577,7 +1577,7 @@ usage(void)
 }
 
 /*
- * Kernel prepends microtime(9) with space in front of log messages.  
+ * Kernel prepends microtime(9) with space in front of log messages.
  * It is called at beginnning of sendsyslog(2) and has 6 digits precision.
  */
 size_t
@@ -1635,7 +1635,6 @@ printline(int flags, char *hname, char *msg)
 	/* test for special codes */
 	p = msg;
 	timerclear(&logtime);
-	pri = DEFUPRI;
 	if (flags & KERNDATE) {
 		p += parsekerntime(p, &logtime);
 		if (!timerisset(&logtime))
