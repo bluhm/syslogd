@@ -1577,7 +1577,7 @@ usage(void)
 }
 
 /*
- * Kernel prepends getmicrotime(9) with space in front of log messages.  
+ * Kernel prepends microtime(9) with space in front of log messages.  
  * It is called at beginnning of sendsyslog(2) and has 6 digits precision.
  */
 size_t
