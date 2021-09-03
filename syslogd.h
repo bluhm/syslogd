@@ -35,10 +35,12 @@ int   priv_config_modified(void);
 int   priv_getaddrinfo(char *, char *, char *, struct sockaddr *, size_t);
 int   priv_getnameinfo(struct sockaddr *, socklen_t, char *, size_t);
 
+#define IOVCNT		6
+
 /* Terminal message */
 #define TTYMSGTIME	1		/* timeout used by ttymsg */
 #define TTYMAXDELAY	256		/* max events in ttymsg */
-void ttymsg(struct iovec *, int, char *);
+void ttymsg(char *, struct iovec *);
 
 /* File descriptor send/recv */
 void send_fd(int, int);
