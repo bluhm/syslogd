@@ -35,7 +35,7 @@ int   priv_config_modified(void);
 int   priv_getaddrinfo(char *, char *, char *, struct sockaddr *, size_t);
 int   priv_getnameinfo(struct sockaddr *, socklen_t, char *, size_t);
 
-#define IOVCNT		6
+#define IOVCNT		7
 
 /* Terminal message */
 #define TTYMSGTIME	1		/* timeout used by ttymsg */
