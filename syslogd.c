@@ -1960,7 +1960,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			v->iov_base = " ";
 			v->iov_len = 1;
 		} else {
-			/* XXX RFC requires to include host name or - */
+			/* XXX RFC requires to include host name */
 			v->iov_base = "";
 			v->iov_len = 0;
 			v++;
