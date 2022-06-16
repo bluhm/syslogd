@@ -227,7 +227,9 @@ The message sent to
 should consist of a single line.
 Embedded new line characters are converted to spaces;
 binary data is encoded by
-.Xr vis 3 .
+.Xr vis 3 ,
+but no backslash is inserted.
+.
 The message can contain a priority code, which should be a preceding
 decimal number in angle braces, for example,
 .Dq <5> .
