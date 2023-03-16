@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.274 2022/05/04 14:47:46 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.276 2022/12/28 21:30:19 jmc Exp $	*/
 
 /*
  * Copyright (c) 2014-2021 Alexander Bluhm <bluhm@genua.de>
@@ -1151,7 +1151,7 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 		log_debug("Malformed accept address");
 		peername = hostname_unknown;
 	}
-	log_debug("Peer addresss and port %s", peername);
+	log_debug("Peer address and port %s", peername);
 	if ((p = malloc(sizeof(*p))) == NULL) {
 		log_warn("allocate \"%s\"", peername);
 		close(fd);
@@ -1570,7 +1570,7 @@ printline(char *hname, char *msgstr)
 		if (*p == '\n')
 			*q++ = ' ';
 		else
-			q = vis(q, *p, 0, 0);
+			q = vis(q, *p, VIS_NOSLASH, 0);
 	}
 	line[LOG_MAXLINE] = *q = '\0';
 
@@ -1626,7 +1626,7 @@ printsys(char *msgstr)
 		q = lp;
 		while (*p && (c = *p++) != '\n' &&
 		    q < &msg.m_msg[sizeof(msg.m_msg) - 4])
-			q = vis(q, c, 0, 0);
+			q = vis(q, c, VIS_NOSLASH, 0);
 
 		logmsg(&msg, flags, LocalHostName);
 	}
@@ -3302,7 +3302,7 @@ ctlconn_writecb(int fd, short event, void *arg)
 	}
 
 	/*
-	 * Make space in the buffer for continous writes.
+	 * Make space in the buffer for continuous writes.
 	 * Set offset behind reply header to skip it
 	 */
 	*reply_text = '\0';
