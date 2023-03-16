@@ -1950,6 +1950,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 		msghdr.msg_iovlen = IOVCNT;
 		if (sendmsg(f->f_file, &msghdr, 0) == -1) {
 			switch (errno) {
+			case EACCES:
 			case EADDRNOTAVAIL:
 			case EHOSTDOWN:
 			case EHOSTUNREACH:
