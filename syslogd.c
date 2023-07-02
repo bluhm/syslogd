@@ -156,13 +156,12 @@ struct filed {
 			struct sockaddr_storage	 f_addr;
 			struct buffertls	 f_buftls;
 			struct bufferevent	*f_bufev;
+			struct event		 f_ev;
 			struct tls		*f_ctx;
+			char			*f_ipproto;
 			char			*f_host;
-			int			 f_reconnectwait;
-			char			 f_resolved;
-			    /* indicate if address resolution was successful */
-			long			 f_resolvetime;
-			    /* save time of resolution for retry attempts */
+			char			*f_port;
+			int			 f_retrywait;
 		} f_forw;		/* forwarding address */
 		char	f_fname[PATH_MAX];
 		struct {
@@ -324,6 +323,7 @@ void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
 void	 tcp_connect_retry(struct bufferevent *, struct filed *);
+void	 udp_resolvecb(int, short, void *);
 int	 tcpbuf_countmsg(struct bufferevent *bufev);
 void	 die_signalcb(int, short, void *);
 void	 mark_timercb(int, short, void *);
@@ -1384,7 +1384,7 @@ tcp_writecb(struct bufferevent *bufev, void *arg)
 	 * Successful write, connection to server is good, reset wait time.
 	 */
 	log_debug("loghost \"%s\" successful write", f->f_un.f_forw.f_loghost);
-	f->f_un.f_forw.f_reconnectwait = 0;
+	f->f_un.f_forw.f_retrywait = 0;
 
 	if (f->f_dropped > 0 &&
 	    EVBUFFER_LENGTH(f->f_un.f_forw.f_bufev->output) < MAX_TCPBUF) {
@@ -1450,55 +1450,6 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	log_info(LOG_WARNING, "%s", ebuf);
 }
 
-int
-resolve_host(struct filed *f)
-{
-	char *loghostcpy, *ipproto, *proto, *host, *port;
-	int retval = -1;
-
-	/*
-	 * loghost_parse breaks the loghost line in a strtok:y way,
-	 * so we work on a copy. Note that loghost_parse uses this
-	 * buffer to store proto, host and port, so don't free this
-	 * until we are completely done.
-	 */
-	loghostcpy = strdup(f->f_un.f_forw.f_loghost + 1);
-	if (loghostcpy == NULL) {
-		log_warn("strdup loghost \"%s\"", f->f_un.f_forw.f_loghost);
-		goto cleanup;
-	}
-
-	if (loghost_parse(loghostcpy, &proto, &host, &port) == -1) {
-		log_warnx("bad loghost \"%s\"", f->f_un.f_forw.f_loghost);
-		goto cleanup;
-	}
-
-	ipproto = proto;
-	if (strcmp(proto, "tls") == 0) {
-		ipproto = "tcp";
-	} else if (strcmp(proto, "tls4") == 0) {
-		ipproto = "tcp4";
-	} else if (strcmp(proto, "tls6") == 0) {
-		ipproto = "tcp6";
-	}
-
-	if (priv_getaddrinfo(ipproto, host, port,
-	    (struct sockaddr*)&f->f_un.f_forw.f_addr,
-	    sizeof(f->f_un.f_forw.f_addr)) != 0) {
-		log_warnx("could not resolve \"%s\"", host);
-		goto cleanup;
-	}
-
-	f->f_un.f_forw.f_resolved = 1;
-	retval = 0;
-
-cleanup:
-	free(loghostcpy);
-	log_debug("resolve host \"%s\" %s", f->f_un.f_forw.f_loghost,
-	    retval ? "failed" : "successful");
-	return (retval);
-}
-
 void
 tcp_connectcb(int fd, short event, void *arg)
 {
@@ -1506,9 +1457,15 @@ tcp_connectcb(int fd, short event, void *arg)
 	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
 	int			 s;
 
-	if (!f->f_un.f_forw.f_resolved) {
-		if (resolve_host(f) == -1) {
-			goto error;
+	if (f->f_un.f_forw.f_addr.ss_family == AF_UNSPEC) {
+		if (priv_getaddrinfo(f->f_un.f_forw.f_ipproto,
+		    f->f_un.f_forw.f_host, f->f_un.f_forw.f_port,
+		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
+		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
+			log_warnx("bad hostname \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			tcp_connect_retry(bufev, f);
+			return;
 		}
 	}
 
@@ -1570,21 +1527,57 @@ tcp_connect_retry(struct bufferevent *bufev, struct filed *f)
 {
 	struct timeval		 to;
 
-	if (f->f_un.f_forw.f_reconnectwait == 0)
-		f->f_un.f_forw.f_reconnectwait = 1;
+	if (f->f_un.f_forw.f_retrywait == 0)
+		f->f_un.f_forw.f_retrywait = 1;
 	else
-		f->f_un.f_forw.f_reconnectwait <<= 1;
-	if (f->f_un.f_forw.f_reconnectwait > 600)
-		f->f_un.f_forw.f_reconnectwait = 600;
-	to.tv_sec = f->f_un.f_forw.f_reconnectwait;
+		f->f_un.f_forw.f_retrywait <<= 1;
+	if (f->f_un.f_forw.f_retrywait > 600)
+		f->f_un.f_forw.f_retrywait = 600;
+	to.tv_sec = f->f_un.f_forw.f_retrywait;
 	to.tv_usec = 0;
+	evtimer_add(&f->f_un.f_forw.f_ev, &to);
 
-	log_debug("tcp connect retry: wait %d",
-	    f->f_un.f_forw.f_reconnectwait);
+	log_debug("tcp connect retry: wait %d", f->f_un.f_forw.f_retrywait);
 	bufferevent_setfd(bufev, -1);
-	/* We can reuse the write event as bufferevent is disabled. */
-	evtimer_set(&bufev->ev_write, tcp_connectcb, f);
-	evtimer_add(&bufev->ev_write, &to);
+}
+
+void
+udp_resolvecb(int fd, short event, void *arg)
+{
+	struct filed		*f = arg;
+	struct timeval		 to;
+
+	if (priv_getaddrinfo(f->f_un.f_forw.f_ipproto,
+	    f->f_un.f_forw.f_host, f->f_un.f_forw.f_port,
+	    (struct sockaddr*)&f->f_un.f_forw.f_addr,
+	    sizeof(f->f_un.f_forw.f_addr)) == 0) {
+		switch (f->f_un.f_forw.f_addr.ss_family) {
+		case AF_INET:
+			log_debug("resolved \"%s\" to IPv4 address",
+			    f->f_un.f_forw.f_loghost);
+			f->f_file = fd_udp;
+			break;
+		case AF_INET6:
+			log_debug("resolved \"%s\" to IPv6 address",
+			    f->f_un.f_forw.f_loghost);
+			f->f_file = fd_udp6;
+			break;
+		}
+		return;
+	}
+	log_warnx("bad hostname \"%s\"", f->f_un.f_forw.f_loghost);
+
+	if (f->f_un.f_forw.f_retrywait == 0)
+		f->f_un.f_forw.f_retrywait = 1;
+	else
+		f->f_un.f_forw.f_retrywait <<= 1;
+	if (f->f_un.f_forw.f_retrywait > 600)
+		f->f_un.f_forw.f_retrywait = 600;
+	to.tv_sec = f->f_un.f_forw.f_retrywait;
+	to.tv_usec = 0;
+	evtimer_add(&f->f_un.f_forw.f_ev, &to);
+
+	log_debug("udp resolve retry: wait %d", f->f_un.f_forw.f_retrywait);
 }
 
 int
@@ -1993,36 +1986,11 @@ fprintlog(struct filed *f, int flags, char *msg)
 	case F_FORWUDP:
 		log_debug(" %s", f->f_un.f_forw.f_loghost);
 
-		if (!f->f_un.f_forw.f_resolved) {
-			(void)gettimeofday(&now, NULL);
-			if ((now.tv_sec - f->f_un.f_forw.f_resolvetime) > 10) {
-				/*
-				 * Attempt resolution only if more than
-				 * 10 seconds have passed since last failed
-				 * attempt.
-				 */
-				f->f_un.f_forw.f_resolvetime = now.tv_sec;
-				if (resolve_host(f) == -1) {
-					break;
-				}
-				switch (f->f_un.f_forw.f_addr.ss_family) {
-					case AF_INET:
-						f->f_file = fd_udp;
-						break;
-					case AF_INET6:
-						f->f_file = fd_udp6;
-						break;
-				}
-			} else {
-				/*
-				 * The host has not been resolved, but it
-				 * is also too soon for us to try again.
-				 * Just abort.
-				 */
-				break;
-			}
+		if (f->f_un.f_forw.f_addr.ss_family == AF_UNSPEC) {
+			log_warnx("not resolved \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			break;
 		}
-
 		l = iov[0].iov_len + iov[1].iov_len + iov[2].iov_len +
 		    iov[3].iov_len + iov[4].iov_len + iov[5].iov_len +
 		    iov[6].iov_len;
@@ -2033,7 +2001,6 @@ fprintlog(struct filed *f, int flags, char *msg)
 			else
 				iov[5].iov_len = 0;
 		}
-
 		memset(&msghdr, 0, sizeof(msghdr));
 		msghdr.msg_name = &f->f_un.f_forw.f_addr;
 		msghdr.msg_namelen = f->f_un.f_forw.f_addr.ss_len;
@@ -2386,23 +2353,31 @@ init(void)
 			fprintlog(f, 0, (char *)NULL);
 
 		switch (f->f_type) {
+		case F_FORWUDP:
+			free(f->f_un.f_forw.f_ipproto);
+			free(f->f_un.f_forw.f_host);
+			free(f->f_un.f_forw.f_port);
+			break;
 		case F_FORWTLS:
 			if (f->f_un.f_forw.f_ctx) {
 				tls_close(f->f_un.f_forw.f_ctx);
 				tls_free(f->f_un.f_forw.f_ctx);
 			}
-			free(f->f_un.f_forw.f_host);
 			/* FALLTHROUGH */
 		case F_FORWTCP:
 			tcpbuf_dropped += f->f_dropped +
 			     tcpbuf_countmsg(f->f_un.f_forw.f_bufev);
 			bufferevent_free(f->f_un.f_forw.f_bufev);
+			free(f->f_un.f_forw.f_ipproto);
+			free(f->f_un.f_forw.f_host);
+			free(f->f_un.f_forw.f_port);
 			/* FALLTHROUGH */
 		case F_FILE:
 			if (f->f_type == F_FILE) {
 				file_dropped += f->f_dropped;
 				f->f_dropped = 0;
 			}
+			/* FALLTHROUGH */
 		case F_TTY:
 		case F_CONSOLE:
 		case F_PIPE:
@@ -2795,36 +2770,68 @@ cfline(char *line, char *progblock, char *hostblock)
 			    f->f_un.f_forw.f_loghost);
 			break;
 		}
+		if (priv_getaddrinfo(ipproto, host, port,
+		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
+		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
+			log_warnx("bad hostname \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			f->f_un.f_forw.f_addr.ss_family = AF_UNSPEC;
+			break;
+		}
+		f->f_un.f_forw.f_ipproto = strdup(ipproto);
+		f->f_un.f_forw.f_host = strdup(host);
+		f->f_un.f_forw.f_port = strdup(port);
+		if (f->f_un.f_forw.f_ipproto == NULL ||
+		    f->f_un.f_forw.f_host == NULL ||
+		    f->f_un.f_forw.f_port == NULL) {
+			log_warnx("strdup ipproto host port \"%s\"",
+			    f->f_un.f_forw.f_loghost);
+			free(f->f_un.f_forw.f_ipproto);
+			free(f->f_un.f_forw.f_host);
+			free(f->f_un.f_forw.f_port);
+			break;
+		}
 		f->f_file = -1;
 		if (strncmp(proto, "udp", 3) == 0) {
-			f->f_un.f_forw.f_resolved = 0;
+			evtimer_set(&f->f_un.f_forw.f_ev, udp_resolvecb, f);
+			switch (f->f_un.f_forw.f_addr.ss_family) {
+			case AF_UNSPEC:
+				log_debug("resolve \"%s\" delayed",
+				    f->f_un.f_forw.f_loghost);
+				to.tv_sec = 0;
+				to.tv_usec = 1;
+				evtimer_add(&f->f_un.f_forw.f_ev, &to);
+				break;
+			case AF_INET:
+				f->f_file = fd_udp;
+				break;
+			case AF_INET6:
+				f->f_file = fd_udp6;
+				break;
+			}
 			f->f_type = F_FORWUDP;
 		} else if (strncmp(ipproto, "tcp", 3) == 0) {
-			f->f_un.f_forw.f_resolved = 0;
 			if ((f->f_un.f_forw.f_bufev = bufferevent_new(-1,
 			    tcp_dropcb, tcp_writecb, tcp_errorcb, f)) == NULL) {
 				log_warn("bufferevent \"%s\"",
 				    f->f_un.f_forw.f_loghost);
+				free(f->f_un.f_forw.f_ipproto);
+				free(f->f_un.f_forw.f_host);
+				free(f->f_un.f_forw.f_port);
 				break;
-			}
-			if (strncmp(proto, "tls", 3) == 0) {
-				f->f_un.f_forw.f_host = strdup(host);
-				f->f_type = F_FORWTLS;
-			} else {
-				f->f_type = F_FORWTCP;
 			}
 			/*
 			 * If we try to connect to a TLS server immediately
 			 * syslogd gets an SIGPIPE as the signal handlers have
 			 * not been set up.  Delay the connection until the
-			 * event loop is started.  We can reuse the write event
-			 * for that as bufferevent is still disabled.
+			 * event loop is started.
 			 */
+			evtimer_set(&f->f_un.f_forw.f_ev, tcp_connectcb, f);
 			to.tv_sec = 0;
 			to.tv_usec = 1;
-			evtimer_set(&f->f_un.f_forw.f_bufev->ev_write,
-			    tcp_connectcb, f);
-			evtimer_add(&f->f_un.f_forw.f_bufev->ev_write, &to);
+			evtimer_add(&f->f_un.f_forw.f_ev, &to);
+			f->f_type = (strncmp(proto, "tls", 3) == 0) ?
+			    F_FORWTLS : F_FORWTCP;
 		}
 		break;
 
