@@ -159,8 +159,10 @@ struct filed {
 			struct tls		*f_ctx;
 			char			*f_host;
 			int			 f_reconnectwait;
-			char			 f_resolved;	/* indicate if address resolution successful */
-			long		 	 f_resolvetime; /* save time of resolution for retry attempts */
+			char			 f_resolved;
+			    /* indicate if address resolution was successful */
+			long			 f_resolvetime;
+			    /* save time of resolution for retry attempts */
 		} f_forw;		/* forwarding address */
 		char	f_fname[PATH_MAX];
 		struct {
@@ -1451,34 +1453,26 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 int
 resolve_host(struct filed *f)
 {
+	char *loghostcpy, *ipproto, *proto, *host, *port;
 	int retval = -1;
-	char *loghostcpy = NULL, *ipproto, *proto, *host, *port;
 
-	if (f->f_un.f_forw.f_loghost[0] != '@') {
-		log_warnx("invalid loghost \"%s\"",
-			f->f_un.f_forw.f_loghost);
-		goto cleanup;
-	}
-
-	/* loghost_parse breaks the loghost line in a strtok:y way,
-	   so we work on a copy. Note that loghost_parse uses this
-	   buffer to store proto, host and port, so don't free this
-	   until we are completely done. */
-	loghostcpy = strdup(f->f_un.f_forw.f_loghost+1);
+	/*
+	 * loghost_parse breaks the loghost line in a strtok:y way,
+	 * so we work on a copy. Note that loghost_parse uses this
+	 * buffer to store proto, host and port, so don't free this
+	 * until we are completely done.
+	 */
+	loghostcpy = strdup(f->f_un.f_forw.f_loghost + 1);
 	if (loghostcpy == NULL) {
-		log_warn("strdup");
+		log_warn("strdup loghost \"%s\"", f->f_un.f_forw.f_loghost);
 		goto cleanup;
 	}
 
 	if (loghost_parse(loghostcpy, &proto, &host, &port) == -1) {
-		log_warnx("bad loghost \"%s\"",
-		    f->f_un.f_forw.f_loghost);
+		log_warnx("bad loghost \"%s\"", f->f_un.f_forw.f_loghost);
 		goto cleanup;
 	}
 
-	/* This code somewhat repeats tests in cfline(), but maybe
-	   not enought to warrant breaking it out into a separate
-	   function? */
 	ipproto = proto;
 	if (strcmp(proto, "tls") == 0) {
 		ipproto = "tcp";
@@ -1486,34 +1480,23 @@ resolve_host(struct filed *f)
 		ipproto = "tcp4";
 	} else if (strcmp(proto, "tls6") == 0) {
 		ipproto = "tcp6";
-	} else if (strcmp(proto, "tcp") == 0 ||
-			strcmp(proto, "tcp4") == 0 ||
-			strcmp(proto, "tcp6") == 0 ||
-			strcmp(proto, "udp") == 0 ||
-			strcmp(proto, "udp4") == 0 ||
-			strcmp(proto, "udp6") == 0) {
-		;
-	} else {
-		log_warnx("bad protocol \"%s\"",
-		    f->f_un.f_forw.f_loghost);
-		goto cleanup;
 	}
 
 	if (priv_getaddrinfo(ipproto, host, port,
 	    (struct sockaddr*)&f->f_un.f_forw.f_addr,
 	    sizeof(f->f_un.f_forw.f_addr)) != 0) {
-		log_warnx("could not resolve \"%s\"",
-		    host);
+		log_warnx("could not resolve \"%s\"", host);
 		goto cleanup;
 	}
 
 	f->f_un.f_forw.f_resolved = 1;
 	retval = 0;
+
 cleanup:
-	if (loghostcpy != NULL)
-		free(loghostcpy);
-	log_debug("resolve host: %s for \"%s\"", retval ? "failed" : "successful", f->f_un.f_forw.f_loghost);
-	return retval;
+	free(loghostcpy);
+	log_debug("resolve host \"%s\" %s", f->f_un.f_forw.f_loghost,
+	    retval ? "failed" : "successful");
+	return (retval);
 }
 
 void
@@ -2013,8 +1996,11 @@ fprintlog(struct filed *f, int flags, char *msg)
 		if (!f->f_un.f_forw.f_resolved) {
 			(void)gettimeofday(&now, NULL);
 			if ((now.tv_sec - f->f_un.f_forw.f_resolvetime) > 10) {
-				/* attempt resolution only if more than 10 seconds have
-				   passed since last failed attempt. */
+				/*
+				 * Attempt resolution only if more than
+				 * 10 seconds have passed since last failed
+				 * attempt.
+				 */
 				f->f_un.f_forw.f_resolvetime = now.tv_sec;
 				if (resolve_host(f) == -1) {
 					break;
@@ -2028,8 +2014,11 @@ fprintlog(struct filed *f, int flags, char *msg)
 						break;
 				}
 			} else {
-				/* the host is not resolved, but it's also too soon for us to
-				   try to resolve it again, so just abort. */
+				/*
+				 * The host has not been resolved, but it
+				 * is also too soon for us to try again.
+				 * Just abort.
+				 */
 				break;
 			}
 		}
