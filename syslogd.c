@@ -159,6 +159,8 @@ struct filed {
 			struct tls		*f_ctx;
 			char			*f_host;
 			int			 f_reconnectwait;
+			char			 f_resolved;	/* indicate if address resolution successful */
+			long		 	 f_resolvetime; /* save time of resolution for retry attempts */
 		} f_forw;		/* forwarding address */
 		char	f_fname[PATH_MAX];
 		struct {
@@ -1446,12 +1448,86 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 	log_info(LOG_WARNING, "%s", ebuf);
 }
 
+int
+resolve_host(struct filed *f)
+{
+	int retval = -1;
+	char *loghostcpy = NULL, *ipproto, *proto, *host, *port;
+
+	if (f->f_un.f_forw.f_loghost[0] != '@') {
+		log_warnx("invalid loghost \"%s\"",
+			f->f_un.f_forw.f_loghost);
+		goto cleanup;
+	}
+
+	/* loghost_parse breaks the loghost line in a strtok:y way,
+	   so we work on a copy. Note that loghost_parse uses this
+	   buffer to store proto, host and port, so don't free this
+	   until we are completely done. */
+	loghostcpy = strdup(f->f_un.f_forw.f_loghost+1);
+	if (loghostcpy == NULL) {
+		log_warn("strdup");
+		goto cleanup;
+	}
+
+	if (loghost_parse(loghostcpy, &proto, &host, &port) == -1) {
+		log_warnx("bad loghost \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		goto cleanup;
+	}
+
+	/* This code somewhat repeats tests in cfline(), but maybe
+	   not enought to warrant breaking it out into a separate
+	   function? */
+	ipproto = proto;
+	if (strcmp(proto, "tls") == 0) {
+		ipproto = "tcp";
+	} else if (strcmp(proto, "tls4") == 0) {
+		ipproto = "tcp4";
+	} else if (strcmp(proto, "tls6") == 0) {
+		ipproto = "tcp6";
+	} else if (strcmp(proto, "tcp") == 0 ||
+			strcmp(proto, "tcp4") == 0 ||
+			strcmp(proto, "tcp6") == 0 ||
+			strcmp(proto, "udp") == 0 ||
+			strcmp(proto, "udp4") == 0 ||
+			strcmp(proto, "udp6") == 0) {
+		;
+	} else {
+		log_warnx("bad protocol \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		goto cleanup;
+	}
+
+	if (priv_getaddrinfo(ipproto, host, port,
+	    (struct sockaddr*)&f->f_un.f_forw.f_addr,
+	    sizeof(f->f_un.f_forw.f_addr)) != 0) {
+		log_warnx("could not resolve \"%s\"",
+		    host);
+		goto cleanup;
+	}
+
+	f->f_un.f_forw.f_resolved = 1;
+	retval = 0;
+cleanup:
+	if (loghostcpy != NULL)
+		free(loghostcpy);
+	log_debug("resolve host: %s for \"%s\"", retval ? "failed" : "successful", f->f_un.f_forw.f_loghost);
+	return retval;
+}
+
 void
 tcp_connectcb(int fd, short event, void *arg)
 {
 	struct filed		*f = arg;
 	struct bufferevent	*bufev = f->f_un.f_forw.f_bufev;
 	int			 s;
+
+	if (!f->f_un.f_forw.f_resolved) {
+		if (resolve_host(f) == -1) {
+			goto error;
+		}
+	}
 
 	if ((s = tcp_socket(f)) == -1) {
 		tcp_connect_retry(bufev, f);
@@ -1933,6 +2009,31 @@ fprintlog(struct filed *f, int flags, char *msg)
 
 	case F_FORWUDP:
 		log_debug(" %s", f->f_un.f_forw.f_loghost);
+
+		if (!f->f_un.f_forw.f_resolved) {
+			(void)gettimeofday(&now, NULL);
+			if ((now.tv_sec - f->f_un.f_forw.f_resolvetime) > 10) {
+				/* attempt resolution only if more than 10 seconds have
+				   passed since last failed attempt. */
+				f->f_un.f_forw.f_resolvetime = now.tv_sec;
+				if (resolve_host(f) == -1) {
+					break;
+				}
+				switch (f->f_un.f_forw.f_addr.ss_family) {
+					case AF_INET:
+						f->f_file = fd_udp;
+						break;
+					case AF_INET6:
+						f->f_file = fd_udp6;
+						break;
+				}
+			} else {
+				/* the host is not resolved, but it's also too soon for us to
+				   try to resolve it again, so just abort. */
+				break;
+			}
+		}
+
 		l = iov[0].iov_len + iov[1].iov_len + iov[2].iov_len +
 		    iov[3].iov_len + iov[4].iov_len + iov[5].iov_len +
 		    iov[6].iov_len;
@@ -1943,6 +2044,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 			else
 				iov[5].iov_len = 0;
 		}
+
 		memset(&msghdr, 0, sizeof(msghdr));
 		msghdr.msg_name = &f->f_un.f_forw.f_addr;
 		msghdr.msg_namelen = f->f_un.f_forw.f_addr.ss_len;
@@ -2704,25 +2806,12 @@ cfline(char *line, char *progblock, char *hostblock)
 			    f->f_un.f_forw.f_loghost);
 			break;
 		}
-		if (priv_getaddrinfo(ipproto, host, port,
-		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
-		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
-			log_warnx("bad hostname \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			break;
-		}
 		f->f_file = -1;
 		if (strncmp(proto, "udp", 3) == 0) {
-			switch (f->f_un.f_forw.f_addr.ss_family) {
-			case AF_INET:
-				f->f_file = fd_udp;
-				break;
-			case AF_INET6:
-				f->f_file = fd_udp6;
-				break;
-			}
+			f->f_un.f_forw.f_resolved = 0;
 			f->f_type = F_FORWUDP;
 		} else if (strncmp(ipproto, "tcp", 3) == 0) {
+			f->f_un.f_forw.f_resolved = 0;
 			if ((f->f_un.f_forw.f_bufev = bufferevent_new(-1,
 			    tcp_dropcb, tcp_writecb, tcp_errorcb, f)) == NULL) {
 				log_warn("bufferevent \"%s\"",
