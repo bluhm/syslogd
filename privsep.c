@@ -742,8 +742,8 @@ priv_config_parse_done(void)
 /* Name/service to address translation.  Response is placed into addr.
  * Return 0 for success or < 0 for error like getaddrinfo(3) */
 int
-priv_getaddrinfo(char *proto, char *host, char *serv, struct sockaddr *addr,
-    size_t addr_len)
+priv_getaddrinfo(const char *proto, const char *host, const char *serv,
+    struct sockaddr *addr, size_t addr_len)
 {
 	char protocpy[5], hostcpy[NI_MAXHOST], servcpy[NI_MAXSERV];
 	int cmd, ret_len;

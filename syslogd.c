@@ -322,7 +322,8 @@ void	 tcp_dropcb(struct bufferevent *, void *);
 void	 tcp_writecb(struct bufferevent *, void *);
 void	 tcp_errorcb(struct bufferevent *, short, void *);
 void	 tcp_connectcb(int, short, void *);
-void	 tcp_connect_retry(struct bufferevent *, struct filed *);
+int	 loghost_resolve(struct filed *);
+void	 loghost_retry(struct filed *);
 void	 udp_resolvecb(int, short, void *);
 int	 tcpbuf_countmsg(struct bufferevent *bufev);
 void	 die_signalcb(int, short, void *);
@@ -966,12 +967,15 @@ socket_bind(const char *proto, const char *host, const char *port,
 		    res->ai_socktype | SOCK_NONBLOCK, res->ai_protocol)) == -1)
 			continue;
 
-		if (getnameinfo(res->ai_addr, res->ai_addrlen, hostname,
+		error = getnameinfo(res->ai_addr, res->ai_addrlen, hostname,
 		    sizeof(hostname), servname, sizeof(servname),
 		    NI_NUMERICHOST | NI_NUMERICSERV |
-		    (res->ai_socktype == SOCK_DGRAM ? NI_DGRAM : 0)) != 0) {
-			log_debug("Malformed bind address");
-			hostname[0] = servname[0] = '\0';
+		    (res->ai_socktype == SOCK_DGRAM ? NI_DGRAM : 0));
+		if (error) {
+			log_warnx("malformed bind address host \"%s\": %s",
+			    host, gai_strerror(error));
+			strlcpy(hostname, hostname_unknown, sizeof(hostname));
+			strlcpy(servname, hostname_unknown, sizeof(servname));
 		}
 		if (shutread && shutdown(*fdp, SHUT_RD) == -1) {
 			log_warn("shutdown SHUT_RD "
@@ -1134,7 +1138,7 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	socklen_t		 sslen;
 	char			 hostname[NI_MAXHOST], servname[NI_MAXSERV];
 	char			*peername;
-	int			 fd;
+	int			 fd, error;
 
 	sslen = sizeof(ss);
 	if ((fd = reserve_accept4(lfd, event, ev, tcp_acceptcb,
@@ -1147,17 +1151,21 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 	}
 	log_debug("Accepting tcp connection");
 
-	if (getnameinfo((struct sockaddr *)&ss, sslen, hostname,
+	error = getnameinfo((struct sockaddr *)&ss, sslen, hostname,
 	    sizeof(hostname), servname, sizeof(servname),
-	    NI_NUMERICHOST | NI_NUMERICSERV) != 0 ||
-	    asprintf(&peername, ss.ss_family == AF_INET6 ?
+	    NI_NUMERICHOST | NI_NUMERICSERV);
+	if (error) {
+		log_warnx("malformed TCP accept address: %s",
+		    gai_strerror(error));
+		peername = hostname_unknown;
+	} else if (asprintf(&peername, ss.ss_family == AF_INET6 ?
 	    "[%s]:%s" : "%s:%s", hostname, servname) == -1) {
-		log_debug("Malformed accept address");
+		log_warn("allocate hostname \"%s\"", hostname);
 		peername = hostname_unknown;
 	}
 	log_debug("Peer address and port %s", peername);
 	if ((p = malloc(sizeof(*p))) == NULL) {
-		log_warn("allocate \"%s\"", peername);
+		log_warn("allocate peername \"%s\"", peername);
 		close(fd);
 		return;
 	}
@@ -1444,7 +1452,7 @@ tcp_errorcb(struct bufferevent *bufev, short event, void *arg)
 		f->f_dropped++;
 	}
 
-	tcp_connect_retry(bufev, f);
+	loghost_retry(f);
 
 	/* Log the connection error to the fresh buffer after reconnecting. */
 	log_info(LOG_WARNING, "%s", ebuf);
@@ -1458,19 +1466,14 @@ tcp_connectcb(int fd, short event, void *arg)
 	int			 s;
 
 	if (f->f_un.f_forw.f_addr.ss_family == AF_UNSPEC) {
-		if (priv_getaddrinfo(f->f_un.f_forw.f_ipproto,
-		    f->f_un.f_forw.f_host, f->f_un.f_forw.f_port,
-		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
-		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
-			log_warnx("bad hostname \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			tcp_connect_retry(bufev, f);
+		if (loghost_resolve(f) != 0) {
+			loghost_retry(f);
 			return;
 		}
 	}
 
 	if ((s = tcp_socket(f)) == -1) {
-		tcp_connect_retry(bufev, f);
+		loghost_retry(f);
 		return;
 	}
 	log_debug("tcp connect callback: socket success, event %#x", event);
@@ -1519,11 +1522,42 @@ tcp_connectcb(int fd, short event, void *arg)
 	}
 	close(f->f_file);
 	f->f_file = -1;
-	tcp_connect_retry(bufev, f);
+	loghost_retry(f);
+}
+
+int
+loghost_resolve(struct filed *f)
+{
+	char	hostname[NI_MAXHOST];
+	int	error;
+
+	error = priv_getaddrinfo(f->f_un.f_forw.f_ipproto,
+	    f->f_un.f_forw.f_host, f->f_un.f_forw.f_port,
+	    (struct sockaddr *)&f->f_un.f_forw.f_addr,
+	    sizeof(f->f_un.f_forw.f_addr));
+	if (error) {
+		log_warnx("bad hostname \"%s\"", f->f_un.f_forw.f_loghost);
+		f->f_un.f_forw.f_addr.ss_family = AF_UNSPEC;
+		return (error);
+	}
+
+	error = getnameinfo((struct sockaddr *)&f->f_un.f_forw.f_addr,
+	    f->f_un.f_forw.f_addr.ss_len, hostname, sizeof(hostname), NULL, 0,
+	    NI_NUMERICHOST | NI_NUMERICSERV |
+	    (strncmp(f->f_un.f_forw.f_ipproto, "udp", 3) == 0 ? NI_DGRAM : 0));
+	if (error) {
+		log_warnx("malformed UDP address loghost \"%s\": %s",
+		    f->f_un.f_forw.f_loghost, gai_strerror(error));
+		strlcpy(hostname, hostname_unknown, sizeof(hostname));
+	}
+
+	log_debug("resolved loghost \"%s\" address %s",
+	    f->f_un.f_forw.f_loghost, hostname);
+	return (0);
 }
 
 void
-tcp_connect_retry(struct bufferevent *bufev, struct filed *f)
+loghost_retry(struct filed *f)
 {
 	struct timeval		 to;
 
@@ -1537,8 +1571,8 @@ tcp_connect_retry(struct bufferevent *bufev, struct filed *f)
 	to.tv_usec = 0;
 	evtimer_add(&f->f_un.f_forw.f_ev, &to);
 
-	log_debug("tcp connect retry: wait %d", f->f_un.f_forw.f_retrywait);
-	bufferevent_setfd(bufev, -1);
+	log_debug("retry loghost \"%s\" wait %d",
+	    f->f_un.f_forw.f_loghost, f->f_un.f_forw.f_retrywait);
 }
 
 void
@@ -1547,46 +1581,28 @@ udp_resolvecb(int fd, short event, void *arg)
 	struct filed		*f = arg;
 	struct timeval		 to;
 
-	if (priv_getaddrinfo(f->f_un.f_forw.f_ipproto,
-	    f->f_un.f_forw.f_host, f->f_un.f_forw.f_port,
-	    (struct sockaddr*)&f->f_un.f_forw.f_addr,
-	    sizeof(f->f_un.f_forw.f_addr)) == 0) {
-		switch (f->f_un.f_forw.f_addr.ss_family) {
-		case AF_INET:
-			log_debug("resolved \"%s\" to IPv4 address",
-			    f->f_un.f_forw.f_loghost);
-			f->f_file = fd_udp;
-			break;
-		case AF_INET6:
-			log_debug("resolved \"%s\" to IPv6 address",
-			    f->f_un.f_forw.f_loghost);
-			f->f_file = fd_udp6;
-			break;
-		}
-		f->f_un.f_forw.f_retrywait = 0;
-
-		if (f->f_dropped > 0) {
-			char ebuf[ERRBUFSIZE];
-
-			snprintf(ebuf, sizeof(ebuf), "to udp loghost \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			dropped_warn(&f->f_dropped, ebuf);
-		}
+	if (loghost_resolve(f) != 0) {
+		loghost_retry(f);
 		return;
 	}
-	log_warnx("bad hostname \"%s\"", f->f_un.f_forw.f_loghost);
 
-	if (f->f_un.f_forw.f_retrywait == 0)
-		f->f_un.f_forw.f_retrywait = 1;
-	else
-		f->f_un.f_forw.f_retrywait <<= 1;
-	if (f->f_un.f_forw.f_retrywait > 600)
-		f->f_un.f_forw.f_retrywait = 600;
-	to.tv_sec = f->f_un.f_forw.f_retrywait;
-	to.tv_usec = 0;
-	evtimer_add(&f->f_un.f_forw.f_ev, &to);
+	switch (f->f_un.f_forw.f_addr.ss_family) {
+	case AF_INET:
+		f->f_file = fd_udp;
+		break;
+	case AF_INET6:
+		f->f_file = fd_udp6;
+		break;
+	}
+	f->f_un.f_forw.f_retrywait = 0;
 
-	log_debug("udp resolve retry: wait %d", f->f_un.f_forw.f_retrywait);
+	if (f->f_dropped > 0) {
+		char ebuf[ERRBUFSIZE];
+
+		snprintf(ebuf, sizeof(ebuf), "to udp loghost \"%s\"",
+		    f->f_un.f_forw.f_loghost);
+		dropped_warn(&f->f_dropped, ebuf);
+	}
 }
 
 int
@@ -2234,9 +2250,13 @@ wallmsg(struct filed *f, struct iovec *iov)
 void
 cvthname(struct sockaddr *f, char *result, size_t res_len)
 {
-	if (getnameinfo(f, f->sa_len, result, res_len, NULL, 0,
-	    NI_NUMERICHOST|NI_NUMERICSERV|NI_DGRAM) != 0) {
-		log_debug("Malformed from address");
+	int error;
+
+	error = getnameinfo(f, f->sa_len, result, res_len, NULL, 0,
+	    NI_NUMERICHOST | NI_NUMERICSERV | NI_DGRAM);
+	if (error) {
+		log_warnx("malformed UDP from address: %s",
+		    gai_strerror(error));
 		strlcpy(result, hostname_unknown, res_len);
 		return;
 	}
@@ -2780,13 +2800,6 @@ cfline(char *line, char *progblock, char *hostblock)
 			    f->f_un.f_forw.f_loghost);
 			break;
 		}
-		if (priv_getaddrinfo(ipproto, host, port,
-		    (struct sockaddr*)&f->f_un.f_forw.f_addr,
-		    sizeof(f->f_un.f_forw.f_addr)) != 0) {
-			log_warnx("bad hostname \"%s\"",
-			    f->f_un.f_forw.f_loghost);
-			f->f_un.f_forw.f_addr.ss_family = AF_UNSPEC;
-		}
 		f->f_un.f_forw.f_ipproto = strdup(ipproto);
 		f->f_un.f_forw.f_host = strdup(host);
 		f->f_un.f_forw.f_port = strdup(port);
@@ -2801,6 +2814,7 @@ cfline(char *line, char *progblock, char *hostblock)
 			break;
 		}
 		f->f_file = -1;
+		loghost_resolve(f);
 		if (strncmp(proto, "udp", 3) == 0) {
 			evtimer_set(&f->f_un.f_forw.f_ev, udp_resolvecb, f);
 			switch (f->f_un.f_forw.f_addr.ss_family) {
