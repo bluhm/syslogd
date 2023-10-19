@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.278 2023/10/12 22:36:54 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.279 2023/10/19 22:16:10 bluhm Exp $	*/
 
 /*
  * Copyright (c) 2014-2021 Alexander Bluhm <bluhm@genua.de>
@@ -2054,7 +2054,7 @@ fprintlog(struct filed *f, int flags, char *msg)
 				    "to udp loghost \"%s\"",
 				    f->f_un.f_forw.f_loghost);
 				dropped_warn(&f->f_dropped, ebuf);
-				log_warn("sendmsg to \"%s\", loghost disabled",
+				log_warn("loghost \"%s\" disabled, sendmsg",
 				    f->f_un.f_forw.f_loghost);
 				break;
 			}
