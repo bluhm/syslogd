@@ -316,6 +316,7 @@ void	 tls_acceptcb(int, short, void *);
 void	 acceptcb(int, short, void *, int);
 int	 octet_counting(struct evbuffer *, char **, int);
 int	 non_transparent_framing(struct evbuffer *, char **);
+void	 tls_handshakecb(struct bufferevent *, void *);
 void	 tcp_readcb(struct bufferevent *, void *);
 void	 tcp_closecb(struct bufferevent *, short, void *);
 int	 tcp_socket(struct filed *);
@@ -1188,6 +1189,7 @@ acceptcb(int lfd, short event, void *arg, int usetls)
 			close(fd);
 			return;
 		}
+		p->p_bufev->readcb = tls_handshakecb;
 		buffertls_set(&p->p_buftls, p->p_bufev, p->p_ctx, fd);
 		buffertls_accept(&p->p_buftls, fd);
 		log_debug("tcp accept callback: tls context success");
@@ -1284,6 +1286,30 @@ non_transparent_framing(struct evbuffer *evbuf, char **msg)
 	if (msg)
 		*msg = buf;
 	return (p + 1 - buf);
+}
+
+void
+tls_handshakecb(struct bufferevent *bufev, void *arg)
+{
+	struct msg msg;
+	struct peer *p = arg;
+	char *cn;
+	int l;
+
+	if (tls_peer_cert_provided(p->p_ctx) &&
+	    (cn = tls_peer_cert_common_name(p->p_ctx)) != NULL) {
+		if (strlen(cn) > 0) {
+			log_info(LOG_INFO, "%s: using hostname %s from "
+			    "certificate", p->p_hostname, cn);
+			free(p->p_hostname);
+			p->p_hostname = cn;
+		} else {
+			free(cn);
+		}
+	}
+
+	bufev->readcb = tcp_readcb;
+	tcp_readcb(bufev, p);
 }
 
 void
