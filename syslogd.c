@@ -1,4 +1,4 @@
-/*	$OpenBSD: syslogd.c,v 1.280 2024/01/06 19:34:54 bluhm Exp $	*/
+/*	$OpenBSD: syslogd.c,v 1.282 2024/07/01 12:06:45 bluhm Exp $	*/
 
 /*
  * Copyright (c) 2014-2021 Alexander Bluhm <bluhm@genua.de>
@@ -1216,7 +1216,7 @@ tls_handshakecb(struct bufferevent *bufev, void *arg)
 {
 	struct peer *p = arg;
 
-	log_debug("tls handshake complete");
+	log_debug("Completed tls handshake");
 
 	bufev->readcb = tcp_readcb;
 	tcp_readcb(bufev, p);
@@ -1595,7 +1595,6 @@ void
 udp_resolvecb(int fd, short event, void *arg)
 {
 	struct filed		*f = arg;
-	struct timeval		 to;
 
 	if (loghost_resolve(f) != 0) {
 		loghost_retry(f);
