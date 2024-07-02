@@ -240,7 +240,7 @@ buffertls_handshakecb(int fd, short event, void *arg)
 	event_set(&bufev->ev_write, fd, EV_WRITE, buffertls_writecb, buftls);
 	if (bufev->enabled & EV_READ)
 		bufferevent_add(&bufev->ev_read, bufev->timeout_read);
-	if (EVBUFFER_LENGTH(bufev->output) != 0 && bufev->enabled & EV_WRITE)
+	if (bufev->enabled & EV_WRITE)
 		bufferevent_add(&bufev->ev_write, bufev->timeout_write);
 
 	return;
